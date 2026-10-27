@@ -144,6 +144,10 @@ page only has to include `header.php` like the others.
   opens PhonePe on **RestroGrow's own keys** for ₹500 or the full amount. Payment ids start `QRK_`; `ppSettle()` sends
   them to `qkSettle()`. Paid = the team gets an email; Super Admin › QR kit orders (`main/superadmin/qr_kits.php`).
   Back from PhonePe the page reads `?booking=QRK_…` and asks the API. Local computer without keys: paid at once (pretend).
+- "Make your menu" on that page posts photos / a PDF to `main/api/qr_menu_extract.php`: Gemini (`aiGeminiCall`, JSON
+  schema) reads the dishes into `{categories:[{name, items:[{name, price, description, type, variants}]}]}`, the shape the
+  page's `mountMenu()` needs. Public, so rationed before Gemini is called: 4 an hour and 10 a day per IP, and
+  `QR_MENU_AI_DAILY` (default 300) a day for the whole site. Nothing is stored. Any failure → the page offers WhatsApp.
 - Separate dashboard `main/qrkit/` (`login.php`, `index.php`, `logout.php`) with its own logins (`qr_kit_users`, made in
   Super Admin › QR kit orders › Dashboard logins). Its session keys are only `qrkit_user_id` / `qrkit_at`, which no other
   part of RestroGrow accepts (`isSessionValid()` ignores them): keep it that way. Order changes go through `qkUpdateOrder()`.

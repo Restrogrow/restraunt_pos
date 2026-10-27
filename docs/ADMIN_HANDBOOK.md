@@ -258,6 +258,9 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 - Every paid booking emails the team and appears in **Super Admin › QR kit orders**: WhatsApp the buyer for their menu
   photos and logo, set the status (Menu being built → Standees sent → Delivered), tick "Balance collected".
 - "Not paid" lists people who started and didn't finish, to call back.
+- **"Make your menu" on that page** reads a visitor's menu photo with Gemini (`GEMINI_API_KEY`) and shows it working on a
+  phone in seconds. Limits: 4 an hour / 10 a day per visitor, 300 a day for the whole site (`QR_MENU_AI_DAILY` in
+  `main/.env` changes it). If Gemini is down or the limit is hit, the visitor gets "Send on WhatsApp" instead.
 - **Separate QR kit dashboard:** https://restrogrow.com/main/qrkit/ (local: http://localhost/menuwebsite/main/qrkit/).
   Make a login for a sales or delivery person in Super Admin › QR kit orders › Dashboard logins; they see only these
   orders (numbers, chart by day, To do / Delivered / Cancelled / Not paid, search, CSV, status, balance, notes).

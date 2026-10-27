@@ -867,6 +867,8 @@ const WA_NUMBER = '917849838428';
 const ADVANCE = 500, STANDEE = 99, ADD_DEL = 999, ADD_PAY = 1999;
 /* Bookings and payment: main/api/qr_kit_order.php (RestroGrow's PhonePe; prices worked out again on the server, config/qr_kit.php) */
 const QK_API = '../main/api/qr_kit_order.php';
+/* "Make your menu": photos → Gemini → the visitor's own menu on the phone (main/api/qr_menu_extract.php) */
+window.RG_MENU_EXTRACT_URL = '../main/api/qr_menu_extract.php';
 const PKG = {
   basic:{name:'QR Menu',sub:'Digital menu · standees ₹99 each',for:'Guests scan and see your full menu',price:1999,stands:0},
   smart:{name:'QR Ordering',sub:'Guests order from the table · 10 standees FREE',for:'Guests order and pay from the table',price:4999,stands:10}
@@ -1173,7 +1175,7 @@ mountMenu($('app'), KH, {logo:'img/kh-logo.png', rname:'Kohuke Restaurant', spri
 
 /* ===== video ===== */
 (function(){
-  const V={hi:'vid/demo-hi.mp4',en:'vid/demo-en.mp4'}; const v=$('vid'), cover=$('vidCover'); let lang='hi';
+  const V={hi:'../demo-video.mp4',en:'../demo-video.mp4'}; /* the site's demo video (demo-video.mp4) until Hindi / English cuts are in vid/ */ const v=$('vid'), cover=$('vidCover'); let lang='hi';
   document.querySelectorAll('.lang button').forEach(b=>b.addEventListener('click',()=>{lang=b.dataset.lang;document.querySelectorAll('.lang button').forEach(x=>x.setAttribute('aria-pressed',x===b));if(cover.hidden){v.src=V[lang];v.play().catch(()=>{})}}));
   cover.addEventListener('click',()=>{v.src=V[lang];cover.hidden=true;v.play().catch(()=>{})});
 })();
