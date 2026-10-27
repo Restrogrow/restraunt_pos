@@ -94,4 +94,51 @@ foreach (array_slice((array)($j['categories'] ?? []), 0, 40) as $c) {
     if ($items) $cats[] = ['name' => $clean($c['name'] ?? '', 40) ?: 'Menu', 'items' => $items];
 }
 if (!$cats) qmOut(['success' => false, 'message' => 'We couldn\'t find dishes in this photo. Try a clearer photo of the menu, or send it on WhatsApp.'], 422);
+
+// ── a photo for each dish from the photo library (images/<Folder>/<file> on the server), the way Super Admin's menu
+// import does it: a short list by name (includes/menu_image_matcher.php), then Gemini picks the one that really is
+// that dish (veg vs chicken, momo vs thukpa), or none. A dish with no good photo just shows without one. ──
+try {
+    require_once __DIR__ . '/../includes/menu_image_matcher.php';
+    $cands = [];
+    foreach ($cats as $ci => $c) {
+        foreach ($c['items'] as $ii => $it) {
+            $list = find_local_menu_item_image_candidates($it['name'], $c['name'], 6);
+            if ($list) $cands["$ci.$ii"] = $list;
+        }
+    }
+    $picked = [];
+    if ($cands) {
+        $ask = "For each restaurant dish below pick the ONE photo (by its number) that really shows that dish, or 0 when none does. "
+            . "File names describe the photo. A different main ingredient (veg / paneer / chicken / mutton / egg / fish / prawn) or a different dish is NOT a match.\n\n";
+        foreach ($cands as $k => $list) {
+            [$ci, $ii] = array_map('intval', explode('.', $k));
+            $ask .= "Dish $k: " . $cats[$ci]['items'][$ii]['name'] . ' (' . $cats[$ci]['name'] . ', ' . $cats[$ci]['items'][$ii]['type'] . ")\n";
+            foreach ($list as $n => $p) $ask .= '  ' . ($n + 1) . ') ' . $p['folder'] . '/' . $p['file'] . "\n";
+        }
+        $r2 = aiGeminiCall([
+            'contents' => [['role' => 'user', 'parts' => [['text' => mb_substr($ask, 0, 60000)]]]],
+            'generationConfig' => ['temperature' => 0, 'maxOutputTokens' => 8192, 'responseMimeType' => 'application/json', 'thinkingConfig' => ['thinkingBudget' => 0],
+                'responseSchema' => ['type' => 'ARRAY', 'items' => ['type' => 'OBJECT', 'required' => ['dish', 'photo'], 'properties' => ['dish' => ['type' => 'STRING'], 'photo' => ['type' => 'INTEGER']]]]],
+        ], 60);
+        $answers = $r2 ? json_decode(preg_replace('/^```(?:json)?|```$/m', '', $r2['text']), true) : null;
+        $answered = [];
+        foreach (is_array($answers) ? $answers : [] as $a) {
+            // "0.3", "Dish 0.3" or "dish 0.3:" all mean dish 0.3
+            if (!is_array($a) || !preg_match('/(\d+)\.(\d+)/', (string)($a['dish'] ?? ''), $m)) continue;
+            $k = $m[1] . '.' . $m[2]; $n = (int)($a['photo'] ?? 0);
+            $answered[$k] = true;
+            if ($n > 0 && isset($cands[$k][$n - 1])) $picked[$k] = $cands[$k][$n - 1];
+        }
+        // dishes Gemini didn't answer for (call failed, or skipped): only a very close name match
+        foreach ($cands as $k => $list) if (!isset($answered[$k]) && $list[0]['score'] >= 0.6) $picked[$k] = $list[0];
+    }
+    foreach ($picked as $k => $p) {
+        [$ci, $ii] = array_map('intval', explode('.', $k));
+        // relative to qr-menu-ordering/ (the page that shows it); image.php sends a small WebP (&w=200)
+        $cats[$ci]['items'][$ii]['image'] = '../main/website/image.php?path=' . rawurlencode('local:' . $p['folder'] . '/' . $p['file']) . '&w=200';
+    }
+} catch (Throwable $e) {
+    error_log('qr_menu_extract photos: ' . $e->getMessage());   // the menu still goes back, without photos
+}
 qmOut(['success' => true, 'categories' => $cats]);

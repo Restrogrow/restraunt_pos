@@ -961,9 +961,11 @@ const KH = {"M":[[196,"Classic Indo-Chinese Menu","6a4bd699b5995"],[195,"Urban S
 function mountMenu(app, DATA, OPT){ OPT = OPT || {};
   if (!app) return; const SP = !!OPT.sprite, RN = OPT.rname || 'Restaurant';
   const cats = DATA.M.map((m,i) => ({id:m[0], name:m[1], sp:SP?i:null}));
-  const items = DATA.I.map((r,i) => ({id:r[0], cat:r[1], name:r[2], desc:r[3], type:r[4]==='Veg'?'v':r[4]==='Egg'?'e':'n', price:r[5], sp:SP?7+i:null,
+  const items = DATA.I.map((r,i) => ({id:r[0], cat:r[1], name:r[2], desc:r[3], type:r[4]==='Veg'?'v':r[4]==='Egg'?'e':'n', price:r[5], sp:SP?7+i:null, img:r[6]||null,
     vars: r[7] ? r[7].split('|').map(v => { const [n,p] = v.split(':'); return {n:n[0]+n.slice(1).toLowerCase(), p:+p}; }) : null}));
   const pos = (sp, size) => `background-position:${-(sp%10)*size}px ${-Math.floor(sp/10)*size}px`;
+  /* a dish's own photo (the menu read from a photo: matched from the photo library), else its place in the sprite */
+  const pic = (it, size) => it.img ? `background:#eee url('${it.img}') center/cover` : pos(it.sp, size);
   const clean = n => n.replace(/\s*\(Half\/Full\)/,'');
   const minP = it => it.vars ? Math.min(...it.vars.map(v=>v.p)) : it.price;
   const cart = new Map(); let cat = 0, vegOnly = false, q = '', pending = null, orderNo = 1043, cur = null;
@@ -986,7 +988,7 @@ function mountMenu(app, DATA, OPT){ OPT = OPT || {};
   function itemHTML(it){
     const n = qty(it.id);
     const btn = n ? `<div class="add q"><span data-m="${it.id}">−</span>${n}<span data-p="${it.id}">+</span></div>` : `<button type="button" class="add" data-a="${it.id}">ADD +</button>`;
-    return `<div class="it"><div><span class="mk ${it.type==='v'?'':it.type==='e'?'eg':'nv'}"></span><b>${it.name}</b><p class="ip">₹${minP(it)}</p><p>${it.desc}</p></div><div>${it.sp==null?`<div class="it__im" style="background:none;height:30px">${btn}</div>`:`<div class="it__im" style="${pos(it.sp,84)}">${btn}</div>`}${it.vars?'<span class="cust">customisable</span>':''}</div></div>`;
+    return `<div class="it"><div><span class="mk ${it.type==='v'?'':it.type==='e'?'eg':'nv'}"></span><b>${it.name}</b><p class="ip">₹${minP(it)}</p><p>${it.desc}</p></div><div>${it.sp==null&&!it.img?`<div class="it__im" style="background:none;height:30px">${btn}</div>`:`<div class="it__im" style="${pic(it,84)}">${btn}</div>`}${it.vars?'<span class="cust">customisable</span>':''}</div></div>`;
   }
   function draw(){
     const L = items.filter(it => (!vegOnly || it.type==='v') && (!q || it.name.toLowerCase().includes(q)));
@@ -1005,8 +1007,8 @@ function mountMenu(app, DATA, OPT){ OPT = OPT || {};
   function drawCart(){
     const box = app.querySelector('[data-s="cart"] .scr2'); const C = [...cart.entries()]; const sub = tot();
     const sug = items.filter(it => (OPT.sug ? OPT.sug.includes(it.id) : true) && !qty(it.id) && !it.vars).slice(0,3);
-    box.innerHTML = `<div class="card2"><h5>Your order <span style="float:right;color:#999;font-weight:500">${cnt()} item${cnt()>1?'s':''}</span></h5>${C.map(([k,c]) => `<div class="ci">${c.it.sp==null?'':`<i class="ci__im" style="${pos(c.it.sp,40)}"></i>`}<span><b><span class="mk ${c.it.type==='v'?'':c.it.type==='e'?'eg':'nv'}"></span> ${clean(c.it.name)}</b><small>${c.v?c.v.n:''}</small><span class="st2"><button type="button" data-cm="${k}">−</button><span>${c.n}</span><button type="button" data-cp="${k}">+</button></span></span><b>₹${c.n*c.p}.00</b></div>`).join('')}<button type="button" class="more" data-x="back">+ Add more items</button></div>
-      ${sug.length?`<div class="card2"><h5>Complete your meal<small>Picked to go with your order</small></h5><div class="ups2">${sug.map(it => `<div>${it.sp==null?"":`<div class="it__im" style="background-size:615px 554px;${pos(it.sp,61.5)}"></div>`}<b>${it.name}</b><span style="color:#7c3aed;font-size:9.5px">Popular here</span><br>₹${minP(it)}<button type="button" data-a="${it.id}">ADD +</button></div>`).join('')}</div></div>`:''}
+    box.innerHTML = `<div class="card2"><h5>Your order <span style="float:right;color:#999;font-weight:500">${cnt()} item${cnt()>1?'s':''}</span></h5>${C.map(([k,c]) => `<div class="ci">${c.it.sp==null&&!c.it.img?'':`<i class="ci__im" style="${pic(c.it,40)}"></i>`}<span><b><span class="mk ${c.it.type==='v'?'':c.it.type==='e'?'eg':'nv'}"></span> ${clean(c.it.name)}</b><small>${c.v?c.v.n:''}</small><span class="st2"><button type="button" data-cm="${k}">−</button><span>${c.n}</span><button type="button" data-cp="${k}">+</button></span></span><b>₹${c.n*c.p}.00</b></div>`).join('')}<button type="button" class="more" data-x="back">+ Add more items</button></div>
+      ${sug.length?`<div class="card2"><h5>Complete your meal<small>Picked to go with your order</small></h5><div class="ups2">${sug.map(it => `<div>${it.sp==null&&!it.img?"":`<div class="it__im" style="${it.img?pic(it,61.5):'background-size:615px 554px;'+pos(it.sp,61.5)}"></div>`}<b>${it.name}</b><span style="color:#7c3aed;font-size:9.5px">Popular here</span><br>₹${minP(it)}<button type="button" data-a="${it.id}">ADD +</button></div>`).join('')}</div></div>`:''}
       <div class="card2"><h5>Offers &amp; coupons</h5><div class="cpn"><input placeholder="Enter coupon code" aria-label="Coupon code"><button type="button" data-x="cpn">Apply</button></div></div>
       <div class="card2"><h5>Note for the restaurant<small>Allergies, spice level, delivery notes</small></h5><div class="chips2">${['No onion','No garlic','Less spicy','Extra spicy','Jain food'].map(c=>`<button type="button" data-x="chip">${c}</button>`).join('')}</div></div>
       <div class="card2 bill"><h5>Bill details</h5><div><span>Item total</span><span>₹${sub}.00</span></div><div class="t"><span>Subtotal</span><span>₹${sub}.00</span></div><p style="margin:6px 0 0;color:#999;font-size:10.5px">Taxes and charges are added at checkout, before you pay.</p></div>`;
@@ -1129,7 +1131,7 @@ mountMenu($('app'), KH, {logo:'img/kh-logo.png', rname:'Kohuke Restaurant', spri
     const M = [], I = []; let id = 1;
     (r.categories||[]).forEach((c,ci) => { M.push([ci+1, c.name || 'Menu', null]);
       (c.items||[]).forEach(it => { const t = String(it.type||'veg').toLowerCase();
-        I.push([id++, ci+1, it.name, it.description||'', t.startsWith('non')?'Non Veg':t.startsWith('egg')?'Egg':'Veg', +it.price||0, null,
+        I.push([id++, ci+1, it.name, it.description||'', t.startsWith('non')?'Non Veg':t.startsWith('egg')?'Egg':'Veg', +it.price||0, it.image||null,
           (it.variants||[]).map(v => (v.name||'')+':'+(+v.price||0)).join('|')]); }); });
     return {M, I};
   }

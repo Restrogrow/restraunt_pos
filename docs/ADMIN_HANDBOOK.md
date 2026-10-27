@@ -261,6 +261,8 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 - **"Make your menu" on that page** reads a visitor's menu photo with Gemini (`GEMINI_API_KEY`) and shows it working on a
   phone in seconds. Limits: 4 an hour / 10 a day per visitor, 300 a day for the whole site (`QR_MENU_AI_DAILY` in
   `main/.env` changes it). If Gemini is down or the limit is hit, the visitor gets "Send on WhatsApp" instead.
+  Dish photos come from the photo library on the server (the `images/` folder, same as Super Admin's menu import);
+  a dish with no matching photo just shows without one. More photos in `images/` = more dishes with pictures.
 - **Separate QR kit dashboard:** https://restrogrow.com/main/qrkit/ (local: http://localhost/menuwebsite/main/qrkit/).
   Make a login for a sales or delivery person in Super Admin › QR kit orders › Dashboard logins; they see only these
   orders (numbers, chart by day, To do / Delivered / Cancelled / Not paid, search, CSV, status, balance, notes).

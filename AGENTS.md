@@ -148,6 +148,10 @@ page only has to include `header.php` like the others.
   schema) reads the dishes into `{categories:[{name, items:[{name, price, description, type, variants}]}]}`, the shape the
   page's `mountMenu()` needs. Public, so rationed before Gemini is called: 4 an hour and 10 a day per IP, and
   `QR_MENU_AI_DAILY` (default 300) a day for the whole site. Nothing is stored. Any failure → the page offers WhatsApp.
+  Each dish then gets a photo from the server's photo library `images/<Folder>/<file>` (not in git, like Super Admin's
+  menu import): `find_local_menu_item_image_candidates()` shortlists by name, a second Gemini call picks the right one
+  or none; if that call fails only a score ≥ 0.6 counts. Sent as `image` (`main/website/image.php?path=local:…&w=200`,
+  a cached small WebP); the page's `mountMenu()` shows `img` (7th field of an item) before the Kohuke sprite.
 - Separate dashboard `main/qrkit/` (`login.php`, `index.php`, `logout.php`) with its own logins (`qr_kit_users`, made in
   Super Admin › QR kit orders › Dashboard logins). Its session keys are only `qrkit_user_id` / `qrkit_at`, which no other
   part of RestroGrow accepts (`isSessionValid()` ignores them): keep it that way. Order changes go through `qkUpdateOrder()`.

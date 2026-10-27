@@ -63,6 +63,27 @@ if ($localRef !== '') {
             $fullPath = $real;
         }
     }
+    // &w=96/200/400/800: a small WebP copy, made once and kept in uploads/cache/img (the QR menu page's phone preview)
+    $localW = (int)($_GET['w'] ?? 0);
+    if ($fullPath !== false && is_file($fullPath) && in_array($localW, [96, 200, 400, 800], true) && function_exists('imagewebp')) {
+        $cacheDir = dirname(__DIR__) . '/uploads/cache/img';
+        $cacheFile = $cacheDir . '/' . sha1('local|' . $localRef . '|' . filemtime($fullPath)) . '_' . $localW . '.webp';
+        if (!is_file($cacheFile)) {
+            $src = @imagecreatefromstring((string)file_get_contents($fullPath));
+            if ($src) {
+                $small = imagesx($src) > $localW ? imagescale($src, $localW) : $src;
+                if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+                if (@imagewebp($small, $cacheFile . '.tmp', 80)) @rename($cacheFile . '.tmp', $cacheFile);
+            }
+        }
+        if (is_file($cacheFile)) {
+            header('Content-Type: image/webp');
+            header('Content-Length: ' . filesize($cacheFile));
+            header('Cache-Control: public, max-age=31536000');
+            readfile($cacheFile);
+            exit();
+        }
+    }
     if ($fullPath !== false && is_file($fullPath)) {
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $fullPath);
