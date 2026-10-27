@@ -9119,7 +9119,8 @@ document.addEventListener("DOMContentLoaded", () => {
       <div style="display:flex;justify-content:space-between;font-size:12px;"><span>${label}</span><span>${currency}${amt.toFixed(2)}</span></div>
     `).join('');
 
-    // Nepal VAT bill: "Tax Invoice", the Bikram Sambat date, and the taxable amount / service charge lines
+    // Nepal bill: the Bikram Sambat date, and the taxable amount / service charge lines; "Tax Invoice" only
+    // with VAT on (only a VAT-registered restaurant may issue one)
     const isNepal = window.restaurantCountryCode === 'NP';
     const discTotal = (payResult.discounts || []).reduce((s, d) => s + (+d[1] || 0), 0);
     const bm = window.rgBillMath ? window.rgBillMath(Math.max(0, subtotal - discTotal)) : { net: subtotal, serviceCharge: 0, inclusive: false };
@@ -9154,7 +9155,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
         ${restaurantInfo.showBusinessId && restaurantInfo.businessIdNo ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.businessIdLabel || 'PAN')}: ${escapeHtml(restaurantInfo.businessIdNo)}</div>` : ''}
-        ${isNepal ? '<div class="bill-tag">TAX INVOICE</div>' : ''}
+        ${isNepal && showGst ? '<div class="bill-tag">TAX INVOICE</div>' : ''}
         <div class="bill-tag">BILL #${escapeHtml(String(kotNumber))}</div>
         <div style="font-size:11px;color:#6b7280;margin-top:4px;">${payResult.billDateBs ? escapeHtml(payResult.billDateBs) + ' BS | ' : ''}${dateStr} | ${timeStr}</div>
       </div>
@@ -9228,7 +9229,8 @@ document.addEventListener("DOMContentLoaded", () => {
         total: total,
         afterTotal: afterTotal,
         paymentMethod: payResult.paymentMethod,
-        notes: [].concat(isNepal ? ['TAX INVOICE' + (payResult.billDateBs ? ' · ' + payResult.billDateBs + ' BS' : '')] : [],
+        notes: [].concat(isNepal && showGst ? ['TAX INVOICE' + (payResult.billDateBs ? ' · ' + payResult.billDateBs + ' BS' : '')]
+            : (isNepal && payResult.billDateBs ? [payResult.billDateBs + ' BS'] : []),
           billExtraRows.map(([l, a]) => l + ': ' + a.toFixed(2)),
           billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []),
         logoRaster: billImages.logoRaster,
@@ -11466,7 +11468,7 @@ window.printOrder = async function(orderId) {
       <div class="bill-meta">
         <div class="info-line"><span class="label">${tableOrType.includes('Table') ? 'DineIn' : 'Order'}</span><span class="value">${escapeHtml(tableOrType)}</span></div>
         <div class="info-line"><span class="label">Date</span><span class="value">${dateStr} | ${timeStr}</span></div>
-        ${window.restaurantCountryCode === 'NP' ? '<div class="info-line"><span class="label">TAX INVOICE</span><span class="value">' + (order.bill_date_bs ? escapeHtml(order.bill_date_bs) + ' BS' : '') + '</span></div>' : ''}
+        ${window.restaurantCountryCode === 'NP' && (window.enableGst || order.bill_date_bs) ? '<div class="info-line"><span class="label">' + (window.enableGst ? 'TAX INVOICE' : 'Date (BS)') + '</span><span class="value">' + (order.bill_date_bs ? escapeHtml(order.bill_date_bs) + ' BS' : '') + '</span></div>' : ''}
         <div class="info-line"><span class="label">Bill</span><span class="value">#${escapeHtml(order.bill_label || order.bill_no || order.order_number || order.id)}</span></div>
         <div class="info-line"><span class="label">Invoice</span><span class="value">#INV-${String(order.created_at || "").slice(0, 10).replace(/-/g, "")}-${escapeHtml(String(order.order_number || order.id))}</span></div>
         <div class="info-line"><span class="label">Order No</span><span class="value">#${escapeHtml(order.id || order.order_number)}</span></div>
