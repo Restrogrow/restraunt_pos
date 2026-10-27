@@ -93,8 +93,8 @@ page only has to include `header.php` like the others.
 ## Private sign-up links
 
 - Super Admin › Sign-up links (`main/superadmin/signup_links.php`, engine `main/config/signup_invites.php`) makes
-  `restrogrow.com/join/<code>` (`.htaccess` redirects it to `admin/login.php?tab=signup&invite=<code>`). The page fills in
-  what was typed, skips the WhatsApp code (like Google sign-up), and `handleSignup()` checks the code again, takes one
+  `restrogrow.com/join/<code>` (`.htaccess` redirects it to `admin/login.php?tab=signup&invite=<code>`). The client fills in
+  all their own details; the link skips the WhatsApp code (like Google sign-up), and `handleSignup()` checks the code again, takes one
   use with `inviteTake()` (gives it back if the insert fails), uses the link's trial days (7 unless Super Admin picks a custom number), and sets `signup_source = 'invite'`.
 
 ## Payments
