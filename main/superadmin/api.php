@@ -1353,7 +1353,8 @@ break;
           $catPart = $parts[0];
           $itemName = $parts[1];
           $price = isset($parts[2]) ? floatval(str_replace(['₹', ','], '', $parts[2])) : 0;
-          $type = isset($parts[3]) ? ucfirst(strtolower(trim($parts[3]))) : 'Veg';
+          // "non veg" / "Non-Veg" / "nonveg" → "Non Veg" (ucfirst alone gave "Non veg", saved as Veg)
+          $type = isset($parts[3]) ? ucwords(strtolower(trim(preg_replace('/^non\s*-?\s*veg$/i', 'non veg', trim($parts[3]))))) : 'Veg';
           $validTypes = ['Veg', 'Non Veg', 'Egg', 'Drink', 'Dessert', 'Other'];
           if (!in_array($type, $validTypes)) $type = 'Veg';
           $description = $parts[4] ?? '';
