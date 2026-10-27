@@ -67,6 +67,7 @@ if ($ids) {
     $st->execute(array_values($ids));
     $names = $st->fetchAll(PDO::FETCH_KEY_PAIR);
 }
+$menus = inviteMenuFiles($conn, $ids);   // the menu photos / PDFs each new restaurant sent
 $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is your private link to set up '
     . ($r['restaurant_name'] ?: 'your restaurant') . ' on RestroGrow. It takes about a minute: ' . inviteUrl($r['code']);
 ?>
@@ -149,7 +150,7 @@ $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is you
   <h2>Links</h2>
   <?php if (!$links): ?><p>No links yet.</p><?php else: ?>
   <div class="tbl"><table>
-    <tr><th>Made</th><th>For</th><th>Link</th><th>Status</th><th>Restaurant made</th><th></th></tr>
+    <tr><th>Made</th><th>For</th><th>Link</th><th>Status</th><th>Restaurant made · menu</th><th></th></tr>
     <?php foreach ($links as $r): $why = inviteProblem($r); $made = array_filter(explode(',', (string)$r['restaurant_ids'])); ?>
     <tr>
       <td><small><?php echo $h(date('j M Y', strtotime($r['created_at']))); ?><?php echo $r['created_by'] ? '<br>' . $h($r['created_by']) : ''; ?></small></td>
@@ -158,7 +159,11 @@ $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is you
       <td><code><?php echo $h(inviteUrl($r['code'])); ?></code></td>
       <td><?php echo $why === '' ? '<span class="pill p-ok">Open</span>' : '<span class="pill ' . ((int)$r['active'] ? 'p-mute' : 'p-bad') . '">' . $h(rtrim(str_replace('This sign-up link ', '', $why), '.')) . '</span>'; ?>
         <br><small>Used <?php echo (int)$r['uses']; ?> of <?php echo (int)$r['max_uses']; ?><?php echo $r['expires_at'] ? ' · until ' . $h(date('j M', strtotime($r['expires_at']))) : ''; ?></small></td>
-      <td><?php if (!$made): ?>—<?php else: foreach ($made as $rid): ?><a href="usage.php?rid=<?php echo $h(urlencode($rid)); ?>"><?php echo $h($names[$rid] ?? $rid); ?></a><br><?php endforeach; endif; ?></td>
+      <td><?php if (!$made): ?>—<?php else: foreach ($made as $rid): ?><a href="usage.php?rid=<?php echo $h(urlencode($rid)); ?>"><?php echo $h($names[$rid] ?? $rid); ?></a><br>
+        <?php if (empty($menus[$rid])): ?><small>No menu sent</small><br><?php else: foreach ($menus[$rid] as $i => $mf): ?>
+        <small><a href="signup_menu_file.php?id=<?php echo (int)$mf['id']; ?>" target="_blank" rel="noopener"><?php echo $mf['mime'] === 'application/pdf' ? '📄' : '🖼️'; ?> <?php echo $h($mf['name']); ?></a>
+          · <a href="signup_menu_file.php?id=<?php echo (int)$mf['id']; ?>&amp;download=1">download</a></small><br>
+        <?php endforeach; endif; ?><?php endforeach; endif; ?></td>
       <td><div class="row">
         <?php if ($why === ''): ?><button class="btn plain" type="button" data-copy="<?php echo $h(inviteUrl($r['code'])); ?>">Copy</button><?php endif; ?>
         <?php if ((int)$r['uses'] < (int)$r['max_uses']): ?>

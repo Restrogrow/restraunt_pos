@@ -794,7 +794,17 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         .su-steps li.done { color: #15803d; }
         .su-steps li.done i { background: #dcfce7; color: #15803d; font-size: 0; }
         .su-steps li.done i::before { content: '✓'; font-size: 13px; }
+        .su-steps li[hidden] { display: none; }
+        /* four steps (sign-up links add "Menu"): only the current step keeps its name, so all fit on a phone */
+        .su-steps.four li:not(.on) { flex: none; }
+        .su-steps.four li:not(.on) span { display: none; }
         .su-step { display: none; }
+        .su-drop { display: block; border: 2px dashed #fdba74; background: #fff7ed; border-radius: 14px; padding: 22px 14px; text-align: center; cursor: pointer; color: #9a3412; font-weight: 600; font-size: 14px; }
+        .su-drop input { display: none; }
+        .su-drop small { display: block; margin-top: 4px; color: #9ca3af; font-weight: 400; }
+        .su-files { list-style: none; padding: 0; margin: 10px 0 0; font-size: 13px; color: #374151; }
+        .su-files li { padding: 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .su-skip { display: block; width: 100%; margin-top: 10px; background: none; border: 0; color: #6b7280; font-size: 14px; cursor: pointer; text-decoration: underline; }
         .su-step.on { display: block; animation: suIn .28s ease both; }
         @keyframes suIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
         .su-note { margin: 12px 0 0; font-size: 13px; color: #6b7280; text-align: center; }
@@ -909,6 +919,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                             <li class="on" data-s="1"><i>1</i><span>Phone</span></li>
                             <li data-s="2"><i>2</i><span>Restaurant</span></li>
                             <li data-s="3"><i>3</i><span>Login</span></li>
+                            <li data-s="4" id="suMenuStepDot" hidden><i>4</i><span>Menu</span></li>
                         </ol>
 
                         <div class="su-step on" data-step="1">
@@ -1015,6 +1026,21 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <button type="submit" class="btn btn-primary" id="signupBtn"><span id="signupBtnText">Create my restaurant</span><svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
                             </div>
                             <p class="su-terms">By creating an account you agree to the <a href="../../terms-of-service/" target="_blank" rel="noopener">terms</a> and <a href="../../privacy-policy/" target="_blank" rel="noopener">privacy policy</a>.</p>
+                        </div>
+
+                        <!-- sign-up links only (config/signup_invites.php): after the account is made, the menu -->
+                        <div class="su-step" data-step="4">
+                            <div class="form-group">
+                                <label>Your menu</label>
+                                <label class="su-drop" for="suMenuFiles">📷 Add photos or a PDF of your menu
+                                    <small>Up to 10 files · photos up to 8 MB, PDF up to 20 MB</small>
+                                    <input type="file" id="suMenuFiles" accept="image/jpeg,image/png,image/webp,application/pdf" multiple>
+                                </label>
+                                <ul class="su-files" id="suMenuList"></ul>
+                                <small class="su-hint">We set up your menu from these, so you don't have to type every dish.</small>
+                            </div>
+                            <button type="button" class="btn btn-primary" id="suMenuSend"><span id="suMenuSendText">Send menu and open my dashboard</span><svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                            <button type="button" class="su-skip" id="suMenuSkip">Skip, I'll add it later</button>
                         </div>
 
                         <div class="signup-link">
@@ -1634,11 +1660,42 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         }
         suEl('suNext2').addEventListener('click', suStep2);
 
+        // step 4 (sign-up links): the menu photos / PDF, kept for RestroGrow to set the menu up (api/signup_menu.php)
+        suEl('suMenuFiles').addEventListener('change', () => {
+            const list = suEl('suMenuList');
+            list.textContent = '';
+            [].forEach.call(suEl('suMenuFiles').files, (f) => {
+                const li = document.createElement('li');
+                li.textContent = (f.type === 'application/pdf' ? '📄 ' : '🖼️ ') + f.name;
+                list.appendChild(li);
+            });
+        });
+        suEl('suMenuSkip').addEventListener('click', () => { window.location.href = SU.next || '../views/dashboard.php'; });
+        suEl('suMenuSend').addEventListener('click', async () => {
+            const files = suEl('suMenuFiles').files;
+            if (!files.length) { showMessage('Please add your menu photos or PDF, or tap "Skip".', 'error'); return; }
+            const btn = suEl('suMenuSend'), txt = suEl('suMenuSendText');
+            const fd = new FormData();
+            [].forEach.call(files, (f) => fd.append('menu[]', f));
+            btn.disabled = true; txt.textContent = 'Sending your menu…';
+            try {
+                const r = await (await fetch('../api/signup_menu.php', { method: 'POST', body: fd })).json();
+                if (!r.success) { showMessage(r.message || 'Could not send your menu. Please try again.', 'error'); return; }
+                showMessage(r.message, 'success');
+                setTimeout(() => { window.location.href = SU.next || '../views/dashboard.php'; }, 900);
+            } catch (e) {
+                showMessage('Network error. Please try again.', 'error');
+            } finally {
+                btn.disabled = false; txt.textContent = 'Send menu and open my dashboard';
+            }
+        });
+
         // Enter key: the button of the step that is showing
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (SU.step === 1) return suStep1();
             if (SU.step === 2) return suStep2();
+            if (SU.step === 4 || SU.made) return;
             if (!SU.verified) { suGo(1); showMessage('Please verify your phone number first.', 'error'); return; }
 
             const email = suEl('signupEmail').value.trim();
@@ -1663,6 +1720,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     showMessage('Your restaurant is ready! Opening your dashboard…', 'success');
                     if (result.signed_in === false) { setTimeout(() => { switchTab('login'); suEl('loginUsername').value = email; }, 1200); return; }
                     const to = result.redirect || '../views/dashboard.php';
+                    // a sign-up link: one more step, the menu (it then opens the dashboard)
+                    if (window.signupInvite) { SU.next = to + (to.indexOf('?') > -1 ? '&' : '?') + 'welcome=1'; SU.made = true; suGo(4); showMessage('Your restaurant is ready! Last step: your menu.', 'success'); return; }
                     const mcpNext = <?php echo json_encode($mcpNext); ?>;
                     if (mcpNext) { window.location.href = mcpNext; return; }
                     window.location.href = to + (to.indexOf('?') > -1 ? '&' : '?') + 'welcome=1';
@@ -1934,6 +1993,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 var bt = inv.business_type && document.querySelector('#signupForm input[name=business_type][value="' + inv.business_type + '"]'); if (bt) bt.checked = true;
                 document.getElementById('suNext1Text').textContent = 'Continue';
                 document.getElementById('suNote1').textContent = 'Your private sign-up link from RestroGrow, so no WhatsApp code is needed.';
+                document.getElementById('suMenuStepDot').hidden = false;
+                document.querySelector('#signupForm .su-steps').classList.add('four');
                 var ig = document.querySelector('#signupForm .su-step[data-step="1"] .btn-google'); if (ig) ig.style.display = 'none';
                 var io = document.querySelector('#signupForm .su-step[data-step="1"] .or-divider'); if (io) io.style.display = 'none';
                 showMessage('Welcome! Fill in your details and set a password to open your restaurant.', 'info');

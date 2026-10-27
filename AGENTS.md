@@ -96,6 +96,8 @@ page only has to include `header.php` like the others.
   `restrogrow.com/join/<code>` (`.htaccess` redirects it to `admin/login.php?tab=signup&invite=<code>`). The client fills in
   all their own details; the link skips the WhatsApp code (like Google sign-up), and `handleSignup()` checks the code again, takes one
   use with `inviteTake()` (gives it back if the insert fails), uses the link's trial days (7 unless Super Admin picks a custom number), and sets `signup_source = 'invite'`.
+  After the account is made the link asks for the menu (step 4, `api/signup_menu.php`); files go to the private
+  `main/uploads/signup_menus/` (deny-all `.htaccess`, gitignored) and Super Admin opens them via `signup_menu_file.php`.
 
 ## Payments
 

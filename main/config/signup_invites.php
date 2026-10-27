@@ -8,7 +8,9 @@
  *   restaurant, type of place, city, email; the client still sets the password),
  * - its own free-trial length (7 days unless Super Admin picks another); an old link without one: obTrialDays().
  * A link works a set number of times (1 by default) until its expiry date, and can be switched off.
- * Creates its own table (the live database never runs migrations).
+ * After the account is made, the link's sign-up asks for the menu (photos / PDF, api/signup_menu.php). The
+ * files are kept privately in uploads/signup_menus (no web access) and listed in Super Admin › Sign-up links.
+ * Creates its own tables (the live database never runs migrations).
  */
 
 if (defined('SIGNUP_INVITES_LOADED')) return;
@@ -42,6 +44,79 @@ function inviteEnsure(PDO $conn): void
     $have = array_flip($conn->query('SHOW COLUMNS FROM signup_invites')->fetchAll(PDO::FETCH_COLUMN));
     if (!isset($have['business_type'])) $conn->exec('ALTER TABLE signup_invites ADD COLUMN business_type VARCHAR(30) NULL AFTER country');
     if (!isset($have['city'])) $conn->exec('ALTER TABLE signup_invites ADD COLUMN city VARCHAR(80) NULL AFTER business_type');
+    $conn->exec("CREATE TABLE IF NOT EXISTS signup_menu_files (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id VARCHAR(20) NOT NULL,
+        file VARCHAR(80) NOT NULL,
+        name VARCHAR(190) NOT NULL,
+        mime VARCHAR(40) NOT NULL,
+        size INT NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX (restaurant_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+const INVITE_MENU_TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'application/pdf' => 'pdf'];
+const INVITE_MENU_MAX_FILES = 10;   // per restaurant
+
+/** The private folder for menu files (created with a "deny all" .htaccess). */
+function inviteMenuDir(): string
+{
+    $dir = __DIR__ . '/../uploads/signup_menus';
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    if (!is_file($dir . '/.htaccess')) @file_put_contents($dir . '/.htaccess', "Require all denied\n");
+    return $dir;
+}
+
+/**
+ * Keeps the menu files a new owner uploaded ($_FILES['menu'] with several files). Photos up to 8 MB,
+ * PDFs up to 20 MB, at most INVITE_MENU_MAX_FILES in all. Returns how many were saved.
+ */
+function inviteMenuSave(PDO $conn, string $restaurantId, array $files): int
+{
+    inviteEnsure($conn);
+    $names = (array)($files['name'] ?? []); $tmps = (array)($files['tmp_name'] ?? []); $errs = (array)($files['error'] ?? []);
+    $have = $conn->prepare('SELECT COUNT(*) FROM signup_menu_files WHERE restaurant_id = ?');
+    $have->execute([$restaurantId]);
+    if ((int)$have->fetchColumn() + count($names) > INVITE_MENU_MAX_FILES) {
+        throw new InvalidArgumentException('Please send at most ' . INVITE_MENU_MAX_FILES . ' files.');
+    }
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $ok = [];
+    foreach ($names as $i => $name) {
+        $name = mb_substr(basename((string)$name), 0, 190);
+        if (($errs[$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($tmps[$i])) {
+            throw new InvalidArgumentException("\"$name\" could not be uploaded. Please try again.");
+        }
+        $mime = finfo_file($finfo, $tmps[$i]);
+        if (!isset(INVITE_MENU_TYPES[$mime])) throw new InvalidArgumentException("\"$name\" must be a photo (JPG, PNG, WEBP) or a PDF.");
+        $size = filesize($tmps[$i]);
+        if ($size > ($mime === 'application/pdf' ? 20 : 8) * 1024 * 1024) {
+            throw new InvalidArgumentException("\"$name\" is too big (photos up to 8 MB, PDFs up to 20 MB).");
+        }
+        $ok[] = [$tmps[$i], $name, $mime, $size];
+    }
+    finfo_close($finfo);
+    $dir = inviteMenuDir();
+    $ins = $conn->prepare('INSERT INTO signup_menu_files (restaurant_id, file, name, mime, size) VALUES (?, ?, ?, ?, ?)');
+    foreach ($ok as [$tmp, $name, $mime, $size]) {
+        $file = preg_replace('/[^A-Za-z0-9]/', '', $restaurantId) . '_' . bin2hex(random_bytes(8)) . '.' . INVITE_MENU_TYPES[$mime];
+        if (!move_uploaded_file($tmp, $dir . '/' . $file)) throw new RuntimeException('Could not save the file');
+        $ins->execute([$restaurantId, $file, $name, $mime, $size]);
+    }
+    return count($ok);
+}
+
+/** Menu files for these restaurants: [restaurant_id => [rows…]]. */
+function inviteMenuFiles(PDO $conn, array $restaurantIds): array
+{
+    if (!$restaurantIds) return [];
+    inviteEnsure($conn);
+    $st = $conn->prepare('SELECT * FROM signup_menu_files WHERE restaurant_id IN (' . implode(',', array_fill(0, count($restaurantIds), '?')) . ') ORDER BY id');
+    $st->execute(array_values($restaurantIds));
+    $out = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out[$r['restaurant_id']][] = $r;
+    return $out;
 }
 
 /** A new link. Returns its code. */
