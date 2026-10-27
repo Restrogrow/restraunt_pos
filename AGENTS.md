@@ -136,6 +136,18 @@ page only has to include `header.php` like the others.
   `save_type`, `delete_type`, `upload`, `status`, `paid` (`method`), `add_booking`, `assign`, `save_bill`,
   `save_settings`, `new_qr`. Guest API `main/api/rooms_public.php`: `GET` rooms (+ `policies`), `POST` a request.
 
+## Smart QR Menu kit orders (restrogrow.com/qr-menu-ordering/)
+
+- The product page `qr-menu-ordering/index.html` sells a package (menu set up + QR standees). "Pay & place order"
+  posts to `main/api/qr_kit_order.php`, which prices it again with `qkPrice()` (`main/config/qr_kit.php`, keep its
+  numbers equal to the page's `PKG` / `ADVANCE` / `STANDEE` / add-ons and the `D` design list), saves the booking and
+  opens PhonePe on **RestroGrow's own keys** for ₹500 or the full amount. Payment ids start `QRK_`; `ppSettle()` sends
+  them to `qkSettle()`. Paid = the team gets an email; Super Admin › QR kit orders (`main/superadmin/qr_kits.php`).
+  Back from PhonePe the page reads `?booking=QRK_…` and asks the API. Local computer without keys: paid at once (pretend).
+- Separate dashboard `main/qrkit/` (`login.php`, `index.php`, `logout.php`) with its own logins (`qr_kit_users`, made in
+  Super Admin › QR kit orders › Dashboard logins). Its session keys are only `qrkit_user_id` / `qrkit_at`, which no other
+  part of RestroGrow accepts (`isSessionValid()` ignores them): keep it that way. Order changes go through `qkUpdateOrder()`.
+
 ## Payments
 
 - **PhonePe** is the only payment gateway integrated, and it takes Indian rupees: it is **India-only**. Check

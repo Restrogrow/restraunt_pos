@@ -251,6 +251,18 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 
 ---
 
+## Smart QR Menu kit orders
+
+- Sold on https://restrogrow.com/qr-menu-ordering/ (QR Menu ₹1,999, QR Ordering ₹4,999, extra standees ₹99, add-ons).
+  The buyer pays ₹500 (or everything) to RestroGrow's PhonePe; the rest is collected when the standees are delivered.
+- Every paid booking emails the team and appears in **Super Admin › QR kit orders**: WhatsApp the buyer for their menu
+  photos and logo, set the status (Menu being built → Standees sent → Delivered), tick "Balance collected".
+- "Not paid" lists people who started and didn't finish, to call back.
+- **Separate QR kit dashboard:** https://restrogrow.com/main/qrkit/ (local: http://localhost/menuwebsite/main/qrkit/).
+  Make a login for a sales or delivery person in Super Admin › QR kit orders › Dashboard logins; they see only these
+  orders (numbers, chart by day, To do / Delivered / Cancelled / Not paid, search, CSV, status, balance, notes).
+  Switch a login off there to lock them out.
+
 ## Rooms (hotel / lodge), for support
 
 - **Switch on:** the restaurant's Settings › Ordering › Rooms (or "Switch on" on the Rooms page). Off by default.

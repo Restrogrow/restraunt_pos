@@ -865,7 +865,8 @@ footer img{height:21px;width:auto}
 /* ===== settings ===== */
 const WA_NUMBER = '917849838428';
 const ADVANCE = 500, STANDEE = 99, ADD_DEL = 999, ADD_PAY = 1999;
-/* Payment gateway hook (add later): window.RG_PLACE_ORDER = async order => { /* open gateway for order.payNow * / return {ok:true}; } */
+/* Bookings and payment: main/api/qr_kit_order.php (RestroGrow's PhonePe; prices worked out again on the server, config/qr_kit.php) */
+const QK_API = '../main/api/qr_kit_order.php';
 const PKG = {
   basic:{name:'QR Menu',sub:'Digital menu · standees ₹99 each',for:'Guests scan and see your full menu',price:1999,stands:0},
   smart:{name:'QR Ordering',sub:'Guests order from the table · 10 standees FREE',for:'Guests order and pay from the table',price:4999,stands:10}
@@ -1225,10 +1226,52 @@ $('place').addEventListener('click', async () => {
   const order = {package:p.name, price:p.price, design:D[S.di][1], standees:stands(), extraStandees:S.extra, takeawayDelivery:S.del, onlinePayments:S.pay,
     total:t, payNow: full ? t : ADVANCE, payOnDelivery: full ? 0 : t-ADVANCE, paymentMode: full ? 'full_online' : 'advance_cod',
     name:$('cName').value.trim(), phone:$('cPhone').value.trim(), restaurant:$('cRest').value.trim(), address:$('cAddr').value.trim(), city:$('cCity').value.trim(), state:$('cState').value.trim(), pincode:$('cPin').value.trim()};
-  if (typeof window.RG_PLACE_ORDER === 'function'){ try { await window.RG_PLACE_ORDER(order); } catch(e){} }
-  else window.open(wa(`New QR Menu order\n\nPackage: ${order.package} (${inr(order.price)})\nStandees: ${order.standees} · ${order.design}\nTakeaway & delivery: ${order.takeawayDelivery?'Yes':'No'}\nOnline payments: ${order.onlinePayments?'Yes':'No'}\nTotal: ${inr(t)}\nPay now: ${inr(order.payNow)} · On delivery: ${inr(order.payOnDelivery)}\n\nName: ${order.name}\nPhone: ${order.phone}\nRestaurant: ${order.restaurant}\nAddress: ${order.address}, ${order.city}, ${order.state} - ${order.pincode}\n\nPlease send the payment link.`), '_blank', 'noopener');
-  $('coBody').innerHTML = `<div class="done"><i>${tick.replace(/17/g,'30')}</i><h2 style="font-size:26px">Order received</h2><p style="color:var(--ink-2);margin:12px 0 22px">Thank you, ${order.name.split(' ')[0]}! We'll WhatsApp you on ${order.phone} with the payment link for ${inr(order.payNow)} and ask for your menu. Your menu goes live within 24 hours.</p><button class="btn btn--k" type="button" onclick="location.hash='';location.reload()">Back to RestroGrow</button></div>`;
+  // RestroGrow's PhonePe (main/api/qr_kit_order.php): the server prices it again, saves the booking and opens the payment
+  const btn = $('place'), label = btn.textContent;
+  let err = $('placeErr');
+  if (!err){ err = document.createElement('div'); err.id = 'placeErr'; err.setAttribute('role','alert'); err.style.cssText = 'display:none;background:#fdecea;color:#a1271b;border-radius:12px;padding:10px 12px;font-size:14px;margin:0 0 12px'; btn.before(err); }
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Opening payment…';
+  try {
+    const r = await (await fetch(QK_API, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      package:S.pk, design:S.di, extra:S.extra, delivery:S.del, payments:S.pay, full,
+      name:order.name, phone:order.phone, restaurant:order.restaurant, address:order.address, city:order.city, state:order.state, pincode:order.pincode})})).json();
+    if (!r.success || !r.payment_url) throw new Error(r.message || 'Could not start the payment. Please try again.');
+    location.href = r.payment_url;
+  } catch(e){
+    btn.disabled = false; btn.textContent = label;
+    err.innerHTML = (e.message && !/fetch|JSON|network/i.test(e.message) ? e.message : 'Could not reach the payment page. Please check your internet and try again.') +
+      ' <a href="' + wa(`Hi RestroGrow, I want to book the Smart QR Menu: ${order.package}, ${order.standees} standees (${order.design}), total ${inr(t)}. Name ${order.name}, ${order.restaurant}, ${order.city}. Please send a payment link.`) + '" target="_blank" rel="noopener" style="color:inherit;font-weight:700">Book on WhatsApp instead</a>';
+    err.style.display = '';
+  }
 });
+
+/* back from PhonePe (?booking=QRK_…): ask the server how the payment went, and show it */
+(function(){
+  const txn = new URLSearchParams(location.search).get('booking');
+  if (!txn) return;
+  co.classList.add('open'); co.scrollTop = 0; document.body.style.overflow = 'hidden';
+  const box = $('coBody'), home = location.pathname;
+  const show = h => { box.innerHTML = '<div class="done">' + h + '</div>'; };
+  show('<h2 style="font-size:24px">Checking your payment…</h2><p style="color:var(--ink-2);margin:12px 0">This takes a few seconds.</p>');
+  let tries = 0;
+  (function ask(){
+    fetch(QK_API + '?txn=' + encodeURIComponent(txn), {cache:'no-store'}).then(r => r.json()).then(r => {
+      if (r.success && r.status === 'paid'){
+        const o = r.order;
+        show(`<i>${tick.replace(/17/g,'30')}</i><h2 style="font-size:26px">Booking confirmed</h2><p style="color:var(--ink-2);margin:12px 0 22px">Thank you, ${o.name.split(' ')[0]}! We received ${inr(o.pay_now)} for <b>${o.package}</b> (${o.standees} standees, ${o.design})${o.pay_on_delivery > 0 ? `; pay the remaining ${inr(o.pay_on_delivery)} when your standees arrive` : ''}. We'll WhatsApp you on ${o.phone} for your menu, and it goes live within 24 hours.</p><a class="btn btn--k" href="${home}">Back to RestroGrow</a>`);
+        history.replaceState(null, '', home);
+      } else if (r.success && r.status === 'pending' && ++tries < 8){
+        setTimeout(ask, 2500);
+      } else if (r.success && r.status === 'pending'){
+        show(`<h2 style="font-size:24px">Payment not confirmed yet</h2><p style="color:var(--ink-2);margin:12px 0 22px">If money left your account, it is safe: we'll confirm your booking as soon as PhonePe tells us, and WhatsApp you. Booking id: ${txn}</p><a class="btn btn--k" href="${wa('Hi RestroGrow, I paid for the Smart QR Menu but it is not confirmed yet. Booking id: ' + txn)}" target="_blank" rel="noopener">WhatsApp us</a>`);
+      } else {
+        show(`<h2 style="font-size:24px">Payment didn't go through</h2><p style="color:var(--ink-2);margin:12px 0 22px">No money was taken. You can try again, or book on WhatsApp.</p><a class="btn btn--o" href="${home}#packages">Try again</a> <a class="btn btn--k" href="${wa('Hi RestroGrow, my payment for the Smart QR Menu did not go through. Booking id: ' + txn)}" target="_blank" rel="noopener">WhatsApp us</a>`);
+        history.replaceState(null, '', home);
+      }
+    }).catch(() => { if (++tries < 8) setTimeout(ask, 2500); });
+  })();
+})();
 
 /* sticky bar */
 (function(){

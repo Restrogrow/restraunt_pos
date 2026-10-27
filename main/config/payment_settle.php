@@ -10,6 +10,7 @@
  *   SUB_…  restaurant plan renewal     → subscription_payments + users.renewal_date (RestroGrow's keys)
  *   PPS_…  meal-plan subscription      → meal_plan_payments + customer_meal_subscriptions
  *   SPL_…  Super Admin payment link    → payment_links (+ plan extended when the link carries months)
+ *   QRK_…  Smart QR Menu kit order      → qr_kit_orders (config/qr_kit.php; RestroGrow's keys)
  * Every attempt of a meal-plan payment or payment link is kept in payment_attempts, so paying an older
  * attempt is still found.
  *
@@ -51,6 +52,7 @@ if (!function_exists('ppSettle')) {
         if (strpos($txn, 'PPS_') === 0) return 'meal';
         if (strpos($txn, 'SUB_') === 0) return 'subscription';
         if (strpos($txn, 'SPL_') === 0) return 'link';
+        if (strpos($txn, 'QRK_') === 0) return 'qrkit';
         if (strpos($txn, 'WT') === 0) return 'wallet';
         if (strpos($txn, 'VM') === 0) return 'vip';
         return 'unknown';
@@ -82,6 +84,7 @@ if (!function_exists('ppSettle')) {
                 case 'subscription': return ['kind' => $kind, 'outcome' => ppSettleSubscription($conn, $txn)];
                 case 'meal': return ['kind' => $kind, 'outcome' => ppSettleMeal($conn, $txn)];
                 case 'link': return ['kind' => $kind, 'outcome' => ppSettleLink($conn, $txn)];
+                case 'qrkit': require_once __DIR__ . '/qr_kit.php'; return ['kind' => $kind, 'outcome' => qkSettle($conn, $txn)];
             }
         } catch (Throwable $e) {
             if ($conn->inTransaction()) $conn->rollBack();

@@ -54,6 +54,7 @@ if (!function_exists('runPaymentReconcile')) {
             "SELECT transaction_id t, created_at c FROM vip_members WHERE status = 'Pending' AND transaction_id LIKE 'VM%' AND $win",
             "SELECT txn t, created_at c FROM payment_attempts WHERE status = 'Pending' AND $win",
             "SELECT transaction_id t, created_at c FROM meal_plan_payments WHERE payment_status = 'Pending' AND transaction_id LIKE 'PPS\\_%' AND $win",
+            "SELECT transaction_id t, created_at c FROM qr_kit_orders WHERE payment_status = 'pending' AND $win",
         ];
         $all = [];
         foreach ($sqls as $sql) {

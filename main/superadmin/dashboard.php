@@ -349,6 +349,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">storefront</span>
           <span class="text">Demo restaurant</span>
         </a>
+        <a class="menu-link" href="qr_kits.php">
+          <span class="material-symbols-rounded icon">qr_code_2</span>
+          <span class="text">QR kit orders</span>
+        </a>
         <a class="menu-link" href="quick_delivery.php">
           <span class="material-symbols-rounded icon">two_wheeler</span>
           <span class="text">Shiprocket Quick</span>
