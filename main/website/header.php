@@ -314,7 +314,9 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                     if (strpos($logo, 'http') === 0) {
                         $restaurant_logo = $logo;
                     } elseif (strpos($logo, 'db:') === 0) {
-                        $restaurant_logo = 'image.php?type=logo&id=' . urlencode($row['id']);
+                        // &v= is the upload's own reference (db:<uniqid>): a new logo gets a new address, so
+                        // browsers never keep showing the old one (or the "no logo" placeholder)
+                        $restaurant_logo = 'image.php?type=logo&id=' . urlencode($row['id']) . '&v=' . rawurlencode(substr($logo, 3));
                     } elseif ($logo) {
                         $restaurant_logo = 'image.php?type=file&path=' . urlencode('../' . $logo);
                     }

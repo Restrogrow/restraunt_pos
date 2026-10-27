@@ -89,7 +89,7 @@ function renderPolicyPage($type) {
                 // same logo rules as header.php
                 $logo = $user['restaurant_logo'] ?? '';
                 if ($logo && strpos($logo, 'http') === 0) $restaurant_logo = $logo;
-                elseif ($logo && strpos($logo, 'db:') === 0) $restaurant_logo = 'image.php?type=logo&id=' . urlencode($user['id']);
+                elseif ($logo && strpos($logo, 'db:') === 0) $restaurant_logo = 'image.php?type=logo&id=' . urlencode($user['id']) . '&v=' . rawurlencode(substr($logo, 3));
                 elseif ($logo) $restaurant_logo = 'image.php?type=file&path=' . urlencode('../' . $logo);
                 else $restaurant_logo = 'image.php?type=logo&id=' . urlencode($user['id']);
             }
