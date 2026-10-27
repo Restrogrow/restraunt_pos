@@ -554,6 +554,29 @@ if (is_array($qrSaved) && $restaurant_id && ($qrSaved['rid'] ?? '') === (string)
     unset($_SESSION['qr_table']);   // expired, or the old unscoped form
 }
 
+// Room service from the QR code in a hotel room (?room=104.k3f9a0c2e1, config/rooms.php roomServiceFind): remembered
+// for this restaurant for a day. $qr_room = ['room', 'type', 'param', 'stay' => a guest is checked in, 'charge' => food
+// can go on the room bill]. The cart then offers only "Room service" (website/cart.php, api/process_website_order.php).
+$qr_room = null;
+$qrRoomParam = isset($_GET['room']) && is_string($_GET['room']) ? mb_substr(trim($_GET['room']), 0, 40) : '';
+if ($qrRoomParam !== '' && $restaurant_id) {
+    $_SESSION['qr_room'] = ['rid' => (string)$restaurant_id, 'param' => $qrRoomParam, 'at' => time()];
+}
+$qrRoomSaved = $_SESSION['qr_room'] ?? null;
+if (is_array($qrRoomSaved) && $restaurant_id && ($qrRoomSaved['rid'] ?? '') === (string)$restaurant_id && time() - (int)($qrRoomSaved['at'] ?? 0) < 86400 && isset($conn)) {
+    require_once __DIR__ . '/../config/rooms.php';
+    $qrRoomFound = roomsFeatureEnabled($conn, (string)$restaurant_id) ? roomServiceFind($conn, (string)$restaurant_id, (string)$qrRoomSaved['param']) : null;
+    if ($qrRoomFound) {
+        $qr_room = ['room' => $qrRoomFound['room'], 'type' => $qrRoomFound['type'], 'param' => (string)$qrRoomSaved['param'],
+                    'stay' => $qrRoomFound['booking'] !== null, 'charge' => $qrRoomFound['booking'] !== null && $qrRoomFound['room_charge']];
+        $qr_table = null;   // a room, not a table
+    } else {
+        unset($_SESSION['qr_room']);
+    }
+} elseif ($qrRoomSaved !== null) {
+    unset($_SESSION['qr_room']);
+}
+
 // An outlet of a brand lives at the brand's address (brand.com/<outlet>/… or restrogrow.com/<brand>/<outlet>/…):
 // any other address of it (restrogrow.com/<name>, main/website/menu.php?restaurant_id=) moves there, query kept
 // (?table=T3, ?order_id= after a payment). website/brand_router.php, config/brand.php

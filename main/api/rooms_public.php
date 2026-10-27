@@ -2,7 +2,8 @@
 /**
  * Rooms on the customer website ({site}/rooms, website/rooms.php; config/rooms.php).
  *
- *   GET  ?restaurant_id=…[&in=Y-m-d&out=Y-m-d]   the restaurant's rooms, and with dates how many are free
+ *   GET  ?restaurant_id=…[&in=Y-m-d&out=Y-m-d]   the restaurant's rooms, and with dates how many are free; and its
+ *        policies (check-in / check-out times, cancellation, house rules, extra bed price: roomPolicies)
  *   POST {restaurant_id, room_type_id, in, out, guests, rooms, name, phone, email?, notes?}
  *        a booking request: Pending until the restaurant confirms it on its Rooms page
  * Only while the restaurant has Rooms on. Pay at the hotel: nothing is charged here.
@@ -41,7 +42,8 @@ try {
             unset($t['room_count'], $t['active']);
         }
         unset($t);
-        rpOut(['success' => true, 'currency' => (string)($u['currency_symbol'] ?: '₹'), 'nights' => $nights, 'rooms' => $types]);
+        rpOut(['success' => true, 'currency' => (string)($u['currency_symbol'] ?: '₹'), 'nights' => $nights, 'rooms' => $types,
+               'policies' => roomPolicies(roomSettings($conn, $rid))]);
     }
 
     // ── a booking request ──

@@ -251,12 +251,33 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 
 ---
 
+## Rooms (hotel / lodge), for support
+
+- **Switch on:** the restaurant's Settings › Ordering › Rooms (or "Switch on" on the Rooms page). Off by default.
+  Super Admin › Restaurants › Access › Rooms switches the whole thing off for that restaurant, website included.
+- **Set up:** Rooms › Room types (price, guests, how many rooms, **room numbers**, photos), then Rooms › Settings
+  (times, cancellation, house rules, extra bed, room tax, bill title / prefix / note, room service).
+- **Daily use:** Bookings tab (Confirm / Decline, Check in → pick the room, Check out → the bill opens), Calendar tab
+  (who is in which room), Bill (extras, discount, advance, company GSTIN, Print / PDF, Send on WhatsApp, Mark paid).
+- **Room service:** Rooms › Room service QR › Print all, one code in each room. "Make new QR codes" if old prints get
+  out (the old ones stop working). "Add to my room bill" only works for the guest checked in to that room, with the
+  phone number the room was booked with. Those orders are marked paid when the stay is marked paid.
+- **Room tax (India):** "GST for hotel rooms" = 5% up to ₹7,500 a night, 18% above, shown as CGST + SGST. The owner
+  should confirm the rate with their CA; they can pick "My own rate" or "No tax on rooms" instead.
+- **Bill numbers:** prefix + 1, 2, 3 per restaurant, given the first time a bill is opened. A paid bill can't be
+  changed; "Mark unpaid" first.
+- **Code:** `main/config/rooms.php`, `main/api/rooms_admin.php`, `main/api/rooms_public.php`,
+  `main/assets/js/rooms-studio.js`, `main/website/rooms.php`, `main/website/room_bill.php`. Rules in `AGENTS.md`.
+
 ## 8. What the product does: status
 
 **✅ Built and working:**
 - Customer website and QR ordering (dine-in, takeaway, delivery, scheduled orders), live order tracking, scratch cards, customer accounts.
 - POS and kitchen tickets (KOT) with printing.
 - Tables and live floor map, reservations, waiter calls.
+- Rooms for hotels / lodges (switch on per restaurant in Settings › Ordering; Super Admin › Access › Rooms can block it):
+  booking requests, calendar of every room, room bills (GST, extras, advance; print, PDF, WhatsApp link), room service
+  QR codes (food on the room bill), policies and house rules, occupancy / ADR / RevPAR reports. See "Rooms" below.
 - Delivery zones, map and rider page.
 - Catering, and meal plans and subscriptions (switch on per restaurant in Super Admin).
 - Coupons, offers, combos, upsell, today's specials, bestsellers, wallet.

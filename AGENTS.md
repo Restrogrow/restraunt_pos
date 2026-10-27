@@ -109,6 +109,32 @@ page only has to include `header.php` like the others.
   by Pending / Confirmed / Checked in bookings for the nights [check_in, check_out); count with `roomsFree()`,
   never by hand. Gate everything with `roomsFeatureEnabled()` (owner switch + Super Admin Access `roomsPage`).
 - Photos are files in `main/uploads/rooms` (gitignored), only paths that pass `roomPhotoValid()`.
+- **Settings** (Rooms › Settings): one JSON row per restaurant in `room_settings.data`, always read through
+  `roomSettings()` (defaults merged in) and saved through `roomSettingsSave()` (cleans every key). Times, cancellation
+  (`ROOM_CANCEL` or the owner's words), house rules (`ROOM_RULES` ticks + own lines), extra bed price, room tax, bill
+  look, room service switches. The guest sees them through `roomPolicies()`. Add a new setting there, not as a column.
+- **Room numbers:** a stay's rooms are `room_bookings.room_numbers` ("101, 102"). Every write goes through
+  `roomNumbersCheck()` (one of the type's numbers, no more than the rooms booked, and `roomNumbersClash()`: never two
+  holding stays in one room on the same night). The Calendar tab draws rooms × 14 nights from the same data.
+- **Room bill:** only `roomBill()` works it out (nights × rate, `extras` JSON, `discount`, room tax from
+  `roomTaxPercent()`: India "auto" = GST 5% up to Rs. 7,500 a night, 18% above, split CGST / SGST; the room service
+  orders on the bill; `advance`; balance). Number: `bill_prefix` + `roomBillNo()` (1, 2, 3 per restaurant, given the
+  first time the printable bill opens). Printable page `main/website/room_bill.php` (A4 or `&size=80`), for the logged-in
+  team (`?b=ID`) or the guest's WhatsApp link (`?r=RID&b=ID&k=roomBillCode()`). A paid bill can't be edited; marking
+  the stay paid (`paid` + `pay_method`) also marks its room service orders Paid, and unpaid again when undone.
+- **Room service:** each room's QR code opens the menu with `?room=<number>.<code>` (`roomQrParam()`, HMAC with the
+  restaurant's `room_settings.qr_salt`; "Make new QR codes" changes the salt). `website/header.php` checks it with
+  `roomServiceFind()` and keeps `$qr_room` in the session for a day; the cart then offers only "Room service · Room N"
+  and sends `room_qr`. `api/process_website_order.php` checks it again, saves a Dine-in order with no table and notes
+  `ROOM SERVICE - Room N` (every kitchen / order screen shows it, no new order type), and `roomServiceLink()` records
+  it in `room_service_orders`. Payment "Room bill" (on the stay's bill, paid at checkout) only for the guest checked
+  in to that room today, with the stay's phone number (`roomPhoneSame()`); never with the wallet.
+- **Reports:** `roomsReport()`: occupancy, ADR, RevPAR, revenue, extras, room service, by type / source / night.
+  Sold nights are Confirmed, Checked in and Checked out stays only.
+- **API** (`main/api/rooms_admin.php`, owner; changes need the "manage reservations" permission):
+  `GET` (everything for the page), `?free=1&in&out`, `?bill=ID`, `?report=1&from&to`, `?qr=1`; `POST` actions `enable`,
+  `save_type`, `delete_type`, `upload`, `status`, `paid` (`method`), `add_booking`, `assign`, `save_bill`,
+  `save_settings`, `new_qr`. Guest API `main/api/rooms_public.php`: `GET` rooms (+ `policies`), `POST` a request.
 
 ## Payments
 

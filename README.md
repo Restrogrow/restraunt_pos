@@ -32,6 +32,17 @@
 
 ## What's new
 
+### 28 October 2026
+
+| | Change | What it means |
+|---|---|---|
+| **Rooms (hotel / lodge)** | Dashboard › Rooms, website `/{slug}/rooms` | For a restaurant that also lets rooms. Room types with price, photos, amenities and room numbers; guests pick dates and send a booking request; the owner confirms, checks in (picking the room) and checks out. Off by default (Settings › Ordering), Super Admin Access can block it. Code: `main/config/rooms.php`. |
+| **Calendar** | Rooms › Calendar | Every room by night for two weeks: who is in which room, stays still without a room, tap a free night to add a booking. A room can never be given to two stays on the same night. |
+| **Policies, your way** | Rooms › Settings | Check-in / check-out times, a cancellation policy (ready ones or your own words), house rules to tick (ID needed, couples, pets, smoking…) plus your own lines, extra bed price. Shown on the guest page and, if you want, on the bill. |
+| **Room bill** | Rooms › a stay › Bill | Extra charges (extra bed, laundry, late check-out…), discount, advance, the guest's company and GSTIN; room tax (India: GST 5% up to ₹7,500 a night, 18% above, as CGST + SGST; or your own rate, or none; prices with or without tax). Numbered bills (`RM-1`, prefix your choice), print on A4 or an 80 mm printer, save as PDF, send the guest a link on WhatsApp. Mark paid with Cash / UPI / Card / … |
+| **Room service QR** | Rooms › Room service QR | One QR code per room. The guest orders from the menu ("Room service · Room 104"); the order reaches the kitchen like any website order, marked `ROOM SERVICE - Room 104`. The checked-in guest can put it on the room bill and pay at checkout. Print all codes at once; make new ones if old prints leak. |
+| **Room reports** | Rooms › Reports | Occupancy, average rate (ADR), RevPAR, room revenue, extra charges, room service, stays and average stay, cancellations, money to collect; night-by-night chart, by room type, by source; CSV. |
+
 ### 18 October 2026
 
 | | Change | What it means |
@@ -223,6 +234,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
 - **Live order tracking** with rider location and a **scratch card** reward
 - Customer accounts (OTP), profile page (10 designs), order history, favourites, phone **wallet card**
 - **Rewards page** from the counter QR; table QR ordering, call waiter, reservations, catering, meal plans
+- **Rooms** (hotels / lodges): see rooms with photos and prices, book dates, read the house rules; **room service** from the QR code in the room, added to the room bill
 - Policy pages in the restaurant's own look; install as an app
 
 ### Admin dashboard
@@ -231,6 +243,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
 - **Menu**: categories, dishes (variations, add-ons, ingredients, nutrition, health tags), add-ons, photo gallery*
 - **Inventory**: stock with reorder levels and use-by dates, recipes that take stock out as orders are made, food cost per dish, suppliers, purchase orders (WhatsApp / print / receive), stock count, activity log, reports
 - **Tables**: areas, tables, QR codes, live table map, reservations
+- **Rooms**: room types, booking requests, check-in / check-out, calendar of every room, room bills (GST, extras, advance, A4 / 80 mm / WhatsApp link), room service QR codes, occupancy / ADR / RevPAR reports, policies and house rules
 - **POS** and **KOT** (kitchen tickets), with network or browser printing; customers on the bill with points, rewards and wallet, and an Account QR for website login
 - **Orders**: online orders (accept / reject / status / route), all orders, blocked customers, customers, staff, waiter requests
 - **Payments**: transactions, PhonePe gateway*, sales reports with CSV, analytics

@@ -3,6 +3,8 @@
  * {site}/rooms: the restaurant's rooms (hotel / lodge), and a booking request for them (config/rooms.php,
  * api/rooms_public.php). Pick dates and guests, see what's free, book; the restaurant confirms it.
  * Only while the restaurant has Rooms on (otherwise to the menu, like Reservations).
+ * Below the rooms: the owner's check-in / check-out times, cancellation policy and house rules (Rooms › Settings),
+ * repeated in short on the booking sheet; an extra bed can be asked for when the owner offers one.
  */
 require_once __DIR__ . '/header.php';
 require_once __DIR__ . '/../config/rooms.php';
@@ -89,6 +91,18 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .rm-done { text-align: center; padding: 26px 6px 6px; }
 .rm-done i { font-size: 52px; color: #22c55e; display: block; margin-bottom: 12px; }
 .rm-done h2 { padding: 0; }
+.rm-pol { border: 1.5px solid #eef0f4; border-radius: 18px; padding: 14px; margin-bottom: 16px; }
+.rm-pol h2 { font-size: 15px; margin-bottom: 10px; }
+.rm-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.rm-times div { background: #f8f9fb; border-radius: 12px; padding: 9px 11px; }
+.rm-times small { display: block; font-size: 11.5px; color: #6b7280; }
+.rm-times b { font-size: 14px; }
+.rm-pol h3 { font-size: 13px; margin: 10px 0 4px; }
+.rm-pol p, .rm-pol li { font-size: 12.5px; color: #4b5563; line-height: 1.55; }
+.rm-pol ul { padding-left: 18px; }
+.rm-agree { font-size: 12px; color: #4b5563; background: #f8f9fb; border-radius: 12px; padding: 9px 11px; margin-bottom: 12px; line-height: 1.5; }
+.rm-chk { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 12px; }
+.rm-chk input { width: auto; }
 </style>
 </head>
 <body>
@@ -146,6 +160,16 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
     });
   }
 
+  function policies() {
+    var p = data.policies;
+    if (!p) return '';
+    return '<div class="rm-pol"><h2>Good to know</h2>' +
+      '<div class="rm-times"><div><small>Check-in</small><b>From ' + esc(p.checkin) + '</b></div><div><small>Check-out</small><b>By ' + esc(p.checkout) + '</b></div></div>' +
+      (p.cancel ? '<h3>Cancellation</h3><p>' + esc(p.cancel) + '</p>' : '') +
+      (p.rules.length ? '<h3>House rules</h3><ul>' + p.rules.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>' : '') +
+      (p.extra_bed > 0 ? '<h3>Extra bed</h3><p>' + money(p.extra_bed) + ' a night, on request.</p>' : '') + '</div>';
+  }
+
   function render() {
     if (!data.rooms.length) { $('rmList').innerHTML = '<div class="rm-empty">No rooms are listed yet.</div>'; return; }
     var guests = +$('rmGuests').value, rooms = +$('rmRooms').value;
@@ -169,7 +193,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
         (r.description ? '<div class="rm-desc">' + esc(r.description) + '</div>' : '') +
         (r.amenities.length ? '<div class="rm-amen">' + r.amenities.map(function (a) { return '<span>' + esc(a) + '</span>'; }).join('') + '</div>' : '') +
         '<div class="rm-foot">' + state + '<button type="button" class="rm-btn" data-book="' + r.id + '"' + (can ? '' : ' disabled') + '>Book</button></div></div></div>';
-    }).join('');
+    }).join('') + policies();
   }
 
   function close() { $('rmOverlay').classList.remove('on'); }
@@ -185,7 +209,10 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
       '<div class="fg"><label for="rmName">Your name</label><input id="rmName" autocomplete="name" maxlength="120"></div>' +
       '<div class="fg"><label for="rmPhone">Phone</label><input id="rmPhone" type="tel" autocomplete="tel" maxlength="15"></div>' +
       '<div class="fg"><label for="rmEmail">Email (optional)</label><input id="rmEmail" type="email" autocomplete="email" maxlength="190"></div>' +
-      '<div class="fg"><label for="rmNotes">Anything we should know? (optional)</label><textarea id="rmNotes" maxlength="500" placeholder="Arrival time, extra bed…"></textarea></div>' +
+      '<div class="fg"><label for="rmNotes">Anything we should know? (optional)</label><textarea id="rmNotes" maxlength="400" placeholder="Arrival time, a special request…"></textarea></div>' +
+      (data.policies && data.policies.extra_bed > 0 ? '<label class="rm-chk"><input type="checkbox" id="rmBed"> Extra bed (' + money(data.policies.extra_bed) + ' a night, paid at the hotel)</label>' : '') +
+      (data.policies ? '<div class="rm-agree">Check-in from ' + esc(data.policies.checkin) + ', check-out by ' + esc(data.policies.checkout) + '. ' + esc(data.policies.cancel || '') +
+        (data.policies.rules.length ? ' By booking you agree to the house rules below the rooms.' : '') + '</div>' : '') +
       '<button type="button" class="rm-btn" id="rmSend" style="width:100%;padding:13px">Send booking request</button>' +
       '<div class="rm-note">Pay at the hotel. We\'ll call or message you to confirm.</div>';
     if (CUSTOMER) {
@@ -200,7 +227,8 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
   function send(r) {
     var err = $('rmErr'), btn = $('rmSend');
     var body = { restaurant_id: RID, room_type_id: r.id, in: $('rmIn').value, out: $('rmOut').value, guests: +$('rmGuests').value, rooms: +$('rmRooms').value,
-      name: $('rmName').value.trim(), phone: $('rmPhone').value.trim(), email: $('rmEmail').value.trim(), notes: $('rmNotes').value.trim() };
+      name: $('rmName').value.trim(), phone: $('rmPhone').value.trim(), email: $('rmEmail').value.trim(),
+      notes: ($('rmBed') && $('rmBed').checked ? 'Extra bed needed. ' : '') + $('rmNotes').value.trim() };
     err.style.display = 'none';
     if (!body.name) { err.textContent = 'Please enter your name.'; err.style.display = 'block'; return; }
     if (body.phone.replace(/\D/g, '').length < 7) { err.textContent = 'Please enter a valid phone number.'; err.style.display = 'block'; return; }

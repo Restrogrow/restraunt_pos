@@ -1,5 +1,11 @@
 # QR Codes System - Complete Implementation ✅
 
+> **Room service QR codes (28 Oct 2026):** besides the table codes below, a restaurant with Rooms on prints one code
+> per hotel room (Dashboard › Rooms › Room service QR). It opens the menu with `?room=<number>.<check code>` instead
+> of `?table=`; the code is signed per restaurant (`roomQrParam()` in `main/config/rooms.php`) and "Make new QR
+> codes" makes all old prints stop working. The cart then offers only "Room service · Room N", and the checked-in
+> guest can put the order on the room bill. Rules: `AGENTS.md` › Rooms.
+
 ## ✅ What Was Created
 
 ### 1. QR Codes Page

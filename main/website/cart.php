@@ -1257,6 +1257,8 @@ window.enableDinein = <?php echo json_encode($enable_dinein ?? 1, JSON_HEX_TAG |
 window.codEnabled = <?php echo json_encode($cod_enabled ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+// Room service from a hotel room's QR code (header.php $qr_room): {room, param, stay, charge} or null
+window.websiteRoom = <?php echo json_encode(!empty($qr_room) ? ['room' => $qr_room['room'], 'param' => $qr_room['param'], 'stay' => $qr_room['stay'], 'charge' => $qr_room['charge']] : null, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantAddress = <?php echo json_encode($restaurant_address ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.loggedInCustomer = <?php echo $logged_in_customer ? json_encode([
     'name' => $logged_in_customer['customer_name'],
@@ -1292,6 +1294,7 @@ function appendTableParam(url) {
 <body>
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <div class="phone-frame">
+<?php include __DIR__ . '/room_service_bar.php'; // Room service from a hotel room's QR code ?>
   <div class="bg-wrapper">
 
     <!-- Header -->
@@ -3091,6 +3094,9 @@ function showCheckoutModal(cartData) {
   // Read table param early so it's available for all conditionals below
   var urlParams = new URLSearchParams(window.location.search);
   var qrTable = urlParams.get('table') || sessionStorage.getItem('qrTable') || '';
+  // Room service (a hotel room's QR code): the only order type, no table, food comes to the room
+  var roomSvc = window.websiteRoom || null;
+  if (roomSvc) qrTable = '';
 
   var html = '<div class="modal-box">';
   html += '<div class="modal-header">';
@@ -3123,7 +3129,9 @@ function showCheckoutModal(cartData) {
 
   // Determine default order type (used for initial address visibility)
   var savedOrderType = 'delivery';
-  if (qrTable) {
+  if (roomSvc) {
+    savedOrderType = 'dinein';
+  } else if (qrTable) {
     savedOrderType = 'dinein';
     // remembered for this restaurant only, for a few hours (cart_scope.php clears it otherwise)
     sessionStorage.setItem('qrTable', qrTable);
@@ -3264,6 +3272,7 @@ function showCheckoutModal(cartData) {
       }
     }
   }
+  if (roomSvc) otOptions = [{ key: 'dinein', label: '<i class="fa-solid fa-bell-concierge"></i>Room service \u00b7 Room ' + escapeHtml(roomSvc.room), val: 'Dine-in' }];
   // The remembered type (shared by every restaurant in this browser) may be one this
   // restaurant has switched off: then preselect the first type it offers, so the
   // checkout never opens with nothing chosen
@@ -3278,7 +3287,7 @@ function showCheckoutModal(cartData) {
   }
   html += '</div>';  // close flex wrapper
   // When QR table is set, hide the UI but keep select in DOM for order submission
-  var tableSectionDisplay = (savedOrderType === 'dinein' && !qrTable) ? '' : 'none';
+  var tableSectionDisplay = (savedOrderType === 'dinein' && !qrTable && !roomSvc) ? '' : 'none';
   html += '<div id="dineinTableSection" style="margin-top:10px;display:' + tableSectionDisplay + '">';
   html += '<label style="display:block;margin-bottom:6px;font-weight:500;color:#333;font-size:13px"><i class="fa-solid fa-chair" style="color:var(--primary-red, #e53935);margin-right:6px"></i>Select a table</label>';
 
@@ -3302,7 +3311,7 @@ function showCheckoutModal(cartData) {
 
   // Payment method label depends on order type
   var isCounterOrder = (savedOrderType === 'takeaway' || savedOrderType === 'dinein');
-  var cashLabel = isCounterOrder ? 'Pay at Counter' : 'Cash on Delivery';
+  var cashLabel = roomSvc ? 'Pay when it comes to the room' : isCounterOrder ? 'Pay at Counter' : 'Cash on Delivery';
   // COD can be turned off in restaurant settings, but never leave checkout with
   // zero payment options — if no online method is configured either, keep Cash.
   var codEnabled = (window.codEnabled == 1 || window.codEnabled === true || window.codEnabled === undefined);
@@ -3318,6 +3327,10 @@ function showCheckoutModal(cartData) {
   }
   html += '<div class="form-group"><label>Payment Method</label>';
   html += '<select id="chkPayment">';
+  // Room service for a checked-in guest: put it on the room bill, paid at checkout (needs the stay's phone number)
+  if (roomSvc && roomSvc.charge) {
+    html += '<option value="Room bill">Add to my room bill</option>';
+  }
   if (codEnabled || !hasOnlinePayment) {
     html += '<option value="Cash">' + cashLabel + '</option>';
   }
@@ -3439,8 +3452,8 @@ function showCheckoutModal(cartData) {
       var ot = this.getAttribute('data-ot');
       var tableSec = document.getElementById('dineinTableSection');
       if (tableSec) {
-        tableSec.style.display = (ot === 'dinein' && !qrTable) ? '' : 'none';
-        if (ot === 'dinein') {
+        tableSec.style.display = (ot === 'dinein' && !qrTable && !roomSvc) ? '' : 'none';
+        if (ot === 'dinein' && !roomSvc) {
           loadTablesForCheckout();
         }
       }
@@ -3476,7 +3489,7 @@ function showCheckoutModal(cartData) {
       }
       // Update payment label based on order type
       var payOpt = document.querySelector('#chkPayment option[value="Cash"]');
-      if (payOpt) {
+      if (payOpt && !roomSvc) {
         payOpt.textContent = (ot === 'takeaway' || ot === 'dinein') ? 'Pay at Counter' : 'Cash on Delivery';
       }
       refreshCheckoutTotal();
@@ -3548,7 +3561,7 @@ function showCheckoutModal(cartData) {
   });
 
   // If Dine In is selected, pre-load tables
-  if (savedOrderType === 'dinein') {
+  if (savedOrderType === 'dinein' && !roomSvc) {
     loadTablesForCheckout();
   }
 }
@@ -3602,6 +3615,7 @@ function processOrder(cartData) {
     var firstOt = document.querySelector('input[name="orderType"]');
     orderType = qrTableCheck && (window.enableDinein == 1 || window.enableDinein === true) ? 'Dine-in' : (firstOt ? firstOt.value : null);
   }
+  if (window.websiteRoom) { orderType = 'Dine-in'; qrTableCheck = ''; }   // room service
   if (!orderType) { showModal('Error', 'Please choose Delivery, Takeaway or Dine in'); return; }
   if (orderType !== 'Dine-in') qrTableCheck = '';
   var tableId = orderType === 'Dine-in' ? document.getElementById('chkTableId')?.value || '' : '';
@@ -3627,7 +3641,8 @@ function processOrder(cartData) {
   }
 
   var isDineInEnabled = window.enableDinein == 1 || window.enableDinein === true;
-  if (orderType === 'Dine-in' && isDineInEnabled && !tableId) {
+  if (window.websiteRoom) tableId = null;
+  if (orderType === 'Dine-in' && isDineInEnabled && !tableId && !window.websiteRoom) {
     showModal('Error', 'Please select a table');
     var btn = document.querySelector('#checkoutForm button[type=submit]');
     if (btn) { btn.textContent = 'Place Order'; btn.disabled = false; }
@@ -3779,6 +3794,7 @@ function processOrder(cartData) {
       notes: savedInstruction || '',
       order_type: orderType,
       table_id: tableId,
+      room_qr: window.websiteRoom ? window.websiteRoom.param : '',
       items: items,
       combos: combos,
       global_addons: globalAddons.length > 0 ? globalAddons : [],

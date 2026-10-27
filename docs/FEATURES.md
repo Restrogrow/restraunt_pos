@@ -88,6 +88,13 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Reservations | Day strip and timeline of bookings: confirm, decline, seat, no-show, assign table, call or WhatsApp the guest. | Dashboard › Reservations | owner, staff | — |
 | Online table booking | Guests book a table from the website. | `/{restaurant}/reservations` | customer | Switch on in Dashboard › Settings › Ordering › Table reservations |
 | Reservation availability check | Stops double booking of the same table and time. | Automatic when booking | customer | — |
+| Rooms (hotel / lodge) | Room types with price, photos, amenities and room numbers; booking requests to confirm; check in (pick the room) and check out; today's arrivals, departures and rooms taken. | Dashboard › Rooms | owner, staff | Switch on in Dashboard › Settings › Ordering › Rooms; Super Admin › Access › Rooms |
+| Online room booking | Guests pick dates and guests, see free rooms and prices, ask for an extra bed, and send a request (pay at the hotel). | `/{restaurant}/rooms` | customer | Rooms switched on |
+| Room calendar | Every room by night for two weeks; stays without a room yet; tap a free night to book; one stay per room a night. | Dashboard › Rooms › Calendar | owner, staff | Room numbers on the room type |
+| Room policies and house rules | Check-in / check-out times, cancellation policy (ready or own words), house rules to tick plus own lines, extra bed price; shown to guests before they book. | Dashboard › Rooms › Settings | owner | — |
+| Room bill | Numbered bill (own prefix) with nights, extra charges, discount, room tax (India GST 5% / 18% by nightly rate, CGST + SGST), room service, advance and balance; guest company and GSTIN; A4 / 80 mm print, PDF, WhatsApp link; mark paid by method. | Dashboard › Rooms › a stay › Bill | owner, staff, customer (link) | — |
+| Room service QR | A QR code per room: the guest orders food to the room; the checked-in guest can add it to the room bill (with the booking's phone number). Orders show "ROOM SERVICE - Room N". | Dashboard › Rooms › Room service QR | owner, customer | Rooms › Settings › Room service |
+| Room reports | Occupancy, ADR, RevPAR, room revenue, extras, room service, stays, cancellations, money to collect; by night, type and source; CSV. | Dashboard › Rooms › Reports | owner | — |
 | QR table ordering | Guest scans the table QR, orders from the phone, the order arrives tagged with the table. | Table QR › website | customer | Dine-in switched on |
 | Dine-in orders on the dashboard | Dine-in orders are shown separately from delivery and takeaway. | Dashboard › Orders › Online Orders › Dine-in | owner, staff | — |
 

@@ -289,13 +289,45 @@ try {
         exit();
     }
 
+    // Room service from a hotel room's QR code (config/rooms.php roomServiceFind, cart.php room_qr): a dine-in
+    // order with no table, for that room, allowed even when dine-in is off. "Room bill" puts it on the stay's bill
+    // (paid at checkout), only for the guest checked in to that room, with the phone number of that stay.
+    $roomService = null;
+    $room_qr = $inStr($input['room_qr'] ?? '');
+    if ($room_qr !== '') {
+        require_once __DIR__ . '/../config/rooms.php';
+        $roomService = roomsFeatureEnabled($conn, $restaurant_id) ? roomServiceFind($conn, $restaurant_id, $room_qr) : null;
+        if (!$roomService) {
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'This room\'s QR code doesn\'t work any more. Please call reception to order.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $order_type = 'Dine-in';
+        $table_id = null;
+        $notes = 'ROOM SERVICE - Room ' . $roomService['room'] . ($notes !== '' ? ' | ' . $notes : '');
+    }
+    if ($payment_method === 'Room bill') {
+        $roomStay = $roomService['booking'] ?? null;
+        if (!$roomStay || empty($roomService['room_charge'])) {
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Adding to the room bill is only for the guest staying in this room. Please choose another way to pay.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        if (!roomPhoneSame((string)$customer_phone, (string)$roomStay['guest_phone'])) {
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'To add this to your room bill, please use the phone number the room was booked with.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $use_wallet = false;   // the whole order goes on the room bill
+    }
+
     // Enforce order-type availability server-side. index.php/header.php hide
     // a disabled type's tab and cart.php filters it out of the checkout
     // options, but neither of those is authoritative — a direct call to this
     // API could still submit a type the owner has turned off.
     $orderTypeColumnMap = ['Dine-in' => 'enable_dinein', 'Takeaway' => 'enable_takeaway', 'Delivery' => 'enable_delivery'];
     $orderTypeColumn = $orderTypeColumnMap[$order_type] ?? null;
-    if ($orderTypeColumn && isset($restaurantRow[$orderTypeColumn]) && (int)$restaurantRow[$orderTypeColumn] === 0) {
+    if ($orderTypeColumn && !$roomService && isset($restaurantRow[$orderTypeColumn]) && (int)$restaurantRow[$orderTypeColumn] === 0) {
         ob_end_clean();
         http_response_code(403);
         echo json_encode([
@@ -320,7 +352,7 @@ try {
     // Only the methods the website offers. 'Wallet' is set by the server when the wallet covers the whole
     // order; a client sending 'Wallet' / 'Online' / anything else must not get an unpaid order that looks prepaid.
     if (in_array($payment_method, ['PhonePe', 'Online', 'UPI', 'NetBanking'], true)) $payment_method = 'UPI / NetBanking';
-    if (!in_array($payment_method, ['Cash', '', 'UPI / NetBanking', 'QR Payment'], true)) {
+    if (!in_array($payment_method, ['Cash', '', 'UPI / NetBanking', 'QR Payment'], true) && $payment_method !== 'Room bill') {
         ob_end_clean();
         echo json_encode(['success' => false, 'message' => 'Please choose how you want to pay.'], JSON_UNESCAPED_UNICODE);
         exit();
@@ -1225,6 +1257,7 @@ $conn->beginTransaction();
     }
     $order_id = $conn->lastInsertId();
     billSaveExtras($conn, (int)$order_id, $billCalc['service_charge']);
+    if (!empty($roomService)) roomServiceLink($conn, $restaurant_id, (int)$order_id, $roomService, $payment_method === 'Room bill');
 
     // Record the submitter IP for abuse blocking. Kept out of the INSERT so
     // order placement never breaks before the customer_ip migration
