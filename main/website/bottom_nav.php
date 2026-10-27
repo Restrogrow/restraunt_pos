@@ -3,13 +3,15 @@ require_once __DIR__ . '/../config/meal_subscription_schema.php';
 require_once __DIR__ . '/../config/reservation_helpers.php';
 $bottomNavShowPlans = isset($conn, $restaurant_id) && mealSubscriptionsFeatureEnabled($conn, $restaurant_id);
 $bottomNavShowReservations = isset($conn, $restaurant_id) && reservationsFeatureEnabled($conn, $restaurant_id);
+require_once __DIR__ . '/../config/rooms.php';
+$bottomNavShowRooms = isset($conn, $restaurant_id) && roomsFeatureEnabled($conn, $restaurant_id);
 $navLabels = $navLabels ?? DEFAULT_NAV_LABELS;
 $navIcons = $navIcons ?? NAV_ICON_STYLES['classic'];
 $navIconOverrides = $navIconOverrides ?? [];
 $navBarStyle = in_array($nav_bar_style ?? 'classic', THEME_NAV_BAR_STYLES, true) ? $nav_bar_style : 'classic';
 // The page you're on (the file that included this one), for the highlighted tab
 $navFrom = basename((string)(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0]['file'] ?? ''), '.php');
-$navActive = ['index' => 'home', 'menu' => 'menu', 'cart' => 'cart', 'plans' => 'plans', 'reservations' => 'reservations'][$navFrom] ?? '';
+$navActive = ['index' => 'home', 'menu' => 'menu', 'cart' => 'cart', 'plans' => 'plans', 'reservations' => 'reservations', 'rooms' => 'rooms'][$navFrom] ?? '';
 if (!function_exists('navActiveClass')) { function navActiveClass(string $key, string $active): string { return $key === $active ? ' active' : ''; } }
 
 // Each nav item is captured as a string (instead of echoed straight into the
@@ -59,6 +61,13 @@ ob_start(); ?>
 <?php $navReservationsHtml = ob_get_clean();
 
 ob_start(); ?>
+  <div class="nav-item<?php echo navActiveClass('rooms', $navActive); ?>" onclick="window.location.href='<?php echo restaurantPageUrl('rooms'); ?>'">
+    <?php echo !empty($navIconOverrides['rooms']) ? renderNavIconTag('rooms', $navIcons, $navIconOverrides) : '<i class="fa fa-bed nav-icon" data-nav-slot="rooms"></i>'; ?>
+    <span><?php echo htmlspecialchars($navLabels['rooms'] ?? 'Rooms', ENT_QUOTES, 'UTF-8'); ?></span>
+  </div>
+<?php $navRoomsHtml = ob_get_clean();
+
+ob_start(); ?>
   <div class="nav-item<?php echo navActiveClass('cart', $navActive); ?>" id="navCartItem" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
     <?php echo renderNavIconTag('cart', $navIcons, $navIconOverrides); ?>
     <span><?php echo htmlspecialchars($navLabels['cart'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -74,6 +83,7 @@ if (!empty($show_install_app)) {
     $otherItems = [$navHomeHtml, $navMenuHtml];
     if ($bottomNavShowPlans) $otherItems[] = $navPlansHtml;
     if ($bottomNavShowReservations) $otherItems[] = $navReservationsHtml;
+    if ($bottomNavShowRooms) $otherItems[] = $navRoomsHtml;
     $otherItems[] = $navCartHtml;
     array_splice($otherItems, (int) ceil(count($otherItems) / 2), 0, [$navInstallHtml]);
     $navItemsHtml = implode('', $otherItems);
@@ -81,6 +91,7 @@ if (!empty($show_install_app)) {
     $navItemsHtml = $navHomeHtml . $navMenuHtml . $navSocialHtml
         . ($bottomNavShowPlans ? $navPlansHtml : '')
         . ($bottomNavShowReservations ? $navReservationsHtml : '')
+        . ($bottomNavShowRooms ? $navRoomsHtml : '')
         . $navCartHtml;
 }
 ?>

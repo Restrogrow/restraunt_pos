@@ -296,6 +296,9 @@ try {
 // Sections Super Admin switched off for this restaurant (Restaurants › Access): hidden below and blocked in showPage()
 require_once __DIR__ . '/../config/access_control.php';
 try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant_id']); } catch (Throwable $e) { $accessOff = []; }
+// Rooms (hotel / lodge, config/rooms.php): the sidebar item shows while the owner has it switched on
+require_once __DIR__ . '/../config/rooms.php';
+$roomsOn = roomsSwitchOn(getConnection(), (string)$_SESSION['restaurant_id']);
 // An outlet of a brand: its website is at the brand's address (config/brand.php); '' for other restaurants
 require_once __DIR__ . '/../config/brand.php';
 try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_SESSION['restaurant_id']) ?? ''); } catch (Throwable $e) { $rgBrandSiteUrl = ''; }
@@ -1120,6 +1123,13 @@ try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_S
               <span class="nav-tooltip">Table Map</span>
             </li>
           </ul>
+        </li>
+        <li class="nav-item" id="roomsNavItem"<?php echo $roomsOn ? '' : ' style="display:none"'; ?>>
+          <a href="#" class="nav-link" data-page="roomsPage">
+            <span class="nav-icon material-symbols-rounded">meeting_room</span>
+            <span class="nav-label">Rooms</span>
+          </a>
+          <span class="nav-tooltip">Rooms</span>
         </li>
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="reservationsPage">
@@ -5303,6 +5313,12 @@ function toggleGatewayMode() {
                 <label class="st-type"><input type="checkbox" id="enableDineinToggle" <?php echo $enable_dinein ? 'checked' : ''; ?>><span class="material-symbols-rounded">restaurant</span><b>Dine in</b><small>Ordered at the table</small><i class="st-tick material-symbols-rounded">check_circle</i></label>
               </div>
             </div>
+            <div class="st-card">
+              <label class="st-toggle">
+                <span><b>Rooms</b><small>For a restaurant with rooms (hotel, lodge, guest house). Adds a Rooms page to your website where guests see your rooms and send a booking request, and a Rooms page here to manage them. Saves straight away.</small></span>
+                <span class="st-switch"><input type="checkbox" id="enableRoomsToggle"<?php echo $roomsOn ? ' checked' : ''; ?>><i></i></span>
+              </label>
+            </div>
             <div class="st-card" data-st-form="restaurant">
               <label class="st-toggle">
                 <span><b>Table reservations</b><small>Shows a "Reserve" section on your website where visitors book a table for a date and time. Bookings land on the Reservations page for you to confirm.</small></span>
@@ -6247,6 +6263,21 @@ function toggleGatewayMode() {
           <div style="display:flex;align-items:center;gap:10px"><span class="tm-updated" id="tmUpdated"></span><button type="button" class="btn btn-secondary btn-sm" onclick="renderTableMap(true)"><span class="material-symbols-rounded">refresh</span> Refresh</button></div></div>
         <div id="tableMapContainer" class="tm-wrap" style="margin-top:14px"></div>
       </div>
+    </div>
+
+    <!-- Rooms: room types, bookings, arrivals (assets/js/rooms-studio.js, api/rooms_admin.php, styles rm-* inside the script) -->
+    <div id="roomsPage" class="page sx lg">
+      <div class="page-header">
+        <div>
+          <h1>Rooms</h1>
+          <p>Your rooms, and the bookings for them: confirm, check in and check out</p>
+        </div>
+        <div class="lg-head-acts">
+          <button type="button" class="btn btn-secondary" id="rmAddTypeBtn"><span class="material-symbols-rounded">meeting_room</span>Add room type</button>
+          <button type="button" class="btn btn-primary" id="rmAddBookingBtn"><span class="material-symbols-rounded">add</span>Add booking</button>
+        </div>
+      </div>
+      <div class="page-content"><div id="roomsRoot"><div class="loading">Loading rooms...</div></div></div>
     </div>
 
     <!-- Reservations Management Page -->
@@ -7619,6 +7650,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
   <script src="../assets/js/reservations-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/reservations-studio.js'); ?>" defer></script>
+  <script src="../assets/js/rooms-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rooms-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-customer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-customer.js'); ?>" defer></script>
   <script src="../assets/js/pos-discount.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-discount.js'); ?>" defer></script>

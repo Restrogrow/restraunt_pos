@@ -99,6 +99,17 @@ page only has to include `header.php` like the others.
   After the account is made the link asks for the menu (step 4, `api/signup_menu.php`); files go to the private
   `main/uploads/signup_menus/` (deny-all `.htaccess`, gitignored) and Super Admin opens them via `signup_menu_file.php`.
 
+## Rooms (hotel / lodge)
+
+- `main/config/rooms.php` (tables `room_types`, `room_bookings`, column `users.enable_rooms`, off by default),
+  owner API `main/api/rooms_admin.php` + page `assets/js/rooms-studio.js` (#roomsPage, sidebar item above
+  Reservations, switch in Settings › Ordering that saves on its own), guest API `main/api/rooms_public.php` +
+  page `main/website/rooms.php` (`/{slug}/rooms`, own-domain `/rooms`, bottom bar item while on).
+- Room types with a count; guests send a request (Pending), the owner confirms. Pay at the hotel. A room is held
+  by Pending / Confirmed / Checked in bookings for the nights [check_in, check_out); count with `roomsFree()`,
+  never by hand. Gate everything with `roomsFeatureEnabled()` (owner switch + Super Admin Access `roomsPage`).
+- Photos are files in `main/uploads/rooms` (gitignored), only paths that pass `roomPhotoValid()`.
+
 ## Payments
 
 - **PhonePe** is the only payment gateway integrated, and it takes Indian rupees: it is **India-only**. Check

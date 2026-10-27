@@ -35,6 +35,9 @@ function accessModules(): array {
             'tableMapPage'       => ['Table map', []],
             'waiterRequestsPage' => ['Waiter requests', ['waiter_requests_overview.php']],
         ]],
+        'rooms' => ['Rooms', 'meeting_room', 'Hotel rooms and room bookings', [
+            'roomsPage' => ['Rooms', ['rooms_admin.php']],
+        ]],
         'reservations' => ['Reservations', 'event_seat', 'Table bookings', [
             'reservationsPage' => ['Reservations', ['reservation_operations.php']],
         ]],

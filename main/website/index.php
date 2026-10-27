@@ -2226,6 +2226,8 @@ window.socialLinks = {
   $indexNavShowPlans = isset($conn, $restaurant_id) && mealSubscriptionsFeatureEnabled($conn, $restaurant_id);
   require_once __DIR__ . '/../config/reservation_helpers.php';
   $indexNavShowReservations = isset($conn, $restaurant_id) && reservationsFeatureEnabled($conn, $restaurant_id);
+  require_once __DIR__ . '/../config/rooms.php';
+  $indexNavShowRooms = isset($conn, $restaurant_id) && roomsFeatureEnabled($conn, $restaurant_id);
   ?>
   <?php
   // Same approach as bottom_nav.php: capture each item as a string so
@@ -2274,6 +2276,13 @@ window.socialLinks = {
   <?php $indexNavReservationsHtml = ob_get_clean();
 
   ob_start(); ?>
+    <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('rooms'); ?>'">
+      <?php echo !empty($navIconOverrides['rooms']) ? renderNavIconTag('rooms', $navIcons, $navIconOverrides) : '<i class="fa fa-bed nav-icon" data-nav-slot="rooms"></i>'; ?>
+      <span data-nav-label="rooms"><?php echo htmlspecialchars($navLabels['rooms'] ?? 'Rooms', ENT_QUOTES, 'UTF-8'); ?></span>
+    </div>
+  <?php $indexNavRoomsHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" id="navCartItem" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
       <?php echo renderNavIconTag('cart', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="cart"><?php echo htmlspecialchars($navLabels['cart'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -2285,6 +2294,7 @@ window.socialLinks = {
       $indexOtherItems = [$indexNavHomeHtml, $indexNavMenuHtml];
       if ($indexNavShowPlans) $indexOtherItems[] = $indexNavPlansHtml;
       if ($indexNavShowReservations) $indexOtherItems[] = $indexNavReservationsHtml;
+      if ($indexNavShowRooms) $indexOtherItems[] = $indexNavRoomsHtml;
       $indexOtherItems[] = $indexNavCartHtml;
       array_splice($indexOtherItems, (int) ceil(count($indexOtherItems) / 2), 0, [$indexNavInstallHtml]);
       $indexNavItemsHtml = implode('', $indexOtherItems);
@@ -2292,6 +2302,7 @@ window.socialLinks = {
       $indexNavItemsHtml = $indexNavHomeHtml . $indexNavMenuHtml . $indexNavSocialHtml
           . ($indexNavShowPlans ? $indexNavPlansHtml : '')
           . ($indexNavShowReservations ? $indexNavReservationsHtml : '')
+          . ($indexNavShowRooms ? $indexNavRoomsHtml : '')
           . $indexNavCartHtml;
   }
   ?>

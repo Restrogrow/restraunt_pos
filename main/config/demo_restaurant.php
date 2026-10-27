@@ -532,7 +532,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
               'rider_engine.php' => 'riderEnsure', 'inventory_engine.php' => 'invEnsure', 'coupon_helpers.php' => 'ensureCouponMilestoneColumn',
               'combo_helpers.php' => 'ensureCombosTables', 'upsell_helpers.php' => 'ensureUpsellTables', 'offer_filter_helpers.php' => 'ensureOfferFiltersTable',
               'scratch_helpers.php' => 'ensureScratchTables', 'loyalty_autopilot.php' => 'ensureLoyaltyAutopilotSchema', 'vip_membership.php' => 'ensureVipSchema',
-              'growth_helpers.php' => 'ensureGrowthSchema'] as $file => $fn) {
+              'growth_helpers.php' => 'ensureGrowthSchema', 'rooms.php' => 'roomsEnsure'] as $file => $fn) {
         if (is_file(__DIR__ . "/$file")) {
             require_once __DIR__ . "/$file";
             if (function_exists($fn)) { try { $fn($pdo); } catch (Throwable $e) { /* optional feature */ } }
@@ -600,7 +600,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
             'description' => 'North Indian curries, smoky tandoor favourites, dum biryanis and South Indian breakfasts, cooked to order since 2014. '
                 . 'Family recipes, fresh masalas ground every morning and a warm table on 100 Feet Road.',
             'description_format' => 'paragraph', 'opening_hours' => json_encode($hours),
-            'enable_delivery' => 1, 'enable_takeaway' => 1, 'enable_dinein' => 1, 'enable_reservations' => 1, 'cod_enabled' => 1,
+            'enable_delivery' => 1, 'enable_takeaway' => 1, 'enable_dinein' => 1, 'enable_reservations' => 1, 'enable_rooms' => 1, 'cod_enabled' => 1,
             'enable_gst' => 1, 'tax_name' => 'GST', 'tax_percent' => 5,
             'show_business_id' => 1, 'business_id_label' => 'GSTIN', 'business_id_no' => '29AAKCS1234F1Z5',
             'minimum_order_value' => 199, 'packaging_charge' => 20, 'delivery_radius_km' => 7,
@@ -881,6 +881,40 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                 'special_request' => $requests[mt_rand(0, count($requests) - 1)], 'status' => $status,
                 'created_at' => date('Y-m-d H:i:s', strtotime(($offset - 2) . ' days', $now)),
             ]);
+        }
+
+        // ── Rooms (config/rooms.php): two room types with photos (assets room-*.jpg, free Unsplash photos),
+        // and stays around today: one guest in house, requests to confirm, arrivals coming up ──
+        $roomDir = __DIR__ . '/../uploads/rooms';
+        if (!is_dir($roomDir)) @mkdir($roomDir, 0755, true);
+        foreach (glob($roomDir . '/room_' . $rid . '_*') ?: [] as $old) @unlink($old);   // the last reset's copies
+        $roomTypeIds = [];
+        foreach ([
+            ['Deluxe Double', 3499, 2, 4, '101, 102, 103, 104', 'A calm room for two with a queen bed, warm lighting and a private bathroom with 24-hour hot water. Tea and coffee in the room, and our restaurant one floor down.',
+             'WiFi, AC, TV, Hot water, Attached bathroom, Room service', 'deluxe'],
+            ['Family Suite', 5999, 4, 2, '201, 202', 'Spacious suite for families: a king bed plus a sofa bed, a sitting corner by the window and a large bathroom. Breakfast for up to 4 guests is included.',
+             'WiFi, AC, TV, Hot water, Attached bathroom, Balcony, Breakfast, Parking', 'family'],
+        ] as $ri => [$rName, $rPrice, $rGuests, $rCount, $rNumbers, $rDesc, $rAmen, $rKey]) {
+            $photos = [];
+            for ($p = 1; $p <= 3; $p++) {
+                $file = 'room_' . $rid . '_' . bin2hex(random_bytes(6)) . '.jpg';
+                if (@file_put_contents($roomDir . '/' . $file, $read("room-$rKey-$p.jpg")) !== false) $photos[] = 'uploads/rooms/' . $file;
+            }
+            $roomTypeIds[] = [demoInsert($pdo, 'room_types', ['restaurant_id' => $rid, 'name' => $rName, 'description' => $rDesc, 'price_per_night' => $rPrice,
+                'max_guests' => $rGuests, 'room_count' => $rCount, 'room_numbers' => $rNumbers, 'amenities' => $rAmen, 'photos' => json_encode($photos),
+                'is_active' => 1, 'sort_order' => $ri + 1]), $rPrice];
+        }
+        // [type, from day, nights, rooms, guests, status, paid, room no., source]
+        foreach ([[0, -1, 3, 1, 2, 'Checked in', 1, '101', 'website'], [1, 0, 2, 1, 4, 'Confirmed', 0, '', 'website'], [0, 1, 2, 1, 2, 'Pending', 0, '', 'website'],
+                  [0, 3, 1, 2, 4, 'Confirmed', 0, '', 'dashboard'], [1, 5, 3, 1, 3, 'Pending', 0, '', 'website'], [0, -6, 2, 1, 2, 'Checked out', 1, '103', 'website']]
+                 as $bi => [$ti, $from, $nights, $rooms, $guests, $bStatus, $paid, $no, $src]) {
+            $c = $customers[($bi * 7 + 3) % count($customers)];
+            [$typeId, $price] = $roomTypeIds[$ti];
+            demoInsert($pdo, 'room_bookings', ['restaurant_id' => $rid, 'room_type_id' => $typeId, 'guest_name' => $c['name'], 'guest_phone' => $c['phone'],
+                'check_in' => date('Y-m-d', strtotime("$from days", $now)), 'check_out' => date('Y-m-d', strtotime(($from + $nights) . ' days', $now)),
+                'guests' => $guests, 'rooms' => $rooms, 'price_per_night' => $price, 'total' => $price * $nights * $rooms, 'status' => $bStatus, 'paid' => $paid,
+                'room_numbers' => $no ?: null, 'notes' => $bi === 2 ? 'Arriving late, around 10 pm' : null, 'source' => $src,
+                'created_at' => date('Y-m-d H:i:s', strtotime(($from - 3) . ' days', $now))]);
         }
 
         // ── Inventory: raw material, suppliers, recipes, purchases ──

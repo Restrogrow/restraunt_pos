@@ -112,6 +112,8 @@ main/uploads/cache/*
 main/uploads/lead_recordings/
 # menus new owners sent from a sign-up link (config/signup_invites.php): private, stay on the server only
 main/uploads/signup_menus/
+# room photos owners upload on the Rooms page (config/rooms.php): stay on the server only
+main/uploads/rooms/
 
 # Local Android build output of the order-watch module
 app/modules/order-watch/android/build/

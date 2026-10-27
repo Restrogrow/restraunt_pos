@@ -910,6 +910,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
       
+      if (pageId === "roomsPage" && window.RGRooms) window.RGRooms.load();   // assets/js/rooms-studio.js
       // Load reservations if it's the reservations page
       if (pageId === "reservationsPage") {
         loadReservations();
@@ -9111,10 +9112,10 @@ document.addEventListener("DOMContentLoaded", () => {
       logoHtml = `<img src="${logoPath}" alt="Logo" style="max-width:70px;max-height:70px;object-fit:contain;margin-bottom:6px;" onerror="this.style.display='none';">`;
     }
 
-    const payRows = [];
-    if (payResult.cash > 0) payRows.push(['Cash', payResult.cash]);
-    if (payResult.upi > 0) payRows.push(['UPI', payResult.upi]);
-    if (payResult.card > 0) payRows.push(['Card', payResult.card]);
+    // every method that took money (eSewa, Khalti, a custom one…), not only Cash / UPI / Card
+    const payRows = payResult.amounts && Object.keys(payResult.amounts).length
+      ? Object.entries(payResult.amounts).filter(([, amt]) => (+amt || 0) > 0).map(([label, amt]) => [label, +amt])
+      : [['Cash', payResult.cash], ['UPI', payResult.upi], ['Card', payResult.card]].filter(([, amt]) => amt > 0);
     const payRowsHtml = payRows.map(([label, amt]) => `
       <div style="display:flex;justify-content:space-between;font-size:12px;"><span>${label}</span><span>${currency}${amt.toFixed(2)}</span></div>
     `).join('');

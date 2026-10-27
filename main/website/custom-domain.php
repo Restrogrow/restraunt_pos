@@ -106,6 +106,7 @@ if ($customDomainRow) {
         'catering' => 'catering.php',
         'loyalty' => 'loyalty.php',
         'reservations' => 'reservations.php',
+        'rooms' => 'rooms.php',
     ];
 
     $page = null;
@@ -172,6 +173,7 @@ $pageMap = [
     'catering' => 'catering.php',
     'loyalty' => 'loyalty.php',
     'reservations' => 'reservations.php',
+    'rooms' => 'rooms.php',
 ];
 
 if (isset($pageMap[$path]) || in_array($path, ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php']) || preg_match('/^(.+)\.php$/', $path, $m) && isset($pageMap[$m[1]])) {

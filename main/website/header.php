@@ -600,7 +600,7 @@ if (!empty($custom_domain) && $embed_enabled && !$is_custom_domain) {
         } elseif ($basename && $basename !== 'index.php') {
             // Direct .php page access (e.g. cart.php?restaurant_id=X)
             $page_name = str_replace('.php', '', $basename);
-            if (in_array($page_name, ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset_password', 'track', 'track-order', 'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy', 'plans', 'subscribe', 'my-subscription', 'catering', 'reservations'])) {
+            if (in_array($page_name, ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset_password', 'track', 'track-order', 'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy', 'plans', 'subscribe', 'my-subscription', 'catering', 'reservations', 'rooms'])) {
                 $redirect_path = '/' . $page_name;
             }
         }
@@ -691,7 +691,7 @@ if ($restaurant_id) {
     $track_page = $_SERVER['REQUEST_URI'] ?? '/';
     // page name from the file that runs (a restaurant slug like "menu-house" must not make every page "Menu")
     $track_name = ['index' => 'Home', 'menu' => 'Menu', 'cart' => 'Cart', 'about' => 'About Us', 'contact' => 'Contact',
-        'profile' => 'Profile', 'track' => 'Track Order', 'loyalty' => 'Rewards', 'reservations' => 'Reservations',
+        'profile' => 'Profile', 'track' => 'Track Order', 'loyalty' => 'Rewards', 'reservations' => 'Reservations', 'rooms' => 'Rooms',
         'catering' => 'Catering', 'plans' => 'Plans', 'subscribe' => 'Subscribe', 'my-subscription' => 'My subscription',
         'login' => 'Login'][basename((string)($_SERVER['SCRIPT_NAME'] ?? 'index.php'), '.php')] ?? 'Home';
     
