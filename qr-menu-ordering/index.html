@@ -1,656 +1,1243 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Menu Ordering for Restaurants | Table QR Ordering | Restro Grow</title>
-    <meta name="description" content="A QR code on every table: guests scan, see your menu with photos, order and call the waiter from their phone. Orders reach the kitchen with the table number. No app needed.">
-    <meta name="keywords" content="QR code menu ordering, QR code menu for restaurants, table QR ordering, QR menu ordering system, scan and order restaurant, digital menu QR code, contactless ordering restaurant">
-    <meta name="robots" content="index, follow, max-image-preview:large">
-    <link rel="canonical" href="https://restrogrow.com/qr-menu-ordering/">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RestroGrow Smart QR Menu</title>
+<meta name="description" content="Smart QR Menu for restaurants and cafes. Guests scan, order and pay from the table. Packages from ₹1,999. Book with ₹500, pay the rest on delivery.">
+<!-- search and share tags kept from the earlier /qr-menu-ordering/ page -->
+<meta name="keywords" content="QR code menu ordering, QR code menu for restaurants, table QR ordering, QR menu ordering system, scan and order restaurant, digital menu QR code, contactless ordering restaurant">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://restrogrow.com/qr-menu-ordering/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://restrogrow.com/qr-menu-ordering/">
+<meta property="og:title" content="QR menu ordering: guests order from the table | Restro Grow">
+<meta property="og:description" content="Guests scan, order and call the waiter from their phone. The KOT reaches the kitchen with the table number.">
+<meta property="og:image" content="https://restrogrow.com/about/img/qrCodesPage.webp">
+<meta property="og:site_name" content="Restro Grow">
+<meta property="og:locale" content="en_IN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@restrogrow">
+<meta name="twitter:title" content="QR menu ordering: guests order from the table | Restro Grow">
+<meta name="twitter:description" content="Guests scan, order and call the waiter from their phone. The KOT reaches the kitchen with the table number.">
+<meta name="twitter:image" content="https://restrogrow.com/about/img/qrCodesPage.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Mobile-first product page (Shopify style): product + packages first, then a live menu the visitor can use,
+   the process with photos, real dashboard, proof, video, FAQ. Checkout is a full-screen step with upsells. */
+:root{
+  --ink:#24130d; --ink-2:#55433a; --muted:#8f7f73; --line:#eadfd2; --soft:#fbf5ee; --sand:#f3e7d8; --maroon:#3a1610;
+  --brand:#ff5a1f; --brand-d:#e0460d; --brand-soft:#ffefe6; --green:#14833b; --green-soft:#e7f5ec; --red:#cf3a2b;
+  --h:'Plus Jakarta Sans',system-ui,sans-serif; --d:'Fraunces',Georgia,serif; --b:'Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--soft);color:var(--ink);font-family:var(--b);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:clip}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.wrap{max-width:1200px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--h);margin:0;letter-spacing:-.025em;line-height:1.12;font-weight:800}
+h1,h2{font-family:var(--d);font-weight:700;letter-spacing:-.015em}
+h2{font-size:clamp(28px,4vw,46px)}
+h3{font-weight:700;letter-spacing:-.015em}
+.sec{padding-block:clamp(56px,8vw,104px)}
+.soft{background:var(--soft)}
+.dark{background:var(--maroon);color:#fff;background-image:radial-gradient(circle at 85% 10%,rgba(255,120,60,.18),transparent 45%)}
+.head{max-width:700px;margin-bottom:clamp(26px,4vw,48px)}
+.head.c{text-align:center;margin-inline:auto}
+.head p{color:var(--ink-2);font-size:clamp(16px,1.5vw,18px);margin:12px 0 0}
+.dark .head p{color:#cbc2b7}
+.eb{display:inline-block;font-family:var(--h);font-size:12.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--brand-d);margin-bottom:10px}
+.dark .eb{color:#ffa77e}
+.ic{flex:none}
 
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://restrogrow.com/qr-menu-ordering/">
-    <meta property="og:title" content="QR menu ordering: guests order from the table | Restro Grow">
-    <meta property="og:description" content="Guests scan, order and call the waiter from their phone. The KOT reaches the kitchen with the table number.">
-    <meta property="og:image" content="https://restrogrow.com/about/img/qrCodesPage.webp">
-    <meta property="og:site_name" content="Restro Grow">
-    <meta property="og:locale" content="en_IN">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@restrogrow">
-    <meta name="twitter:title" content="QR menu ordering: guests order from the table | Restro Grow">
-    <meta name="twitter:description" content="Guests scan, order and call the waiter from their phone. The KOT reaches the kitchen with the table number.">
-    <meta name="twitter:image" content="https://restrogrow.com/about/img/qrCodesPage.webp">
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:54px;padding:0 24px;border-radius:12px;border:0;font-family:var(--h);font-weight:700;font-size:16px;cursor:pointer;text-decoration:none;transition:background .15s,transform .1s;line-height:1.2;text-align:center}
+.btn:active{transform:translateY(1px)}
+.btn--o{background:var(--brand);color:#fff}
+.btn--o:hover{background:var(--brand-d)}
+.btn--k{background:var(--ink);color:#fff}
+.btn--k:hover{background:#000}
+.btn--w{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.btn--w:hover{background:var(--soft)}
+.btn--wa{background:#1fa855;color:#fff}
+.btn--wa:hover{background:#178a45}
+.btn--full{width:100%}
+.btn small{font-family:var(--b);font-weight:500;font-size:13px;opacity:.9}
 
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@graph": [
-            {
-                "@type": "WebPage",
-                "@id": "https://restrogrow.com/qr-menu-ordering/#webpage",
-                "name": "QR menu ordering: guests order from the table | Restro Grow",
-                "url": "https://restrogrow.com/qr-menu-ordering/",
-                "description": "A QR code on every table: guests scan, see your menu with photos, order and call the waiter from their phone. Orders reach the kitchen with the table number. No app needed.",
-                "inLanguage": "en-IN",
-                "isPartOf": {
-                    "@type": "WebSite",
-                    "name": "Restro Grow",
-                    "url": "https://restrogrow.com"
-                },
-                "breadcrumb": {
-                    "@id": "https://restrogrow.com/qr-menu-ordering/#breadcrumb"
-                }
-            },
-            {
-                "@type": "BreadcrumbList",
-                "@id": "https://restrogrow.com/qr-menu-ordering/#breadcrumb",
-                "itemListElement": [
-                    {
-                        "@type": "ListItem",
-                        "position": 1,
-                        "name": "Home",
-                        "item": "https://restrogrow.com/"
-                    },
-                    {
-                        "@type": "ListItem",
-                        "position": 2,
-                        "name": "QR Menu Ordering",
-                        "item": "https://restrogrow.com/qr-menu-ordering/"
-                    }
-                ]
-            },
-            {
-                "@type": "SoftwareApplication",
-                "name": "Restro Grow",
-                "applicationCategory": "BusinessApplication",
-                "applicationSubCategory": "QR code menu and table ordering",
-                "operatingSystem": "Web, Android, iOS",
-                "url": "https://restrogrow.com/qr-menu-ordering/",
-                "description": "QR code menu ordering for restaurants: a QR per table, orders tagged with the table number, KOT to the kitchen and a call-waiter button.",
-                "screenshot": "https://restrogrow.com/about/img/qrCodesPage.webp",
-                "featureList": [
-                    "A QR code for every table",
-                    "Table standee designer",
-                    "Menu with photos, sizes and add-ons",
-                    "Orders tagged with the table number",
-                    "KOT to the kitchen",
-                    "Call waiter button",
-                    "Pay at the counter or online",
-                    "Loyalty points on table orders"
-                ],
-                "offers": {
-                    "@type": "AggregateOffer",
-                    "lowPrice": "2999",
-                    "highPrice": "9999",
-                    "offerCount": "3",
-                    "priceCurrency": "INR",
-                    "availability": "https://schema.org/InStock"
-                }
-            },
-            {
-                "@type": "FAQPage",
-                "mainEntity": [
-                    {
-                        "@type": "Question",
-                        "name": "Do guests need to download an app?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "No. The QR opens your menu in the phone's browser. Guests order there, and can come back to the same page any time."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "How does the kitchen know which table ordered?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Each table has its own QR code. The order arrives tagged with that table, and the KOT shows the table number."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "Can guests still order from a waiter?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. QR ordering sits next to normal service. Waiters can take orders on their phone or at the POS, and both reach the same kitchen."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "How do guests pay?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "They can pay at the counter as usual, or pay online if you've set up online payments or your UPI QR."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "What about fake orders?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Orders need a valid phone number, one number can only place so many orders, and a number whose orders you keep rejecting gets blocked by itself."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "Is this the same as a PDF menu?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "No. A PDF only shows the menu. Restro Grow's QR opens a live menu: change a price or mark a dish sold out and guests see it at once, and they can order from it."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "Can I print the QR codes myself?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. Download all the QR codes at once and print them on any printer, or use the standee designer to make a 4 × 6 inch table standee with your logo."
-                        }
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "What happens if I rename a table?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Its QR code changes, so Restro Grow warns you before you save. Print the new QR for that table."
-                        }
-                    }
-                ]
-            }
-        ]
-    }
-    </script>
+/* top */
+.bar{background:var(--maroon);color:#f6efe6;text-align:center;font-size:13px;font-weight:500;padding:9px 14px;line-height:1.4}
+.bar b{color:#ffb08a}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;height:62px;border-bottom:1px solid var(--line)}
+.top img{height:24px;width:auto}
+.top nav{display:flex;gap:26px;font-size:14.5px;font-weight:500;color:var(--ink-2)}
+.top nav a{text-decoration:none}
+.top nav a:hover{color:var(--ink)}
+.top .wa{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:14px;text-decoration:none;color:#178a45}
 
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="apple-touch-icon" href="../favicon.png">
-    <link rel="preload" href="../about/img/qrCodesPage.webp" as="image" type="image/webp">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="../style.css?v=3.1">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Caveat:wght@500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet"></noscript>
+/* ===== product ===== */
+.pdp{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(28px,4.5vw,60px);padding:24px 0 clamp(48px,6vw,80px)}
+.gal{position:sticky;top:20px;align-self:start;min-width:0;display:grid;grid-template-columns:70px minmax(0,1fr);gap:12px}
+.thumbs{display:flex;flex-direction:column;gap:8px}
+.thumbs button{padding:0;border:1.5px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;aspect-ratio:4/5;background:var(--soft)}
+.thumbs img{width:100%;height:100%;object-fit:cover}
+.thumbs button[aria-current="true"]{border-color:var(--ink)}
+.slides{position:relative;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:18px;background:var(--soft);scrollbar-width:none}
+.slides::-webkit-scrollbar{display:none}
+.slides img{flex:0 0 100%;width:100%;aspect-ratio:4/5;object-fit:cover;scroll-snap-align:center}
+.gal__main{position:relative;min-width:0}
+.gal__nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.95);box-shadow:0 2px 10px rgba(0,0,0,.15);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.gal__p{left:12px}.gal__n{right:12px}
+.dots{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:6px;pointer-events:none}
+.dots i{width:7px;height:7px;border-radius:4px;background:rgba(255,255,255,.65);transition:width .2s}
+.dots i.on{width:20px;background:#fff}
+.badge{position:absolute;left:12px;top:12px;background:var(--brand);color:#fff;font-family:var(--h);font-weight:700;font-size:12.5px;border-radius:8px;padding:6px 10px;z-index:2}
 
-    <style>
-        /* ── Landing page. style.css tokens, same family as the loyalty and meal-plans pages. ── */
-        :root { --gold: #f2b544; --wa: #1faa53; --hand: 'Caveat', 'Segoe Print', cursive; }
-        .ly-ico { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        .ly-section { padding: 96px 0; position: relative; }
-        .ly-section.raised { background: var(--paper-raised); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
-        .ly-section.ink { background: var(--ink); color: var(--paper); }
-        .ly-kicker { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; font-family: var(--font-mono); font-size: .76rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
-        .ly-kicker::before { content: ''; width: 20px; height: 2px; background: currentColor; }
-        .ink .ly-kicker, .ly-hero .ly-kicker { color: var(--gold); }
-        .ly-h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.9rem, 3.8vw, 2.9rem); line-height: 1.06; letter-spacing: -.03em; color: var(--ink); }
-        .ink .ly-h2 { color: var(--paper); }
-        .ly-h2 em { font-style: normal; color: var(--accent); }
-        .ink .ly-h2 em { color: var(--gold); }
-        .ly-sub { margin-top: 16px; font-size: 1.1rem; line-height: 1.6; color: var(--ink-soft); max-width: 40em; }
-        .ink .ly-sub { color: rgba(245, 239, 226, .72); }
-        .ly-sub a, .ly-list a, .lp-card a, .ly-faq a, .lp-note a { color: var(--accent); font-weight: 600; }
-        .ly-head { max-width: 760px; margin-bottom: 52px; }
-        .ly-head.center { margin-left: auto; margin-right: auto; text-align: center; }
-        .ly-head.center .ly-kicker { justify-content: center; }
-        .ly-head.center .ly-sub { margin-left: auto; margin-right: auto; }
-        .ly-btn { display: inline-flex; align-items: center; gap: 10px; padding: 16px 26px; border-radius: 12px; font-weight: 700; font-size: 1rem; text-decoration: none; border: 2px solid transparent; transition: transform .2s; cursor: pointer; font-family: inherit; }
-        .ly-btn:hover { transform: translateY(-2px); }
-        .ly-btn.primary { background: var(--accent); color: #fff; box-shadow: 0 10px 24px -10px rgba(193, 68, 14, .7); }
-        .ly-btn.ghost { color: var(--paper); border-color: rgba(245, 239, 226, .3); background: transparent; }
-        .ly-btn.ghost:hover { border-color: var(--paper); }
-        .ly-btn.wa { background: var(--wa); color: #fff; }
-        .ly-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+.buy{min-width:0}
+.vendor{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.buy h1{font-size:clamp(27px,3vw,38px);margin:6px 0 10px}
+.trustln{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);flex-wrap:wrap}
+.stars{color:#f5a516;letter-spacing:1px;font-size:15px}
+.trustln b{color:var(--ink)}
+.pr{display:flex;align-items:baseline;gap:10px;margin:18px 0 2px;flex-wrap:wrap}
+.pr__now{font-family:var(--h);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.pr__was{color:var(--muted);text-decoration:line-through;font-size:16px}
+.pr__off{background:var(--green);color:#fff;font-size:12.5px;font-weight:700;border-radius:6px;padding:4px 8px}
+.book500{display:flex;gap:10px;align-items:center;margin:12px 0 4px;background:var(--green-soft);color:#0f6a30;border-radius:12px;padding:11px 14px;font-size:14.5px;font-weight:600}
+.blk{border-top:1px solid var(--line);padding:18px 0}
+.blk:first-of-type{margin-top:14px}
+.blk__h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+.blk__h b{font-size:15px;font-weight:700;font-family:var(--h)}
+.blk__h span{font-size:13.5px;color:var(--muted)}
+.pkgs{display:grid;gap:10px}
+.pkg{position:relative;display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;background:#fff;transition:border-color .15s}
+.pkg input{position:absolute;opacity:0;pointer-events:none}
+.pkg__dot{width:20px;height:20px;border-radius:50%;border:1.5px solid #c4baad;position:relative}
+.pkg:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.pkg:has(input:checked) .pkg__dot{border-color:var(--ink)}
+.pkg:has(input:checked) .pkg__dot::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--ink)}
+.pkg:has(input:focus-visible){outline:2px solid var(--brand);outline-offset:2px}
+.pkg>span{min-width:0}
+.pkg b{display:block;font-size:15.5px;font-weight:700}
+.pkg small{display:block;color:var(--muted);font-size:13px;margin-top:1px;line-height:1.35}
+.pkg__p{font-family:var(--h);font-weight:800;font-size:18px;white-space:nowrap}
+.pkg__tag{position:absolute;top:-10px;left:46px;background:var(--brand);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:3px 9px}
+.inc{list-style:none;padding:12px 14px;margin:10px 0 0;background:var(--soft);border-radius:12px;display:grid;gap:6px;font-size:14px}
+.inc li{display:flex;gap:9px}
+.inc svg{margin-top:3px;color:var(--green)}
+.sw{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+.sw button{padding:2px;border:1.5px solid var(--line);border-radius:7px;background:#fff;cursor:pointer}
+.sw button img{aspect-ratio:2/3;object-fit:cover;border-radius:4px;width:100%}
+.sw button[aria-pressed="true"]{border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand)}
+.stq{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--soft);border-radius:14px;padding:12px 14px}
+.stq p{margin:0;font-size:14px;line-height:1.35}
+.stq p b{display:block;font-size:15px}
+.stq p span{color:var(--muted);font-size:13px}
+.qty{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;flex:none}
+.qty button{width:42px;height:42px;border:0;background:#fff;font-size:20px;cursor:pointer;font-weight:600}
+.qty output{min-width:38px;text-align:center;font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chips button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.chips button:hover{border-color:var(--ink)}
+.tot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding:16px 0 12px}
+.tot b{font-family:var(--h);font-size:24px;font-weight:800}
+.tot small{display:block;color:var(--green);font-size:13px;font-weight:600;text-align:right}
+.ctas{display:grid;gap:10px}
+.assure{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.assure div{background:var(--soft);border-radius:10px;padding:11px 6px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink-2);display:flex;flex-direction:column;align-items:center;gap:6px;line-height:1.3}
+.assure svg{color:var(--brand-d)}
 
-        /* hero */
-        .ly-hero { margin-top: 72px; padding: 76px 0 84px; background: var(--ink); color: var(--paper); overflow: hidden; position: relative; }
-        .ly-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(800px 520px at 88% 30%, rgba(193, 68, 14, .32), transparent 60%), radial-gradient(600px 400px at 0% 100%, rgba(242, 181, 68, .14), transparent 60%); pointer-events: none; }
-        .ly-hero-grid { position: relative; display: grid; grid-template-columns: 1fr 1.05fr; gap: 48px; align-items: center; }
-        .ly-hero-grid > * { min-width: 0; }
-        .ly-hero h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(2.2rem, 4.4vw, 3.7rem); line-height: 1.02; letter-spacing: -.035em; color: var(--paper); }
-        .ly-hero h1 .u { color: var(--gold); }
-        .ly-lead { margin: 24px 0 30px; font-size: 1.16rem; line-height: 1.6; color: rgba(245, 239, 226, .8); max-width: 34em; }
-        .ly-where { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 32px; }
-        .ly-where > span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: rgba(245, 239, 226, .07); border: 1px solid rgba(245, 239, 226, .14); font-size: .88rem; color: rgba(245, 239, 226, .85); }
-        .ly-where b { color: var(--gold); }
-        .lp-stage { position: relative; padding-bottom: 40px; }
-        .lp-stage .ly-win { transform: rotate(-1deg); }
-        .lp-float { position: absolute; z-index: 3; }
-        .lp-float.br { right: -6px; bottom: -6px; }
-        .lp-float.bl { left: -14px; bottom: -10px; }
-        .lp-float.tr { right: -10px; top: -26px; }
+/* ===== strip ===== */
+.strip{border-block:1px solid var(--line);background:#fff}
+.strip .wrap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.strip div{padding:20px 12px;text-align:center;border-left:1px solid var(--line)}
+.strip div:first-child{border-left:0}
+.strip b{display:block;font-family:var(--h);font-size:24px;font-weight:800;letter-spacing:-.02em}
+.strip span{font-size:13px;color:var(--muted)}
 
-        /* screen in a window frame */
-        .ly-win { position: relative; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: var(--shadow-deep); border: 1px solid var(--line); }
-        .ly-win img { display: block; width: 100%; height: auto; }
-        .ly-win-bar { display: flex; gap: 6px; padding: 10px 14px; background: #ece7de; }
-        .ly-win-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d3c9b9; }
-        .ly-callout { position: absolute; right: 16px; bottom: 18px; padding: 8px 12px; border-radius: 12px; background: var(--ink); color: var(--paper); font-family: var(--hand); font-size: 1.3rem; box-shadow: var(--shadow-card); transform: rotate(-3deg); }
-        .lp-phone { border-radius: 32px; padding: 8px; background: #000; box-shadow: 0 30px 60px -24px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .1); }
-        .lp-phone img { display: block; width: 100%; height: auto; border-radius: 25px; }
+/* ===== live demo ===== */
+.demo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:clamp(28px,6vw,90px);align-items:center}
+.tabs2{display:inline-flex;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:4px;margin:20px 0 6px}
+.tabs2 button{border:0;background:none;border-radius:9px;padding:9px 14px;font-weight:600;font-size:14px;cursor:pointer;color:var(--ink-2)}
+.tabs2 button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.try{list-style:none;padding:0;margin:20px 0 0;display:grid;gap:10px}
+.try li{display:flex;gap:12px;align-items:center;font-size:15.5px}
+.try i{width:30px;height:30px;border-radius:50%;background:var(--brand-soft);color:var(--brand-d);font-style:normal;font-weight:700;font-family:var(--h);font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}
+.ph{position:relative;width:340px;max-width:100%;margin:0 auto;aspect-ratio:9/19;border-radius:48px;background:#0e0c0a;padding:10px;box-shadow:0 0 0 1.5px #2f2a25 inset,0 50px 90px -40px rgba(22,18,14,.6)}
+.ph__s{position:relative;height:100%;border-radius:38px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.ph__bar{flex:none;height:38px;display:flex;align-items:center;justify-content:space-between;padding:4px 26px 0 30px;font-size:12.5px;font-weight:600;background:#fff;position:relative}
+.ph__bar::after{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#0e0c0a}
+.ph__v{position:relative;flex:1;overflow:hidden;background:#fff}
+.ph__v iframe{position:absolute;left:0;top:0;border:0;width:390px;transform-origin:0 0;background:#fff}
+.ph__load{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;background:#fff;transition:opacity .3s;z-index:2}
+.ph__load.off{opacity:0;pointer-events:none}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--brand);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ph__fb{position:absolute;inset:0;overflow-y:auto}
+.ph__fb img{width:100%}
+.openlnk{display:inline-flex;margin-top:14px;font-size:14px;font-weight:600;color:var(--ink-2)}
 
-        /* paper ticket (bill / KOT) */
-        .lp-ticket { width: 230px; padding: 16px 16px 14px; background: #fffdf7; color: #2a241c; font-family: var(--font-mono); font-size: .74rem; line-height: 1.5; border-radius: 4px; box-shadow: 0 24px 40px -16px rgba(0, 0, 0, .55); transform: rotate(3deg); }
-        .lp-ticket .c { text-align: center; }
-        .lp-ticket b { font-weight: 700; }
-        .lp-ticket .row { display: flex; justify-content: space-between; gap: 10px; }
-        .lp-ticket hr { border: 0; border-top: 1px dashed #b9ad98; margin: 7px 0; }
-        .lp-ticket .tot { font-size: .86rem; font-weight: 700; }
-        .lp-ticket .tag { display: inline-block; padding: 1px 6px; border: 1px solid #2a241c; border-radius: 3px; font-weight: 700; }
 
-        .lp-tbox { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px; min-height: 380px; padding: 48px 24px; border-radius: 28px; background: radial-gradient(420px 300px at 75% 15%, rgba(193, 68, 14, .3), transparent 70%), var(--ink); }
-        .lp-tbox > * { min-width: 0; }
+/* ===== in-phone live menu app (real Kohuke data) ===== */
+.app{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f7;font-family:'Inter',system-ui,sans-serif;color:#1d1b19;font-size:12.5px;line-height:1.35;overflow:hidden}
+.app button{font:inherit;cursor:pointer}
+.app__hd{flex:none;display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff}
+.app__hd img{height:22px;width:auto}
+.app__ib{width:30px;height:30px;border-radius:9px;border:0;background:#b3171d;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.app__tbl{font-size:10.5px;font-weight:700;color:#b3171d;background:#fdeceb;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.veg{margin-left:auto;display:flex;align-items:center;gap:5px;border:1px solid #cfe9d7;background:#effaf2;color:#14833b;border-radius:999px;padding:3px 4px 3px 8px;font-weight:700;font-size:11px}
+.veg i{width:26px;height:15px;border-radius:9px;background:#d5d5d5;position:relative;transition:background .2s}
+.veg i::after{content:"";position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .2s}
+.veg[aria-pressed="true"] i{background:#14833b}
+.veg[aria-pressed="true"] i::after{left:13px}
+.app__srch{flex:none;padding:6px 10px 8px;background:#fff;border-bottom:1px solid #eee}
+.app__srch label{display:flex;align-items:center;gap:7px;border:1px solid #e5e5e5;border-radius:10px;padding:7px 9px;color:#999}
+.app__srch input{border:0;outline:0;flex:1;min-width:0;font-size:12.5px;background:none;color:#1d1b19}
+.app__body{flex:1;display:grid;grid-template-columns:62px 1fr;min-height:0}
+.rail,.list,.scr2{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rail::-webkit-scrollbar,.list::-webkit-scrollbar,.scr2::-webkit-scrollbar{display:none}
+.rail{background:#fff;border-right:1px solid #eee;padding:6px 4px 80px}
+.rail button{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;border:0;background:none;padding:6px 2px;border-radius:10px;font-size:9.5px;font-weight:500;color:#444;text-align:center;line-height:1.15}
+.rail button i{width:38px;height:38px;border-radius:50%;background:#eee url(img/kh-sprite.jpg) 0 0/380px 342px;display:block}
+.rail button[aria-pressed="true"]{background:#b3171d;color:#fff}
+.rail button.all i{background:#fff;display:flex;align-items:center;justify-content:center;color:#ff5a1f;font-size:18px;font-style:normal}
+.list{padding:0 10px 90px}
+.list h4{margin:10px 0 4px;font-size:12.5px;font-weight:700;background:#fdeceb;border-radius:8px;padding:7px 9px}
+.it{display:grid;grid-template-columns:1fr 84px;gap:10px;padding:10px 0;border-bottom:1px dashed #e3e3e3}
+.it b{display:block;font-size:13px;font-weight:700;line-height:1.25;margin:3px 0 2px}
+.it .ip{font-weight:700;font-size:12.5px;margin:0}
+.it p{margin:3px 0 0;color:#777;font-size:11px}
+.mk{display:inline-block;width:11px;height:11px;border:1.4px solid #14833b;border-radius:2px;position:relative;vertical-align:-1px}
+.mk::after{content:"";position:absolute;inset:2px;border-radius:50%;background:#14833b}
+.mk.nv{border-color:#c0392b}.mk.nv::after{background:#c0392b}
+.mk.eg{border-color:#e6a100}.mk.eg::after{background:#e6a100}
+.it__im{position:relative;width:84px;height:84px;border-radius:12px;background:#eee url(img/kh-sprite.jpg) 0 0/840px 756px}
+.add{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);min-width:64px;height:26px;border-radius:8px;border:1px solid #e5e5e5;background:#fff;color:#b3171d;font-weight:800;font-size:11.5px;box-shadow:0 3px 8px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 6px}
+.add.q{background:#b3171d;color:#fff;border-color:#b3171d;justify-content:space-between}
+.add.q span{cursor:pointer;padding:0 3px;font-size:14px}
+.cust{display:block;text-align:center;font-size:9px;color:#999;margin-top:12px}
+.empty{padding:30px 10px;text-align:center;color:#999}
+.waiter{position:absolute;right:10px;bottom:74px;z-index:4;border:0;background:#1d1b19;color:#fff;border-radius:999px;padding:8px 11px;font-size:11px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,.25);display:flex;gap:6px;align-items:center}
+.cbar{position:absolute;left:8px;right:8px;bottom:10px;z-index:5;border:0;background:#14833b;color:#fff;border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12.5px;box-shadow:0 8px 20px rgba(20,131,59,.35);transform:translateY(130%);transition:transform .25s}
+.cbar.on{transform:none}
+.cbar small{display:block;font-weight:500;font-size:10.5px;opacity:.9}
+.scr{position:absolute;inset:0;z-index:8;background:#f6f6f7;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s}
+.scr.on{transform:none}
+.scr__hd{flex:none;display:flex;align-items:center;gap:10px;padding:10px;background:#fff;border-bottom:1px solid #eee;font-weight:700;font-size:14px}
+.scr__hd button{border:0;background:#f2f2f2;border-radius:9px;width:30px;height:30px}
+.scr2{flex:1;padding:10px}
+.card2{background:#fff;border-radius:12px;padding:10px;margin-bottom:10px}
+.card2 h5{margin:0 0 8px;font-size:12.5px}
+.ci{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;font-size:12px}
+.ci b{font-weight:600}
+.ci small{display:block;color:#888;font-size:10.5px}
+.st2{display:inline-flex;align-items:center;border:1px solid #b3171d;border-radius:7px;color:#b3171d;font-weight:800}
+.st2 button{border:0;background:none;color:#b3171d;width:22px;height:24px;font-size:14px}
+.st2 span{min-width:16px;text-align:center;font-size:11.5px}
+.ups2{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.ups2>div{flex:0 0 96px;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:6px;font-size:10.5px}
+.ups2 .it__im{width:62px;height:62px;border-radius:8px;margin:0 auto 4px}
+.ups2 b{display:block;font-size:10.5px;line-height:1.2;height:2.4em;overflow:hidden}
+.ups2 button{margin-top:4px;width:100%;border:1px solid #b3171d;background:#fff;color:#b3171d;border-radius:7px;font-weight:800;font-size:10.5px;padding:3px 0}
+.bill div{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}
+.bill .t{border-top:1px dashed #ddd;margin-top:4px;padding-top:7px;font-weight:800;font-size:13px}
+.coup{display:flex;align-items:center;gap:8px;background:#effaf2;border:1px dashed #14833b;color:#14833b;border-radius:10px;padding:8px 10px;font-weight:700;font-size:11.5px}
+.ppl{flex:none;padding:10px;background:#fff;border-top:1px solid #eee}
+.ppl button{width:100%;border:0;background:#b3171d;color:#fff;border-radius:11px;padding:12px;font-weight:800;font-size:13px}
+.ok{text-align:center;padding:24px 14px 10px}
+.ok i{width:56px;height:56px;border-radius:50%;background:#e8f6ed;color:#14833b;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-style:normal;font-size:26px}
+.ok h5{margin:0;font-size:16px}
+.ok p{margin:4px 0 0;color:#777;font-size:11.5px}
+.trk{list-style:none;margin:12px 0 0;padding:0}
+.trk li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:12px;color:#aaa;position:relative}
+.trk li i{width:18px;height:18px;border-radius:50%;border:2px solid #ddd;flex:none;margin-top:1px;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+.trk li.d{color:#1d1b19}
+.trk li.d i{background:#14833b;border-color:#14833b}
+.trk li small{display:block;color:#999;font-size:10.5px}
+.vsheet{position:absolute;inset:0;z-index:9;background:rgba(0,0,0,.45);display:none;align-items:flex-end}
+.vsheet.on{display:flex}
+.vsheet>div{background:#fff;width:100%;border-radius:16px 16px 0 0;padding:14px}
+.vsheet h5{margin:0 0 10px;font-size:13.5px}
+.vsheet label{display:flex;justify-content:space-between;align-items:center;border:1px solid #eee;border-radius:10px;padding:10px;margin-bottom:8px;font-weight:600;cursor:pointer}
+.vsheet label:has(input:checked){border-color:#b3171d;background:#fff5f5}
+.vsheet input{accent-color:#b3171d;margin-right:8px}
+.vsheet>div>button{width:100%;border:0;background:#b3171d;color:#fff;border-radius:10px;padding:11px;font-weight:800;margin-top:4px}
+.wsheet .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wsheet .opts button{border:1px solid #eee;background:#fafafa;border-radius:10px;padding:12px 6px;font-weight:700;font-size:12px}
+.toast2{position:absolute;left:50%;top:70px;transform:translate(-50%,-20px);z-index:12;background:#1d1b19;color:#fff;border-radius:10px;padding:8px 12px;font-size:11.5px;font-weight:600;opacity:0;transition:all .25s;white-space:nowrap;pointer-events:none}
+.toast2.on{opacity:1;transform:translate(-50%,0)}
 
-        /* WhatsApp chat */
-        .ly-chat { border-radius: 24px; background: #0b141a; overflow: hidden; border: 1px solid rgba(245, 239, 226, .12); box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9); }
-        .ly-chat-top { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: #1f2c33; color: #e9edef; }
-        .ly-chat-top .av { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; font-weight: 800; color: #fff; flex: none; }
-        .ly-chat-top b { display: block; font-size: .95rem; }
-        .ly-chat-top small { font-size: .74rem; color: #8696a0; }
-        .ly-chat-body { padding: 16px; display: grid; gap: 9px; background: #0b141a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='3' cy='3' r='1.1' fill='%23182229'/%3E%3C/svg%3E"); }
-        .bub { max-width: 88%; padding: 9px 12px 6px; border-radius: 4px 12px 12px 12px; background: #202c33; color: #e9edef; font-size: .88rem; line-height: 1.45; }
-        .bub time { display: block; text-align: right; font-size: .66rem; color: #8696a0; margin-top: 2px; }
-        .bub.me { justify-self: end; background: #005c4b; border-radius: 12px 4px 12px 12px; }
-        .bub .btns { display: grid; gap: 4px; margin: 8px -6px 0; }
-        .bub .btns span { display: block; padding: 7px; border-radius: 8px; background: rgba(255, 255, 255, .06); color: #53bdeb; text-align: center; font-weight: 600; font-size: .82rem; }
-        .lp-chat-note { margin-top: 10px; font-size: .8rem; color: rgba(245, 239, 226, .55); text-align: center; }
+/* video under gallery */
+.gvid{grid-column:2;margin-top:14px}
+.gvid__h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.gvid__h b{font-family:var(--h);font-size:15px;white-space:nowrap}
+.gvid .lang{background:var(--soft);border:1px solid var(--line)}
+.gvid .lang button{color:var(--ink-2);min-width:0;padding:7px 14px;font-size:13.5px}
+.gvid .lang button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.gvid .player{border-radius:14px}
+.player__len{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;font-weight:600;border-radius:6px;padding:3px 8px}
+/* builder */
+.drop{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;border:2px dashed #d9cdbd;background:#fff;border-radius:18px;padding:26px 18px;cursor:pointer;transition:border-color .15s}
+.drop:hover,.drop.over{border-color:var(--brand)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.drop b{font-family:var(--h);font-size:17px}
+.drop small{color:var(--muted);font-size:13.5px}
+.drop i{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);color:var(--brand-d);display:flex;align-items:center;justify-content:center}
+.bstat{margin-top:14px;display:none;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}
+.bstat.on{display:flex}
+.bstat img{width:54px;height:54px;border-radius:10px;object-fit:cover;flex:none}
+.bstat p{margin:0;font-size:14px;color:var(--ink-2)}
+.bstat p b{display:block;color:var(--ink);font-size:15px}
+.bar2{height:6px;border-radius:3px;background:var(--soft);margin-top:8px;overflow:hidden}
+.bar2 i{display:block;height:100%;width:0;background:var(--brand);transition:width .4s}
+.empty2{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;color:var(--muted);font-size:13px;background:#f6f6f7}
+.empty2 i{width:56px;height:56px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--brand)}
+@media (max-width:1000px){.gvid{grid-column:1;padding:0}}
 
-        /* feature rows */
-        .ly-split { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; }
-        .ly-split > * { min-width: 0; }
-        .ly-split + .ly-split { margin-top: 96px; }
-        .ly-split.flip > :first-child { order: 2; }
-        .ly-split h2, .ly-split h3.ly-h2 { margin-bottom: 12px; }
-        .ly-list { list-style: none; display: grid; gap: 12px; margin-top: 22px; }
-        .ly-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-soft); }
-        .ly-list svg { flex: none; width: 22px; height: 22px; margin-top: 1px; color: var(--success); }
-        .ly-list b { color: var(--ink); }
-        .ink .ly-list li { color: rgba(245, 239, 226, .75); }
-        .ink .ly-list b { color: var(--paper); }
-        .lp-duo { display: grid; grid-template-columns: 1fr 190px; gap: 18px; align-items: end; }
-        .lp-duo > * { min-width: 0; }
+.show{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.show img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:16px}
+@media (max-width:1000px){.show{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}.show::-webkit-scrollbar{display:none}.show img{flex:0 0 70%;scroll-snap-align:start}}
+.logos{margin-top:28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.logos>span{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.logos>div{display:flex;gap:14px;flex-wrap:wrap}
+.logos img{width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#fff}
 
-        /* feature cards */
-        .lp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-        .lp-card { padding: 28px; border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .raised .lp-card { background: var(--paper); }
-        .lp-card .e { font-size: 1.7rem; line-height: 1; }
-        .lp-card h3 { margin: 14px 0 8px; font-family: var(--font-display); font-size: 1.18rem; line-height: 1.25; }
-        .lp-card p { color: var(--ink-soft); font-size: .97rem; line-height: 1.55; }
+/* ===== demo stage: guest phone + owner counter ===== */
+.devtabs{display:none;justify-content:center;gap:6px;margin:-10px auto 18px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:4px;max-width:360px}
+.devtabs button{flex:1;border:0;background:none;border-radius:10px;padding:10px 6px;font-weight:700;font-size:14px;cursor:pointer;color:var(--ink-2);position:relative}
+.devtabs button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.devtabs button.ping::after{content:"1";position:absolute;top:2px;right:10px;width:18px;height:18px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;line-height:18px;animation:pp 1s infinite}
+@keyframes pp{50%{transform:scale(1.25)}}
+.devs{display:grid;grid-template-columns:340px 90px minmax(0,460px);justify-content:center;align-items:center;gap:20px}
+.dev{min-width:0}
+.devlbl{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 14px;font-family:var(--h);font-weight:700;font-size:15px}
+.devlbl i{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-style:normal;font-size:12px;display:flex;align-items:center;justify-content:center}
+.arrow{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--brand);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.pad2{background:#1b1310;border-radius:26px;padding:12px;box-shadow:0 50px 90px -45px rgba(36,19,13,.6)}
+.pad2__s{border-radius:16px;overflow:hidden;background:#f1f6ff;height:560px;display:flex;flex-direction:column;position:relative;font-family:var(--b)}
+.kh{display:flex;align-items:center;gap:10px;background:#131a2b;color:#fff;padding:12px 14px;font-size:14px}
+.kh .live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:#7ee2a0}
+.kh .live i{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pp 1.4s infinite}
+.kotal{position:absolute;left:12px;right:12px;top:56px;z-index:3;background:#ff5a1f;color:#fff;border-radius:12px;padding:12px 14px;font-size:14px;box-shadow:0 12px 30px -10px rgba(255,90,31,.7);transform:translateY(-20px);opacity:0;transition:all .3s;pointer-events:none}
+.kotal.on{transform:none;opacity:1}
+.kbody{flex:1;overflow-y:auto;padding:12px}
+.kempty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;height:100%;color:var(--muted);font-size:13.5px;padding:20px}
+.kempty span{font-size:34px}
+.kempty b{color:var(--ink);font-size:15.5px}
+.kc{background:#fff;border:1px solid #e3e8f2;border-radius:16px;padding:14px;margin-bottom:12px;animation:kin .4s ease}
+.kc.new{border-color:#ffb38f;box-shadow:0 0 0 3px #ffefe6}
+@keyframes kin{from{transform:translateY(-10px);opacity:0}}
+.kc__h{display:flex;align-items:center;gap:10px}
+.kc__n{width:30px;height:30px;border-radius:8px;border:1.5px solid #ffb38f;color:#e0460d;font-weight:800;display:flex;align-items:center;justify-content:center}
+.kc__h small{display:block;font-size:10px;color:#999;font-weight:700;letter-spacing:.06em}
+.kc__h b{font-size:15px;font-family:var(--h)}
+.kc__t{margin-left:auto;font-size:11.5px;font-weight:700;color:#14833b;background:#e8f6ed;border-radius:999px;padding:4px 9px}
+.kc__tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.kc__tags span{font-size:12px;font-weight:600;border-radius:7px;padding:4px 8px;background:#f2f4f8}
+.kc__tags .st{background:#fff7e0;color:#a36b00}
+.kc__tags .pd{background:#e8f6ed;color:#14833b}
+.kc__i{border-top:1px dashed #e3e8f2;padding-top:10px}
+.kc__i small{font-size:10.5px;font-weight:700;color:#999;letter-spacing:.06em}
+.kc__i div{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;margin-top:7px}
+.kc__i em{font-style:normal;width:24px;height:24px;border-radius:6px;background:#ff6b1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.kc__f{display:flex;justify-content:space-between;margin:10px 0;font-size:13px;color:#666}
+.kc__b{width:100%;border:0;border-radius:11px;background:#ff6b1a;color:#fff;font-weight:700;padding:12px;font-size:14px;cursor:pointer}
+.kc__b:disabled{background:#e8f6ed;color:#14833b}
+.demopts{list-style:none;padding:0;margin:30px auto 0;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;font-size:14.5px;font-weight:500;color:var(--ink-2);max-width:900px}
+/* kohuke-like cart & checkout */
+.kbar{display:flex!important;justify-content:space-between;align-items:center;background:#b3171d!important}
+.kbar .w{background:#fff;color:#b3171d;border-radius:8px;padding:5px 10px}
+.card2 h5 small{display:block;font-weight:500;color:#999;font-size:10.5px;margin-top:1px}
+.ci{grid-template-columns:40px 1fr auto!important;align-items:start!important}
+.ci__im{width:40px;height:40px;border-radius:8px;background:#eee url(img/kh-sprite.jpg) 0 0/400px 360px;display:block}
+.ci .st2{margin-top:5px}
+.more{display:block;width:100%;border:0;border-top:1px dashed #eee;background:none;color:#b3171d;font-weight:700;padding:9px 0 0;margin-top:6px;font-size:12px}
+.cpn{display:flex;gap:6px}.cpn input{flex:1;min-width:0;border:1px solid #e5e5e5;border-radius:8px;padding:8px;font-size:12px}
+.cpn button{border:0;background:#b3171d;color:#fff;border-radius:8px;padding:0 12px;font-weight:700}
+.chips2{display:flex;flex-wrap:wrap;gap:6px}.chips2 button{border:1px solid #e5e5e5;background:#fff;border-radius:999px;padding:5px 10px;font-size:11px}
+.chips2 button.on{border-color:#b3171d;background:#fff5f5;color:#b3171d}
+.co2{max-height:88%;overflow-y:auto}
+.co2 h5{font-size:15px;margin:0 0 10px}
+.vsheet .fl,.fl{display:block!important;border:0!important;padding:0!important;background:none!important;font-size:11.5px;font-weight:600;color:#444;margin-bottom:10px;cursor:default}
+.fl input,.fl select{display:block;width:100%;margin-top:4px;border:1px solid #e5e5e5;border-radius:9px;padding:9px;font-size:12.5px;background:#fff}
+.ph2{display:flex;gap:6px;margin-top:4px}.ph2 em{font-style:normal;border:1px solid #e5e5e5;border-radius:9px;padding:9px 8px;font-size:12.5px;color:#666}.ph2 input{margin:0}
+.osum{background:#f7f7f8;border-radius:10px;padding:10px;font-size:11.5px;margin-bottom:10px}
+.osum b{display:block;margin-bottom:6px}.osum div{display:flex;justify-content:space-between;padding:2px 0;color:#555}.osum .t{border-top:1px solid #e5e5e5;margin-top:5px;padding-top:6px;font-weight:700;color:#111}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:5px}
+.seg button{border:1px solid #e5e5e5;background:#fff;border-radius:10px;padding:8px 4px;font-size:11px;font-weight:600;line-height:1.3}
+.seg button.on{border-color:#b3171d;background:#fff5f5;color:#b3171d}
+.cobtns{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:6px}
+.cobtns button{border:1px solid #e5e5e5;background:#fff;border-radius:10px;padding:11px;font-weight:700}
+.cobtns button+button{background:#b3171d;border-color:#b3171d;color:#fff}
+.paycard{text-align:center;padding:18px 10px!important}
+.paycard small{color:#888;font-size:11px}.paycard b{display:block;font-size:14px;margin-top:2px}
+.paycard .amt{font-size:30px;font-weight:800;margin:8px 0 2px;font-family:var(--h)}
+.upis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.upis button{border:1px solid #e5e5e5;background:#fff;border-radius:10px;padding:12px 6px;font-weight:700;font-size:12.5px}
+.upis button:hover{border-color:#b3171d}
+.demo{margin:10px 0 0;text-align:center;color:#999;font-size:10.5px}
+.proc{display:flex;align-items:center;gap:10px;justify-content:center;font-weight:600}
+.proc .spin{width:18px;height:18px;border-width:2.5px}
+.paid{display:inline-block!important;margin-top:8px!important;background:#e8f6ed;color:#14833b!important;border-radius:999px;padding:3px 10px;font-weight:700}
+.paid.cnt{background:#fff7e0;color:#a36b00!important}
+@media (max-width:1000px){
+  .devtabs{display:flex}
+  .devs{grid-template-columns:1fr}
+  .arrow{display:none}
+  .devs[data-show="guest"] .dev--owner,.devs[data-show="owner"] .dev--guest{display:none}
+  .pad2__s{height:600px}
+  .pad2{max-width:420px;margin:0 auto}
+}
+/* ===== process ===== */
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.st{background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column}
+.st__img{aspect-ratio:4/4.4;background:var(--sand);overflow:hidden;position:relative}
+.st__img>img{width:100%;height:100%;object-fit:cover}
+.st__img.shot{display:flex;align-items:flex-start;justify-content:center;padding:18px 18px 0;background:linear-gradient(180deg,#f3ece2,#e8dccb)}
+.st__img.shot img{width:72%;height:auto;border-radius:16px 16px 0 0;box-shadow:0 20px 40px -20px rgba(0,0,0,.4)}
+.st__t{padding:16px 18px 20px}
+.st__n{display:inline-flex;align-items:center;gap:8px;font-family:var(--h);font-weight:700;font-size:12.5px;color:var(--brand-d);margin-bottom:6px}
+.st__n i{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:12px}
+.st h3{font-size:18px}
+.st p{margin:6px 0 0;font-size:14.5px;color:var(--ink-2)}
 
-        /* steps */
-        .ly-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: st; }
-        .ly-steps.four { grid-template-columns: repeat(4, 1fr); }
-        .ly-step { padding: 30px 26px 26px; border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .raised .ly-step { background: var(--paper); }
-        .ly-step::before { counter-increment: st; content: counter(st, decimal-leading-zero); font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: var(--accent); }
-        .ly-step h3 { margin: 8px 0 6px; font-family: var(--font-display); font-size: 1.18rem; }
-        .ly-step p { color: var(--ink-soft); }
-        .lp-note { margin-top: 28px; padding: 18px 22px; border-radius: 18px; background: var(--paper-raised); border: 1px solid var(--line); color: var(--ink-soft); text-align: center; }
-        .raised .lp-note { background: var(--paper); }
-        .lp-note b { color: var(--ink); }
+/* ===== dashboard ===== */
+.tour>*,.demo>*{min-width:0}
+.tour{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:clamp(28px,6vw,80px);align-items:center}
+.tlist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tlist button{display:flex;flex-direction:column;gap:3px;text-align:left;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;border-radius:14px;padding:14px;cursor:pointer}
+.tlist button:hover{background:rgba(255,255,255,.08)}
+.tlist button[aria-selected="true"]{background:#fff;color:var(--ink);border-color:#fff}
+.tlist b{font-family:var(--h);font-size:15.5px;font-weight:700}
+.tlist span{font-size:13px;opacity:.75;line-height:1.35}
+.tlist em{font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#ffa77e}
+.tlist button[aria-selected="true"] em{color:var(--brand-d)}
+.pad{background:#0e0c0a;border-radius:28px;padding:11px;box-shadow:0 0 0 1.5px #2f2a25 inset,0 50px 90px -45px rgba(0,0,0,.7)}
+.pad__s{border-radius:18px;overflow:hidden;aspect-ratio:3/4;background:#eef4ff}
+.pad__s img{width:100%;height:100%;object-fit:cover;object-position:top}
 
-        /* faq */
-        .ly-faq-wrap { display: grid; grid-template-columns: .8fr 1.2fr; gap: 56px; }
-        .ly-faq-wrap > * { min-width: 0; }
-        .ly-faq { display: grid; gap: 10px; }
-        .ly-faq details { padding: 18px 22px; border-radius: 16px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .ly-faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; font-family: var(--font-display); font-weight: 700; font-size: 1.04rem; }
-        .ly-faq summary::-webkit-details-marker { display: none; }
-        .ly-faq summary::after { content: '+'; font-family: var(--font-mono); font-size: 1.3rem; line-height: 1; color: var(--accent); transition: transform .2s; }
-        .ly-faq details[open] summary::after { transform: rotate(45deg); }
-        .ly-faq details p { margin-top: 10px; color: var(--ink-soft); }
+/* ===== packages ===== */
+.pk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.pkc{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:28px 24px 24px;display:flex;flex-direction:column}
+.pkc.hl{border:2px solid var(--brand)}
+.pkc .tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff;font-family:var(--h);font-size:12px;font-weight:700;border-radius:999px;padding:5px 14px;white-space:nowrap}
+.pkc h3{font-size:21px}
+.pkc .for{color:var(--muted);font-size:14px;margin:3px 0 16px}
+.pkc .p{font-family:var(--h);font-size:42px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.pkc .p small{font-family:var(--b);font-size:14px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:6px;white-space:nowrap}
+.pkc{min-width:0}
+.pkc .bk{margin:12px 0 16px;font-size:13.5px;color:#0f6a30;font-weight:600;background:var(--green-soft);border-radius:10px;padding:9px 12px}
+.pkc .stb{display:flex;align-items:center;gap:10px;font-weight:700;font-family:var(--h);font-size:15px;padding:12px 0;border-block:1px solid var(--line);margin-bottom:14px}
+.pkc ul{list-style:none;padding:0;margin:0 0 22px;display:grid;gap:10px;font-size:14.5px}
+.pkc li{display:flex;gap:10px}
+.pkc li svg{margin-top:3px;color:var(--green)}
+.pkc li.no{color:#b5aca1}
+.pkc li.no svg{color:#d3cbc0}
+.pkc li.grp{font-family:var(--h);font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}
+.pkc li.grp:first-child{margin-top:0;border-top:0;padding-top:0}
+@media (min-width:1001px){.pk{grid-template-columns:repeat(2,minmax(0,1fr));max-width:880px;margin:0 auto}}
+.pkc .p small{display:inline-block}
+.pkc .btn{margin-top:auto}
+.adds{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px;font-size:14px}
+.adds span{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px}
 
-        /* related pages */
-        .lp-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-        .lp-link { display: block; padding: 20px 22px; border-radius: 18px; background: var(--paper); border: 1px solid var(--line); text-decoration: none; color: var(--ink); transition: border-color .2s, transform .2s; }
-        .lp-link:hover { border-color: var(--accent); transform: translateY(-2px); }
-        .lp-link small { display: block; font-family: var(--font-mono); font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
-        .lp-link b { display: block; font-family: var(--font-display); font-size: 1.05rem; line-height: 1.3; }
-        .lp-link span { display: block; margin-top: 6px; font-size: .9rem; color: var(--ink-soft); }
+/* ===== proof ===== */
+.proof{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:980px;margin:0 auto}
+.pf{margin:0;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.pf__h{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.pf__h b{font-family:var(--h);font-size:16px}
+.pf__h span{margin-left:auto;font-size:13px;color:var(--muted)}
+.pf img{width:100%}
+.pf figcaption{padding:14px 18px;font-size:14.5px;color:var(--ink-2);border-top:1px solid var(--line)}
 
-        /* final */
-        .ly-final { margin: 0 20px 96px; border-radius: 32px; padding: 84px 48px; text-align: center; color: var(--paper); background: radial-gradient(700px 360px at 85% 0%, rgba(193, 68, 14, .45), transparent 70%), radial-gradient(600px 300px at 0% 100%, rgba(242, 181, 68, .22), transparent 70%), var(--ink); }
-        .ly-final h2 { font-family: var(--font-display); font-weight: 900; font-size: clamp(2.1rem, 4.4vw, 3.4rem); line-height: 1.04; letter-spacing: -.03em; max-width: 15em; margin: 0 auto; }
-        .ly-final p { margin: 18px auto 30px; font-size: 1.12rem; color: rgba(245, 239, 226, .78); max-width: 36em; }
-        .ly-final .ly-ctas { justify-content: center; }
-        .ly-final .fine { margin: 22px auto 0; font-size: .95rem; color: rgba(245, 239, 226, .65); }
-        .ly-final .fine a { color: var(--gold); }
+/* ===== video ===== */
+.vhead{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+.lang{display:inline-flex;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:4px}
+.lang button{border:0;background:none;border-radius:9px;padding:10px 18px;min-width:96px;font-weight:600;cursor:pointer;color:#cfc7bd}
+.lang button[aria-pressed="true"]{background:#fff;color:var(--ink)}
+.player{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#000}
+.player video{position:absolute;inset:0;width:100%;height:100%}
+.player__cover{position:absolute;inset:0;border:0;padding:0;background:#000;cursor:pointer}
+.player__cover img{width:100%;height:100%;object-fit:cover;opacity:.9}
+.player__btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 10px rgba(255,90,31,.25)}
 
-        .ly-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: none; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(36, 29, 22, .96); backdrop-filter: blur(8px); transform: translateY(110%); transition: transform .3s; }
-        .ly-sticky.show { transform: none; }
-        .ly-sticky a { flex: 1; justify-content: center; padding: 13px 10px; font-size: .92rem; }
+/* ===== faq/final ===== */
+.faq{max-width:800px;margin:0 auto}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;padding:18px 0;font-family:var(--h);font-weight:700;font-size:16.5px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-size:22px;line-height:1;color:var(--muted);font-weight:500}
+.faq details[open] summary::after{content:"−"}
+.faq p{margin:0 0 18px;color:var(--ink-2)}
+.final{display:grid;grid-template-columns:1.1fr .9fr;border-radius:24px;overflow:hidden;background:#140f0b;color:#fff}
+.final__t{padding:clamp(28px,5vw,64px);display:flex;flex-direction:column;justify-content:center}
+.final h2{color:#fff}
+.final p{color:#ddd4c9;font-size:17px;margin:14px 0 24px}
+.final__img img{width:100%;height:100%;object-fit:cover}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+footer{padding:32px 0 120px;font-size:13.5px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center}
+footer img{height:21px;width:auto}
 
-        .footer-social{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}.footer-social a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);color:inherit;opacity:.85;transition:background .2s,opacity .2s,transform .2s}.footer-social a:hover{background:#ff6b35;color:#fff;opacity:1;transform:translateY(-2px)}.footer-social svg{width:18px;height:18px;fill:currentColor}@media(max-width:768px){.footer-social{justify-content:center}}
+/* sticky mobile bar */
+.mbar{position:fixed;left:0;right:0;bottom:0;z-index:45;background:#fff;border-top:1px solid var(--line);padding:10px max(14px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));display:none;gap:10px;align-items:center;box-shadow:0 -10px 30px -14px rgba(0,0,0,.22);transform:translateY(110%);transition:transform .25s}
+.mbar.on{transform:none}
+.mbar__p{line-height:1.2;min-width:0}
+.mbar__p b{font-family:var(--h);font-size:19px;display:block;font-weight:800}
+.mbar__p small{font-size:12px;color:var(--green);font-weight:600;white-space:nowrap}
+.mbar .btn--o{flex:1;min-height:50px;padding:0 12px}
 
-        .ly-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
-        .ly-reveal.in { opacity: 1; transform: none; }
-        @media (prefers-reduced-motion: reduce) { .ly-reveal { opacity: 1; transform: none; transition: none; } }
+/* ===== CHECKOUT (full screen) ===== */
+.co{position:fixed;inset:0;z-index:80;background:#fff;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.co.open{display:block}
+.co__top{border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:3}
+.co__top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:1100px}
+.co__top img{height:22px;width:auto}
+.co__top span{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:500}
+.back{border:0;background:none;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0}
+.co__grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);max-width:1100px;margin:0 auto;min-height:calc(100vh - 60px)}
+.co__main{padding:28px max(16px,env(safe-area-inset-left,0px)) 40px;padding-right:clamp(16px,4vw,48px)}
+.co__side{background:var(--soft);border-left:1px solid var(--line);padding:28px clamp(16px,3vw,40px) 40px}
+.co__side .in{position:sticky;top:88px}
+.co h2{font-size:20px;margin:0 0 14px;letter-spacing:-.01em}
+.co section{margin-bottom:28px}
+.f{display:grid;gap:5px;margin-bottom:12px}
+.f label{font-size:13px;font-weight:600;color:var(--ink-2)}
+.f input,.f textarea,.f select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:13px 14px;background:#fff;font-size:16px;outline:none}
+.f input:focus,.f textarea:focus,.f select:focus{border-color:var(--ink)}
+.f .err{display:none;color:var(--red);font-size:12.5px}
+.f.bad .err{display:block}
+.f.bad input,.f.bad textarea,.f.bad select{border-color:var(--red)}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.ups{display:grid;gap:10px}
+.up{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px 10px 10px;background:#fff}
+.up.hl{border-color:var(--brand);background:var(--brand-soft)}
+.up__img{width:56px;height:56px;border-radius:10px;background:var(--soft);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--brand-d)}
+.up__img img{width:100%;height:100%;object-fit:cover}
+.up b{display:block;font-size:14.5px}
+.up small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}
+.up em{font-style:normal;font-weight:700;font-size:13.5px;color:var(--ink)}
+.up button{border:1.5px solid var(--ink);background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap}
+.up button.on{background:var(--ink);color:#fff}
+.payopt{display:grid;gap:10px}
+.payopt label{display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;background:#fff}
+.payopt label:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.payopt input{accent-color:var(--ink);width:18px;height:18px}
+.payopt b{display:block;font-size:15px}
+.payopt small{display:block;font-size:13px;color:var(--muted)}
+.payopt em{font-style:normal;font-family:var(--h);font-weight:800}
+.paylogos{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.paylogos span{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:5px;padding:3px 7px;color:var(--ink-2);background:#fff}
+.li{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:10px 0}
+.li__img{position:relative;width:56px;height:56px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.li__img img{width:100%;height:100%;object-fit:cover;border-radius:9px}
+.li__img i{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;border-radius:10px;background:var(--ink-2);color:#fff;font-size:11.5px;font-weight:700;font-style:normal;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.li b{display:block;font-size:14px;line-height:1.3}
+.li small{display:block;font-size:12.5px;color:var(--muted)}
+.li .rm{border:0;background:none;color:var(--muted);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:0;margin-top:2px}
+.li__p{font-weight:600;font-size:14.5px;text-align:right}
+.sum{border-top:1px solid var(--line);margin-top:10px;padding-top:12px;display:grid;gap:8px;font-size:14.5px}
+.sum div{display:flex;justify-content:space-between;gap:12px}
+.sum .z{color:var(--green);font-weight:600}
+.sum .t{font-family:var(--h);font-size:19px;font-weight:800;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.split div{border-radius:12px;padding:11px 12px;background:var(--green-soft)}
+.split div+div{background:#fff;border:1px solid var(--line)}
+.split small{display:block;font-size:12px;color:var(--ink-2);font-weight:500}
+.split b{font-family:var(--h);font-size:20px;font-weight:800}
+.save{margin-top:12px;font-size:13.5px;color:#0f6a30;font-weight:600}
+.cosum-t{display:none}
+.place{margin-top:6px}
+.secure{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12.5px;color:var(--muted);margin-top:10px}
+.done{text-align:center;padding:40px 10px;max-width:520px;margin:0 auto}
+.done i{width:68px;height:68px;border-radius:50%;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
 
-        @media (max-width: 1100px) {
-            .ly-hero-grid { grid-template-columns: 1fr; }
-            .lp-stage { max-width: 640px; width: 100%; margin: 0 auto; }
-            .ly-steps.four { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 900px) {
-            .ly-split, .ly-faq-wrap { grid-template-columns: 1fr; gap: 36px; }
-            .ly-split.flip > :first-child { order: 0; }
-            .ly-split + .ly-split { margin-top: 72px; }
-            .lp-cards, .lp-links { grid-template-columns: repeat(2, 1fr); }
-            .ly-steps { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 640px) {
-            .ly-section { padding: 68px 0; }
-            .ly-hero { padding: 44px 0 60px; }
-            .lp-cards, .lp-links, .ly-steps.four { grid-template-columns: 1fr; }
-            .lp-stage { padding-bottom: 0; }
-            .lp-stage .ly-win { transform: none; }
-            .lp-float { position: relative; inset: auto; margin: -36px 0 0 auto; }
-            .lp-float.bl { margin: -36px auto 0 0; }
-            .lp-ticket { width: 210px; }
-            .lp-duo { grid-template-columns: 1fr 120px; gap: 12px; }
-            .lp-phone { border-radius: 22px; padding: 5px; }
-            .lp-phone img { border-radius: 18px; }
-            .ly-callout { font-size: 1.05rem; right: 10px; bottom: 10px; }
-            .ly-final { margin: 0 12px 80px; padding: 56px 22px; }
-            .ly-sticky { display: flex; }
-            .footer { padding-bottom: 90px; }
-        }
-    </style>
-<script src="/assets/rg-analytics.js" async></script>
+@media (max-width:1000px){
+  .pdp{grid-template-columns:1fr;padding-top:0}
+  .gal{position:static;grid-template-columns:1fr;margin:8px 0 0}
+  .thumbs{display:none}
+  .slides{border-radius:18px;box-shadow:0 18px 40px -24px rgba(22,18,14,.45)}
+  .gal__nav{display:none}
+  .demo{grid-template-columns:1fr}
+  .demo .ph{order:2}
+  .steps{grid-template-columns:1fr 1fr}
+  .tour{grid-template-columns:1fr}
+  .tour .pad{order:-1;max-width:400px;width:100%;margin:0 auto}
+  .pk{grid-template-columns:1fr;max-width:520px;margin:0 auto;gap:24px}
+  .pkc.hl{order:-1}
+  .final{grid-template-columns:1fr}
+  .final__img{max-height:320px;overflow:hidden;order:-1}
+  .co__grid{grid-template-columns:1fr}
+  .co__side{order:-1;border-left:0;border-bottom:1px solid var(--line);padding:0}
+  .co__side .in{position:static}
+  .cosum-t{display:flex;width:100%;justify-content:space-between;align-items:center;border:0;background:var(--soft);padding:14px 16px;font-weight:600;font-size:14.5px;cursor:pointer;color:var(--brand-d)}
+  .cosum-t b{color:var(--ink);font-family:var(--h);font-size:17px}
+  .cosum{display:none;padding:4px 16px 18px}
+  .cosum.on{display:block}
+}
+@media (max-width:640px){
+  .top nav{display:none}
+  .bar{font-size:12.5px}
+  .sw{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .strip .wrap{grid-template-columns:1fr 1fr;padding:0}
+  .strip div:nth-child(3){border-left:0}
+  .strip div:nth-child(n+3){border-top:1px solid var(--line)}
+  .steps{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 6px;gap:12px;scrollbar-width:none}
+  .steps::-webkit-scrollbar{display:none}
+  .st{flex:0 0 80%;scroll-snap-align:start}
+  .tlist{display:flex;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+  .tlist::-webkit-scrollbar{display:none}
+  .tlist button{flex:0 0 auto;padding:10px 14px}
+  .tlist span{display:none}
+  .proof{grid-template-columns:1fr}
+  .ph{width:300px}
+  .tabs2{display:flex;width:100%}
+  .tabs2 button{flex:1;padding:9px 8px}
+  .lang{width:100%}.lang button{flex:1}
+  .player__btn{width:62px;height:62px}
+  .mbar{display:flex}
+  .r2{grid-template-columns:1fr}
+  .r3{grid-template-columns:1fr 1fr}
+  .r3 .f:first-child{grid-column:1/-1}
+  .co__main{padding-top:20px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important;animation:none!important}}
+</style>
 </head>
 <body>
-    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-        <symbol id="l-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
-        <symbol id="l-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
-        <symbol id="l-chat" viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></symbol>
-        <symbol id="l-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
-        <symbol id="s-in" viewBox="0 0 24 24"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.84-2.05 3.79-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></symbol>
-        <symbol id="s-ig" viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.21 15.58 2.2 15.2 2.2 12s.01-3.58.07-4.85C2.42 3.92 3.94 2.37 7.15 2.27 8.42 2.21 8.8 2.2 12 2.2zm0 4.86a4.94 4.94 0 1 0 0 9.88 4.94 4.94 0 0 0 0-9.88zm0 8.15a3.21 3.21 0 1 1 0-6.42 3.21 3.21 0 0 1 0 6.42zm5.14-9.5a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"/></symbol>
-        <symbol id="s-x" viewBox="0 0 24 24"><path d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.78zm-1.08 16.18h1.7L7.4 4.74H5.58z"/></symbol>
-        <symbol id="s-yt" viewBox="0 0 24 24"><path d="M23 7.2a3 3 0 0 0-2.1-2.12C19.04 4.6 12 4.6 12 4.6s-7.04 0-8.9.48A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.12c1.86.48 8.9.48 8.9.48s7.04 0 8.9-.48A3 3 0 0 0 23 16.8a31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.75 15.02V8.98L15.5 12z"/></symbol>
-    </svg>
+<div class="bar">Book with <b>₹500</b> · pay the rest on delivery · Menu live in 24 hours</div>
+<div class="wrap">
+  <div class="top">
+    <img src="img/restrogrow-logo.png" alt="RestroGrow" width="144" height="24">
+    <nav aria-label="Page"><a href="#live">Live demo</a><a href="#build">Make your menu</a><a href="#how">How it works</a><a href="#packages">Packages</a><a href="#faq">FAQ</a></nav>
+    <a class="wa" id="waTop" href="#" target="_blank" rel="noopener"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.9s.7-2.1 1-2.4c.3-.3.6-.3.8-.3h.6c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .6l-.3.5-.4.5c-.1.1-.3.3-.1.6.2.3.7 1.2 1.5 1.9 1 .9 1.9 1.2 2.2 1.3.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.1 1.3Z"/></svg>WhatsApp</a>
+  </div>
 
-    <nav class="navbar">
-        <div class="container">
-            <a href="../index.html" class="nav-brand">
-                <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="brand-logo">
-                <span class="brand-text">Restro Grow</span>
-            </a>
-            <ul class="nav-menu">
-                <li><a href="../index.html#features">Features</a></li>
-                <li><a href="../loyalty/">Loyalty</a></li>
-                <li><a href="../meal-plans/">Meal Plans</a></li>
-                <li><a href="../index.html#pricing">Pricing</a></li>
-                <li><a href="../about/">About</a></li>
-                <li><a href="../blog/">Blog</a></li>
-                <li><a href="../index.html#contact">Contact</a></li>
-                <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
-            </ul>
-            <button class="nav-toggle" aria-label="Toggle menu">
-                <svg class="ly-ico" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-            </button>
+  <!-- PRODUCT -->
+  <section class="pdp" aria-label="Smart QR Menu">
+    <div class="gal">
+      <div class="thumbs" id="thumbs"></div>
+      <div class="gal__main">
+        <div class="slides" id="slides"></div>
+        <button class="gal__nav gal__p" type="button" id="gPrev" aria-label="Previous photo"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="gal__nav gal__n" type="button" id="gNext" aria-label="Next photo"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></button>
+        <div class="dots" id="dots"></div>
+      </div>
+      <div class="gvid">
+        <div class="gvid__h"><b>Watch how it works</b><div class="lang" role="group" aria-label="Video language"><button type="button" data-lang="hi" aria-pressed="true">हिंदी</button><button type="button" data-lang="en" aria-pressed="false">English</button></div></div>
+        <div class="player">
+          <video id="vid" controls playsinline preload="none" poster="vid/poster.jpg"></video>
+          <button class="player__cover" type="button" id="vidCover" aria-label="Play video"><img src="vid/poster.jpg" alt="" loading="lazy"><span class="player__btn"><svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="player__len">2 min</span></button>
         </div>
-    </nav>
-
-    <!-- ═══ Hero ═══ -->
-    <header class="ly-hero">
-        <div class="container ly-hero-grid">
-            <div>
-                <p class="ly-kicker">QR code menu ordering</p>
-                <h1>QR code menu ordering that sends every order <span class="u">to the kitchen.</span></h1>
-                <p class="ly-lead">Put a QR on each table. Guests scan it, browse your menu with photos and order from their own phone. The order reaches the kitchen as a KOT with the table number on it. Nothing to download.</p>
-                <div class="ly-ctas">
-                    <a href="../main/admin/login.php?tab=signup" class="ly-btn primary"><span>Start <span data-trial-days>7</span>-day free trial</span> <svg class="ly-ico"><use href="#l-arrow"/></svg></a>
-                    <a href="../app-demo/" class="ly-btn ghost"><svg class="ly-ico" style="fill:currentColor;stroke:none"><use href="#l-play"/></svg> Try the app demo</a>
-                </div>
-                <div class="ly-where">
-                    <span><b>✓</b> <span>No app for guests</span></span>
-                    <span><b>✓</b> <span>Orders tagged with the table</span></span>
-                    <span><b>✓</b> <span>Call waiter button</span></span>
-                </div>
-            </div>
-            <div class="lp-stage">
-                <div class="ly-win">
-                <div class="ly-win-bar"><i></i><i></i><i></i></div>
-                <img src="../about/img/qrCodesPage.webp" width="1280" height="900" alt="Restro Grow QR codes for tables: one QR per table with Design standee, Download and Print buttons" fetchpriority="high">
-            </div>
-                <div class="lp-float br" style="width:170px"><div class="lp-phone"><img src="../about/img/c_home.webp" width="400" height="860" alt="A restaurant's own menu page opened from a table QR, with dine-in, takeaway and delivery" loading="lazy"></div></div>
-            </div>
-        </div>
-    </header>
-
-    <!-- ═══ Intro ═══ -->
-    <section class="ly-section">
-        <div class="container">
-            <div class="ly-head" style="margin-bottom:0">
-                <p class="ly-kicker">Menu or ordering?</p>
-                <h2 class="ly-h2">A QR menu should do more than <em>open a PDF.</em></h2>
-                <p class="ly-sub">A QR code that opens a PDF shows guests your dishes, but they still have to wave for a waiter to order. With table QR ordering the QR opens your live menu, the guest orders from it, and the kitchen gets the ticket straight away, tagged with the table. Our guide on <a href="../blog/how-to-make-qr-code-menu-for-restaurant">how to make a QR code menu</a> explains both.</p>
-                <p class="ly-sub">Restro Grow's table QR codes open your own ordering website, the same one customers use for takeaway and delivery. See <a href="../">everything Restro Grow does</a>.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══ Main features ═══ -->
-    <section class="ly-section raised" id="features" style="padding-top:96px">
-        <div class="container ly-split">
-            <div>
-                <p class="ly-kicker">What guests see</p>
-                <h2 class="ly-h2">Your menu, <em>on their phone.</em></h2>
-                <p class="ly-sub">The QR opens your restaurant's own menu page with your logo, photos and prices. Guests add dishes to the cart like on a food app, without downloading anything.</p>
-                <ul class="ly-list">
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Photos, veg and non-veg marks,</b> sizes and add-ons on the dishes.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Today's Special and bestsellers</b> near the top, so the dishes you want to sell get seen.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>“Complete your meal”</b> suggests a drink or dessert that goes with the order.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Breakfast or lunch menus</b> that show only at the hours you set.</span></li>
-                </ul>
-            </div>
-            <div class="lp-tbox ly-reveal" role="img" aria-label="A guest's phone showing Today's Specials with plates left, and bestsellers"><div class="lp-phone" style="width:250px"><img src="../loyalty/img/c_specials.webp" width="400" height="800" alt="" loading="lazy"></div></div>
-        </div>
-        <div class="container ly-split flip">
-            <div>
-                <p class="ly-kicker">Straight to the kitchen</p>
-                <h2 class="ly-h2">No waiter in the middle, <em>no order lost.</em></h2>
-                <p class="ly-sub">When a guest places a dine-in order from a table QR, it reaches the kitchen as a KOT with the table number. Drinks made at the bar go to the bar on a BOT.</p>
-                <ul class="ly-list">
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>The table number is on the ticket,</b> so food goes to the right table.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Kitchen display or printed KOT,</b> whichever your kitchen uses.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>A new-order alert</b> rings on the dashboard until someone accepts it.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Fake-order protection:</b> numbers whose orders you keep rejecting get blocked.</span></li>
-                </ul>
-            </div>
-            <div class="ly-win ly-reveal">
-                <div class="ly-win-bar"><i></i><i></i><i></i></div>
-                <img src="../about/img/kotPage.webp" width="1280" height="900" alt="Restro Grow kitchen tickets with status and timers" loading="lazy">
-                <span class="ly-callout">KOT with the table</span>
-            </div>
-        </div>
-        <div class="container ly-split">
-            <div>
-                <p class="ly-kicker">Call waiter</p>
-                <h2 class="ly-h2">Guests ask for things <em>without waving.</em></h2>
-                <p class="ly-sub">Next to the menu there's a Call waiter button. Guests pick what they need and the request reaches your staff straight away.</p>
-                <ul class="ly-list">
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Water, cutlery, the bill</b> or “ready to order”.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Requests show up</b> in Waiter Requests, on the waiter's screen and in the owner app.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Switch it off</b> any time if you don't want it.</span></li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>The table map</b> shows which tables are busy, and for how long.</span></li>
-                </ul>
-            </div>
-            <div class="ly-win ly-reveal">
-                <div class="ly-win-bar"><i></i><i></i><i></i></div>
-                <img src="../about/img/tableMapPage.webp" width="1280" height="900" alt="Restro Grow table map with free, busy, reserved and switched-off tables" loading="lazy">
-                <span class="ly-callout">live floor</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══ More features ═══ -->
-    <section class="ly-section">
-        <div class="container">
-            <div class="ly-head">
-                <p class="ly-kicker">More with table QR</p>
-                <h2 class="ly-h2">Details that <em>guests notice.</em></h2>
-                <p class="ly-sub">All of this is in the product today.</p>
-            </div>
-            <div class="lp-cards">
-                <div class="lp-card ly-reveal"><span class="e">💳</span><h3>Pay at the counter or online</h3><p>Guests can choose to pay at the counter, or pay online if you've set up online payments or your UPI QR.</p></div>
-                <div class="lp-card ly-reveal"><span class="e">🎁</span><h3>Table orders earn points</h3><p>Guests who give their phone number earn loyalty points on table orders too, and become customers you can bring back. <a href="../loyalty/">See Loyalty</a>.</p></div>
-                <div class="lp-card ly-reveal"><span class="e">🔍</span><h3>Search and veg filter</h3><p>Guests can search the menu and switch to veg only, so a long menu stays easy to use.</p></div>
-                <div class="lp-card ly-reveal"><span class="e">🖨️</span><h3>QR codes ready to print</h3><p>Download every table's QR in one go, or design a 4 × 6 inch standee with your logo and colours, ready to print.</p></div>
-                <div class="lp-card ly-reveal"><span class="e">💬</span><h3>Prefer WhatsApp?</h3><p>Restro Grow can also make a QR for each table that opens a WhatsApp chat to order. See <a href="../whatsapp-ordering/">WhatsApp ordering</a>.</p></div>
-                <div class="lp-card ly-reveal"><span class="e">🛵</span><h3>Same menu for delivery</h3><p>The page your QR opens is your own ordering website, so next time guests can order takeaway or delivery from home, with no commission.</p></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══ How it works ═══ -->
-    <section class="ly-section raised" id="how-it-works">
-        <div class="container">
-            <div class="ly-head center">
-                <p class="ly-kicker">How it works</p>
-                <h2 class="ly-h2">Table QR ordering <em>in three steps.</em></h2>
-            </div>
-            <div class="ly-steps">
-                <div class="ly-step ly-reveal"><h3>Add your tables</h3><p>Name them by area: Ground Floor T1 to T6, Rooftop R1 to R4.</p></div>
-                <div class="ly-step ly-reveal"><h3>Print the QR codes</h3><p>Download them all, or design standees with your logo, and put one on each table.</p></div>
-                <div class="ly-step ly-reveal"><h3>Guests scan and order</h3><p>Orders reach the kitchen with the table number. You serve, they pay.</p></div>
-            </div>
-            <p class="lp-note ly-reveal">Stuck on a step? Call or WhatsApp <a href="tel:+916377568749">+91 63775 68749</a> and we'll set it up with you.</p>
-        </div>
-    </section>
-
-    <!-- ═══ FAQ ═══ -->
-    <section class="ly-section" id="faq">
-        <div class="container ly-faq-wrap">
-            <div>
-                <p class="ly-kicker">Questions</p>
-                <h2 class="ly-h2">QR ordering questions</h2>
-                <p class="ly-sub">Something else? Message us on WhatsApp and talk to a person.</p>
-                <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20QR%20ordering%20on%20Restro%20Grow" target="_blank" rel="noopener" class="ly-btn wa" style="margin-top:22px"><svg class="ly-ico"><use href="#l-chat"/></svg> Chat on WhatsApp</a>
-            </div>
-            <div class="ly-faq">
-                <details open><summary>Do guests need to download an app?</summary><p>No. The QR opens your menu in the phone's browser. Guests order there, and can come back to the same page any time.</p></details>
-                <details><summary>How does the kitchen know which table ordered?</summary><p>Each table has its own QR code. The order arrives tagged with that table, and the KOT shows the table number.</p></details>
-                <details><summary>Can guests still order from a waiter?</summary><p>Yes. QR ordering sits next to normal service. Waiters can take orders on their phone or at the POS, and both reach the same kitchen.</p></details>
-                <details><summary>How do guests pay?</summary><p>They can pay at the counter as usual, or pay online if you've set up online payments or your UPI QR.</p></details>
-                <details><summary>What about fake orders?</summary><p>Orders need a valid phone number, one number can only place so many orders, and a number whose orders you keep rejecting gets blocked by itself.</p></details>
-                <details><summary>Is this the same as a PDF menu?</summary><p>No. A PDF only shows the menu. Restro Grow's QR opens a live menu: change a price or mark a dish sold out and guests see it at once, and they can order from it.</p></details>
-                <details><summary>Can I print the QR codes myself?</summary><p>Yes. Download all the QR codes at once and print them on any printer, or use the standee designer to make a 4 × 6 inch table standee with your logo.</p></details>
-                <details><summary>What happens if I rename a table?</summary><p>Its QR code changes, so Restro Grow warns you before you save. Print the new QR for that table.</p></details>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══ Related ═══ -->
-    <section class="ly-section raised">
-        <div class="container">
-            <div class="ly-head">
-                <p class="ly-kicker">Keep reading</p>
-                <h2 class="ly-h2">Keep exploring</h2>
-            </div>
-            <div class="lp-links">
-                <a class="lp-link ly-reveal" href="../restaurant-billing-software/"><small>Billing</small><b>Restaurant billing software</b><span>GST bills, split payments and offline billing.</span></a>
-                <a class="lp-link ly-reveal" href="../restaurant-pos-software/"><small>POS</small><b>Restaurant POS software</b><span>Counter, tables, kitchen and bar in one system.</span></a>
-                <a class="lp-link ly-reveal" href="../whatsapp-ordering/"><small>WhatsApp</small><b>WhatsApp ordering</b><span>Let customers order in a WhatsApp chat.</span></a>
-                <a class="lp-link ly-reveal" href="../loyalty/"><small>Loyalty</small><b>Loyalty &amp; Growth</b><span>Turn first-time diners into regulars.</span></a>
-                <a class="lp-link ly-reveal" href="../blog/how-to-make-qr-code-menu-for-restaurant"><small>Blog</small><b>How to make a QR code menu</b><span>The PDF way, and how table QR ordering works.</span></a>
-                <a class="lp-link ly-reveal" href="../blog/own-online-ordering-website-for-restaurant"><small>Blog</small><b>Your own ordering website</b><span>How to take orders online with zero commission.</span></a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══ Final ═══ -->
-    <section class="ly-final" style="margin-top:96px">
-        <h2>Put your menu on every table.</h2>
-        <p>Add your tables, print the QR codes and take your first QR order tonight.</p>
-        <div class="ly-ctas">
-            <a href="../main/admin/login.php?tab=signup" class="ly-btn primary"><span>Start free trial</span> <svg class="ly-ico"><use href="#l-arrow"/></svg></a>
-            <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20QR%20ordering%20on%20Restro%20Grow" target="_blank" rel="noopener" class="ly-btn ghost"><svg class="ly-ico"><use href="#l-chat"/></svg> Talk to us</a>
-        </div>
-        <p class="fine"><b><span data-trial-days>7</span>-day free trial</b> on every plan. No credit card needed, cancel anytime, set up in about 5 minutes. <a href="../index.html#pricing">See plans and pricing</a>.</p>
-    </section>
-
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <div class="footer-brand">
-                        <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="footer-logo">
-                        <span>Restro Grow</span>
-                    </div>
-                    <p>Complete restaurant management solution for modern restaurants.</p>
-                    <div class="footer-social" aria-label="Follow RestroGrow">
-                        <a href="https://www.linkedin.com/company/restro-grow/" target="_blank" rel="noopener me" aria-label="RestroGrow on LinkedIn" title="LinkedIn"><svg aria-hidden="true"><use href="#s-in"/></svg></a>
-                        <a href="https://www.instagram.com/restrogrow/" target="_blank" rel="noopener me" aria-label="RestroGrow on Instagram" title="Instagram"><svg aria-hidden="true"><use href="#s-ig"/></svg></a>
-                        <a href="https://x.com/restrogrow" target="_blank" rel="noopener me" aria-label="RestroGrow on X (Twitter)" title="X (Twitter)"><svg aria-hidden="true"><use href="#s-x"/></svg></a>
-                        <a href="https://www.youtube.com/@RestroGrow" target="_blank" rel="noopener me" aria-label="RestroGrow on YouTube" title="YouTube"><svg aria-hidden="true"><use href="#s-yt"/></svg></a>
-                    </div>
-                </div>
-                <div class="footer-section">
-                    <h4>Product</h4>
-                    <ul>
-                        <li><a href="../index.html#features">Features</a></li>
-                        <li><a href="../restaurant-billing-software/">Restaurant Billing Software</a></li>
-                        <li><a href="../restaurant-pos-software/">Restaurant POS Software</a></li>
-                        <li><a href="../whatsapp-ordering/">WhatsApp Ordering</a></li>
-                        <li><a href="../loyalty/">Loyalty &amp; Growth</a></li>
-                        <li><a href="../meal-plans/">Meal Plans</a></li>
-                        <li><a href="../index.html#pricing">Pricing</a></li>
-                        <li><a href="../main/admin/login.php">Login</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Company</h4>
-                    <ul>
-                        <li><a href="../about/">About Us</a></li>
-                        <li><a href="../blog/">Blog</a></li>
-                        <li><a href="../faq/">FAQ</a></li>
-                        <li><a href="../index.html#contact">Contact Us</a></li>
-                        <li><a href="https://repeatgrow.com/" target="_blank" rel="noopener" title="Repeat Grow, our WhatsApp CRM">WhatsApp CRM: Repeat Grow</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="../privacy-policy/">Privacy Policy</a></li>
-                        <li><a href="../terms-of-service/">Terms of Service</a></li>
-                        <li><a href="../refund-policy/">Refund &amp; Return Policy</a></li>
-                        <li><a href="../cookie-policy/">Cookie Policy</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; <span class="js-year">2026</span> Restro Grow. All rights reserved.</p>
-                <p style="margin-top: 8px; font-size: 0.9rem;">
-                    <a href="mailto:support@restrogrow.com" style="color: inherit; opacity: .75; text-decoration: none; margin-right: 16px;">support@restrogrow.com</a>
-                    <a href="tel:+916377568749" style="color: inherit; opacity: .75; text-decoration: none;">+91 63775 68749</a>
-                </p>
-            </div>
-        </div>
-    </footer>
-
-    <div class="ly-sticky" id="sticky">
-        <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20QR%20ordering%20on%20Restro%20Grow" target="_blank" rel="noopener" class="ly-btn wa"><svg class="ly-ico"><use href="#l-chat"/></svg> WhatsApp</a>
-        <a href="../main/admin/login.php?tab=signup" class="ly-btn primary">Free trial</a>
+      </div>
     </div>
 
-    <script src="../script.js?v=3.0"></script>
-    <script>
-        // trial length from Super Admin settings; year; fade-in as sections scroll into view; sticky bar on phones
-        fetch('../main/api/public_info.php').then(function (r) { return r.json(); }).then(function (d) { if (d && d.trial_days) document.querySelectorAll('[data-trial-days]').forEach(function (e) { e.textContent = d.trial_days; }); }).catch(function () {});
-        document.querySelectorAll('.js-year').forEach(function (e) { e.textContent = new Date().getFullYear(); });
-        (function () {
-            var els = document.querySelectorAll('.ly-reveal');
-            if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
-            var io = new IntersectionObserver(function (entries) {
-                entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-            }, { rootMargin: '0px 0px -8% 0px' });
-            els.forEach(function (e) { io.observe(e); });
-        })();
-        (function () {
-            var bar = document.getElementById('sticky'), hero = document.querySelector('.ly-hero');
-            if (!('IntersectionObserver' in window)) return;
-            new IntersectionObserver(function (en) { bar.classList.toggle('show', !en[0].isIntersecting); }).observe(hero);
-        })();
-    </script>
+    <div class="buy">
+      <div class="vendor">RestroGrow</div>
+      <h1>Smart QR Menu for your restaurant</h1>
+      <div class="trustln"><span class="stars" aria-hidden="true">★★★★★</span><span>Trusted by <b>5,000+ restaurants</b> across India</span></div>
+      <div class="pr"><span class="pr__now" id="prNow">₹1,999</span><span class="pr__was" id="prWas" hidden></span><span class="pr__off" id="prOff" hidden></span></div>
+      <div class="book500"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></svg><span>Book with <b>₹500</b> now · pay the rest on delivery</span></div>
+
+      <div class="blk">
+        <div class="blk__h"><b>1. Choose package</b><a href="#packages" style="font-size:13.5px;color:var(--muted)">See all features</a></div>
+        <div class="pkgs" id="pkgs"></div>
+        <ul class="inc" id="inc"></ul>
+      </div>
+      <div class="blk">
+        <div class="blk__h"><b>2. Standee design</b><span id="dName"></span></div>
+        <div class="sw" id="sw" role="group" aria-label="Standee design"></div>
+      </div>
+      <div class="blk">
+        <div class="blk__h"><b>3. Number of standees</b><span>₹99 each extra</span></div>
+        <div class="stq">
+          <p><b id="stTotal">0 standees</b><span id="stSub"></span></p>
+          <div class="qty"><button type="button" class="qm" aria-label="Fewer standees">−</button><output class="qv">0</output><button type="button" class="qp" aria-label="More standees">+</button></div>
+        </div>
+        <div class="chips" id="chips"><button type="button" data-add="5">+5 standees</button><button type="button" data-add="10">+10 standees</button><button type="button" data-add="20">+20 standees</button></div>
+      </div>
+
+      <div class="tot"><span>Total</span><div><b id="tot">₹1,999</b><small id="totSub">₹500 now · ₹1,499 on delivery</small></div></div>
+      <div class="ctas">
+        <button class="btn btn--o btn--full" type="button" data-checkout>Book now · Pay ₹500</button>
+        <a class="btn btn--w btn--full" href="#build">Make my menu free · upload photo</a>
+      </div>
+      <div class="assure">
+        <div><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>Super-fast delivery</div>
+        <div><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Menu live in 24 hrs</div>
+        <div><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></svg>Cash on delivery</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+
+
+<!-- LIVE DEMO -->
+<section class="sec" id="live">
+  <div class="wrap">
+    <div class="head c"><span class="eb">Live product demo</span><h2>Order as a guest. Receive it as the owner.</h2><p>This is the real menu of Kohuke Restaurant, Pune, a RestroGrow client. Place an order and pay on the phone, then accept it on the counter screen.</p></div>
+    <div class="devtabs" role="group" aria-label="Choose screen"><button type="button" data-dev="guest" aria-pressed="true">📱 Guest's phone</button><button type="button" data-dev="owner" aria-pressed="false">🧑‍🍳 Your counter</button></div>
+    <div class="devs" data-show="guest">
+      <div class="dev dev--guest">
+        <p class="devlbl"><i>1</i>Guest scans the QR and orders</p>
+        <div class="ph"><div class="ph__s"><div class="ph__bar"><span>9:41</span><svg width="58" height="12" viewBox="0 0 58 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><rect x="33" y="1" width="21" height="10" rx="3" fill="none" stroke="#16120e"/><rect x="35" y="3" width="15" height="6" rx="1.5"/><rect x="55" y="4" width="2" height="4" rx="1"/></svg></div><div class="ph__v"><div class="app" id="app"></div></div></div></div>
+      </div>
+      <div class="arrow" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>instantly</span></div>
+      <div class="dev dev--owner">
+        <p class="devlbl"><i>2</i>Order rings on your counter</p>
+        <div class="pad2"><div class="pad2__s">
+          <div class="kh"><img src="img/kh-logo.png" alt="" style="height:18px;width:auto;background:#fff;border-radius:4px;padding:2px 4px"><b>Kitchen Order Ticket (KOT)</b><span class="live"><i></i>Live</span></div>
+          <div class="kotal" id="kotAlert">🔔 <b>New order</b></div>
+          <div class="kbody"><div id="kot"></div>
+            <div class="kempty" id="kotEmpty"><span>🧾</span><b>Waiting for orders…</b>Place an order on the guest's phone. It will appear here with a sound, and you can accept it.</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <ul class="demopts">
+      <li>✓ Category, Veg filter, search, Half / Full</li><li>✓ "Complete your meal" suggestions</li><li>✓ UPI, NetBanking or pay at counter</li><li>✓ Staff accepts every order before cooking</li>
+    </ul>
+  </div>
+</section>
+
+<!-- BUILDER -->
+<section class="sec" id="build">
+  <div class="wrap demo">
+    <div>
+      <span class="eb">Free · takes 1 minute</span>
+      <h2>Upload your menu photo. See your own QR menu.</h2>
+      <p style="color:var(--ink-2);font-size:17px;margin:14px 0 22px">Take a photo of your printed menu. Our AI reads every dish and price and builds your menu on the phone. Then book it.</p>
+      <div class="f" style="max-width:460px"><label for="bName">Restaurant name</label><input id="bName" placeholder="e.g. Sharma Dhaba" autocomplete="organization"></div>
+      <label class="drop" id="drop" for="bFile" style="max-width:460px;position:relative">
+        <i><svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3M12 15V3M7 8l5-5 5 5"/></svg></i>
+        <b>Upload menu photo</b><small>JPG, PNG or PDF · up to 4 photos</small>
+        <input id="bFile" type="file" accept="image/*,application/pdf" multiple>
+      </label>
+      <div class="bstat" id="bStat" style="max-width:460px"><img id="bThumb" alt=""><div style="flex:1"><p id="bMsg"><b>Reading your menu…</b>Finding dishes and prices</p><div class="bar2"><i id="bBar"></i></div></div></div>
+      <div class="btns" id="bCtas" style="margin-top:16px;display:none"><button class="btn btn--o" type="button" data-checkout>Book this menu · ₹500</button></div>
+    </div>
+    <div>
+      <div class="ph"><div class="ph__s"><div class="ph__bar"><span>9:41</span><svg width="58" height="12" viewBox="0 0 58 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><rect x="33" y="1" width="21" height="10" rx="3" fill="none" stroke="#16120e"/><rect x="35" y="3" width="15" height="6" rx="1.5"/><rect x="55" y="4" width="2" height="4" rx="1"/></svg></div>
+        <div class="ph__v"><div class="app" id="app2"><div class="empty2"><i><svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM20 20h1"/></svg></i><b style="color:var(--ink);font-size:14px">Your menu appears here</b>Upload a photo of your menu</div></div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="sec" id="how">
+  <div class="wrap">
+    <div class="head"><span class="eb">How it works</span><h2>From the table to your kitchen in 4 steps.</h2></div>
+    <div class="steps">
+      <article class="st"><div class="st__img"><img src="img/p03-customer-scanning.jpg" alt="Guest scanning the QR standee with her phone" loading="lazy"></div><div class="st__t"><span class="st__n"><i>1</i>Guest</span><h3>Scans the standee</h3><p>Any phone camera. Menu opens in 2 seconds. No app.</p></div></article>
+      <article class="st"><div class="st__img shot"><img src="img/kh-menu.jpg" alt="Real Kohuke menu with dish photos and prices" loading="lazy"></div><div class="st__t"><span class="st__n"><i>2</i>Guest</span><h3>Orders from the table</h3><p>Photos, combos, offers. Order goes in with the table number.</p></div></article>
+      <article class="st"><div class="st__img shot"><img src="img/adm/03-kitchen-KOT.jpg" alt="Kitchen order ticket screen in the RestroGrow dashboard" loading="lazy"></div><div class="st__t"><span class="st__n"><i>3</i>You</span><h3>Kitchen gets the KOT</h3><p>Sound alert and printed ticket. No handwriting, no mistakes.</p></div></article>
+      <article class="st"><div class="st__img"><img src="img/s4.jpg" alt="QR standee with table number on a restaurant table" loading="lazy"></div><div class="st__t"><span class="st__n"><i>4</i>You</span><h3>More orders, every table</h3><p>Faster service, bigger bills, and every guest's number saved.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section class="sec dark" id="dashboard">
+  <div class="wrap tour">
+    <div>
+      <div class="head" style="margin-bottom:24px"><span class="eb">Your dashboard</span><h2>Run your restaurant from your phone.</h2><p>Real screens from a RestroGrow restaurant. Tap to see each one.</p></div>
+      <div class="tlist" role="tablist" aria-label="Dashboard screens" id="tour"></div>
+    </div>
+    <div class="pad"><div class="pad__s"><img id="tourImg" src="img/adm/01-dashboard.jpg" alt="Dashboard" width="662" height="881"></div></div>
+  </div>
+</section>
+
+
+<!-- SHOWCASE -->
+<section class="sec" style="padding-bottom:clamp(40px,6vw,72px)">
+  <div class="wrap">
+    <div class="head"><span class="eb">Your logo · your table number</span><h2>Standees made for your restaurant.</h2><p>Premium acrylic with your logo, colours and a unique QR for every table.</p></div>
+    <div class="show" id="show"></div>
+    <div class="logos"><span>Restaurants on RestroGrow</span><div><img src="img/lg1.jpg" alt="Chhappan Bhog Thali Restaurant" loading="lazy"><img src="img/sample-logo.png" alt="Taste of Banaras" loading="lazy"><img src="img/lg2.jpg" alt="Taste of Town" loading="lazy"><img src="img/lg3.jpg" alt="Love Over Coffee" loading="lazy"><img src="img/kh-logo.png" alt="Kohuke Restaurant" loading="lazy" style="object-fit:contain;background:#fff;padding:10px"></div></div>
+  </div>
+</section>
+
+<!-- PACKAGES -->
+<section class="sec soft" id="packages">
+  <div class="wrap">
+    <div class="head c"><span class="eb">Packages</span><h2>Two simple packages.</h2><p>Exactly what you get, nothing hidden. Book with ₹500, pay the rest on delivery.</p></div>
+    <div class="pk" id="pk"></div>
+    <div class="adds"><span>Optional add-ons:</span><span>Extra standee <b>₹99</b></span><span>Takeaway &amp; delivery orders <b>₹999</b></span><span>Online payment gateway <b>₹1,999</b></span></div>
+  </div>
+</section>
+
+<!-- PROOF -->
+<section class="sec" id="proof">
+  <div class="wrap">
+    <div class="head c"><span class="eb">Bonus: get found</span><h2>Your menu shows up on Google and ChatGPT.</h2><p>We write every menu with your dishes, cuisine and area. Real results for our client Taste of बनारस, Jaipur:</p></div>
+    <div class="proof">
+      <figure class="pf"><div class="pf__h"><b>Google</b><span>"Banarasi food in Jaipur"</span></div><img src="img/proof-google.jpg" alt="Google search showing Taste of Banaras website first with AI overview" loading="lazy" width="720" height="961"><figcaption>Their own website comes first, with every outlet listed.</figcaption></figure>
+      <figure class="pf"><div class="pf__h"><b>ChatGPT</b><span>"Most authentic Banarasi food?"</span></div><img src="img/proof-chatgpt.jpg" alt="ChatGPT recommending Taste of Banaras by name" loading="lazy" width="720" height="811"><figcaption>ChatGPT recommends them by name.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="head c"><span class="eb">Questions</span><h2>Owners usually ask</h2></div>
+    <div class="faq">
+      <details open><summary>How does the ₹500 booking work?</summary><p>Pay ₹500 online to book. We build your menu and send it on WhatsApp for approval. Pay the balance in cash or UPI when your standees are delivered.</p></details>
+      <details><summary>How fast will I get it?</summary><p>Your menu is live within 24 hours of receiving your menu. Standees are printed and shipped fast across India after you approve the design.</p></details>
+      <details><summary>Can someone order from home with a photo of the QR, or place fake orders?</summary><p>No order goes to your kitchen until your staff accepts it. Every order shows the table, the guest's name and phone number, so you always know who ordered. You can ask guests to pay by UPI before you accept, and block any number in one tap.</p></details>
+      <details><summary>What is the difference between QR Menu and QR Ordering?</summary><p>QR Menu (₹1,999) is a digital menu guests can scan and browse. QR Ordering (₹4,999) adds ordering and payment from the table, kitchen tickets, order alerts, customer data and offers, with 10 standees free.</p></details>
+      <details><summary>Can I order more standees?</summary><p>Yes. Add as many as you need for ₹99 each, on this page or at checkout.</p></details>
+      <details><summary>My customers are not tech-savvy. Will they use it?</summary><p>If they can open the phone camera, they can use it. No app, no login. Staff can still take orders the usual way.</p></details>
+      <details><summary>Where do I see the orders?</summary><p>On the RestroGrow dashboard and the RestroGrow Partner app, with a sound alert for every new order. KOT can print on your printer.</p></details>
+      <details><summary>Do you take commission on orders?</summary><p>No. 0% commission. Your orders and your customer data are yours.</p></details>
+    </div>
+  </div>
+</section>
+
+
+
+<footer><div class="wrap"><img src="img/restrogrow-logo.png" alt="RestroGrow" width="126" height="21"><span>© 2026 RestroGrow · support@restrogrow.com</span></div></footer>
+
+<div class="mbar" id="mbar">
+  <div class="mbar__p"><b id="mbP">₹1,999</b><small>Book with ₹500</small></div>
+  <button class="btn btn--o" type="button" data-checkout>Book now</button>
+</div>
+
+<!-- CHECKOUT -->
+<div class="co" id="co" role="dialog" aria-modal="true" aria-label="Checkout">
+  <div class="co__top"><div class="wrap"><button class="back" type="button" id="coBack"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back</button><img src="img/restrogrow-logo.png" alt="RestroGrow" width="132" height="22"><span><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Secure</span></div></div>
+  <div id="coBody">
+  <div class="co__grid">
+    <div class="co__main">
+      <section>
+        <h2>Contact</h2>
+        <div class="r2">
+          <div class="f"><label for="cName">Your name</label><input id="cName" autocomplete="name"><span class="err">Please enter your name</span></div>
+          <div class="f"><label for="cPhone">WhatsApp number</label><input id="cPhone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel-national" placeholder="10-digit mobile"><span class="err">Enter a valid 10-digit number</span></div>
+        </div>
+        <div class="f"><label for="cRest">Restaurant name</label><input id="cRest" autocomplete="organization"><span class="err">Please enter your restaurant name</span></div>
+      </section>
+      <section>
+        <h2>Delivery address</h2>
+        <div class="f"><label for="cAddr">Address</label><textarea id="cAddr" rows="2" autocomplete="street-address" placeholder="Shop no., building, street, area"></textarea><span class="err">Please enter the address</span></div>
+        <div class="r3">
+          <div class="f"><label for="cCity">City</label><input id="cCity" autocomplete="address-level2"><span class="err">Required</span></div>
+          <div class="f"><label for="cState">State</label><input id="cState" autocomplete="address-level1"><span class="err">Required</span></div>
+          <div class="f"><label for="cPin">Pincode</label><input id="cPin" type="tel" inputmode="numeric" maxlength="6" autocomplete="postal-code"><span class="err">6 digits</span></div>
+        </div>
+      </section>
+      <section>
+        <h2>Add to your order</h2>
+        <div class="ups" id="ups"></div>
+      </section>
+      <section>
+        <h2>Payment</h2>
+        <div class="payopt">
+          <label><input type="radio" name="pay" value="cod" checked><span><b>Pay ₹500 now, rest on delivery</b><small>Balance in cash or UPI when standees arrive</small></span><em id="payCodAmt">₹500</em></label>
+          <label><input type="radio" name="pay" value="full"><span><b>Pay full amount online</b><small>UPI, cards, net banking, wallets</small></span><em id="payFullAmt">₹4,999</em></label>
+        </div>
+        <div class="paylogos"><span>UPI</span><span>GPay</span><span>PhonePe</span><span>Paytm</span><span>Visa</span><span>Mastercard</span><span>RuPay</span></div>
+      </section>
+      <button class="btn btn--o btn--full place" type="button" id="place">Pay ₹500 &amp; place order</button>
+      <div class="secure"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Secure payment · Menu preview on WhatsApp before printing</div>
+    </div>
+    <aside class="co__side">
+      <button class="cosum-t" type="button" id="cosumT" aria-expanded="false"><span>Show order summary ▾</span><b id="cosumTot">₹4,999</b></button>
+      <div class="in cosum" id="cosum">
+        <div id="lines"></div>
+        <div class="sum" id="sum"></div>
+        <div class="split"><div><small>Pay now</small><b id="spNow">₹500</b></div><div><small>On delivery</small><b id="spLater">₹4,499</b></div></div>
+        <div class="save" id="save"></div>
+      </div>
+    </aside>
+  </div>
+  </div>
+</div>
+
+<script>
+/* ===== settings ===== */
+const WA_NUMBER = '917849838428';
+const ADVANCE = 500, STANDEE = 99, ADD_DEL = 999, ADD_PAY = 1999;
+/* Payment gateway hook (add later): window.RG_PLACE_ORDER = async order => { /* open gateway for order.payNow * / return {ok:true}; } */
+const PKG = {
+  basic:{name:'QR Menu',sub:'Digital menu · standees ₹99 each',for:'Guests scan and see your full menu',price:1999,stands:0},
+  smart:{name:'QR Ordering',sub:'Guests order from the table · 10 standees FREE',for:'Guests order and pay from the table',price:4999,stands:10}
+};
+/* Feature list shown everywhere: [label, in QR Menu, in QR Ordering] (true / false / text) */
+const FEAT = [
+  ['Menu',null],
+  ['QR menu with dish photos & prices',true,true],['Categories, veg filter & search',true,true],['Change prices, mark sold out anytime',true,true],
+  ['Google-friendly menu website',true,true],['QR code for every table',true,true],
+  ['Ordering',null],
+  ['Guests order from the table',false,true],['Pay at counter or by UPI',false,true],['New order alert on dashboard & Partner app',false,true],
+  ['Kitchen tickets (KOT) & bill printing',false,true],['Blocks fake orders: staff accepts first',false,true],
+  ['Sell more',null],
+  ['"Complete your meal" add-on suggestions',false,true],['Coupons & today\'s specials',false,true],['Customer names & phone numbers',false,true],['WhatsApp offers & loyalty',false,true],
+  ['Standees',null],
+  ['Premium acrylic QR standees','₹99 each','10 FREE']
+];
+const D = [['05-indian-teal','Indian Feast'],['01-burger-pop','Burger Pop'],['02-italian-red','Trattoria Red'],['03-botanical-lime','Fresh Botanical'],['04-cafe-lilac','Cafe Lilac'],
+  ['06-orange-pop','Orange Pop'],['07-berry-cafe','Berry Cafe'],['08-midnight-bistro','Midnight Bistro'],['09-aqua-fresh','Aqua Fresh'],['10-royal-feast','Royal Feast']];
+const PHOTOS = [['s2','Chhappan Bhog QR standee on a restaurant table'],['s1','Cafe QR standee with logo'],['s3','Pizza restaurant QR standee'],['s4','Restaurant QR standee with table number'],['s5','Cafe QR standee with table number'],
+  ['p08-unboxing-kit','Standees in the delivery box'],['p03-customer-scanning','Guest scanning the QR standee']];
+
+const $ = id => document.getElementById(id);
+const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const wa = t => 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(t);
+const tick = '<svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+const cross = '<svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+['waTop'].forEach(id => $(id).href = wa('Hi RestroGrow, I want the Smart QR Menu for my restaurant.'));
+
+/* ===== state ===== */
+const S = {pk:'basic', di:0, extra:0, del:false, pay:false};
+const total = () => PKG[S.pk].price + S.extra*STANDEE + (S.del?ADD_DEL:0) + (S.pay?ADD_PAY:0);
+const stands = () => PKG[S.pk].stands + S.extra;
+
+/* ===== gallery (swipe on mobile) ===== */
+const sl = $('slides');
+sl.innerHTML = PHOTOS.map((p,i) => `<img src="img/${p[0]}.jpg" alt="${p[1]}" width="1080" height="1350" ${i?'loading="lazy"':'fetchpriority="high"'}>`).join('');
+$('thumbs').innerHTML = PHOTOS.map((p,i) => `<button type="button" data-g="${i}" aria-label="Photo ${i+1}"><img src="img/${p[0]}.jpg" alt="" loading="lazy" width="70" height="88"></button>`).join('');
+$('dots').innerHTML = PHOTOS.map(() => '<i></i>').join('');
+let gi = 0;
+const go = i => { gi = (i + PHOTOS.length) % PHOTOS.length; sl.scrollTo({left: gi*sl.clientWidth, behavior:'smooth'}); };
+function mark(){ document.querySelectorAll('#thumbs button').forEach((b,j)=>b.setAttribute('aria-current', j===gi)); document.querySelectorAll('#dots i').forEach((d,j)=>d.classList.toggle('on', j===gi)); }
+sl.addEventListener('scroll', () => { const i = Math.round(sl.scrollLeft / sl.clientWidth); if (i !== gi){ gi = i; mark(); } }, {passive:true});
+$('thumbs').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) go(+b.dataset.g); });
+$('gPrev').onclick = () => go(gi-1); $('gNext').onclick = () => go(gi+1);
+mark();
+
+$('show').innerHTML = ['s2','s1','s3','s4','s5'].map(k => `<img src="img/${k}.jpg" alt="Restaurant QR standee with logo and table number" loading="lazy" width="1080" height="1350">`).join('');
+
+/* ===== buy box ===== */
+$('pkgs').innerHTML = Object.entries(PKG).map(([k,p]) => `<label class="pkg">${k==='smart'?'<span class="pkg__tag">Most popular</span>':''}<input type="radio" name="pkg" value="${k}"><span class="pkg__dot"></span><span><b>${p.name}</b><small>${p.sub}</small></span><span class="pkg__p">${inr(p.price)}</span></label>`).join('');
+$('sw').innerHTML = D.map((d,i) => `<button type="button" data-d="${i}" aria-label="${d[1]}"><img src="img/${d[0]}.jpg" alt="" loading="lazy" width="60" height="90"></button>`).join('');
+$('pkgs').addEventListener('change', e => { S.pk = e.target.value; render(); });
+$('sw').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b){ S.di = +b.dataset.d; render(); } });
+document.addEventListener('click', e => {
+  if (e.target.closest('.qm')) { S.extra = Math.max(0, S.extra-1); render(); }
+  if (e.target.closest('.qp')) { S.extra = Math.min(200, S.extra+1); render(); }
+  const c = e.target.closest('[data-add]'); if (c){ S.extra = Math.min(200, S.extra + +c.dataset.add); render(); }
+});
+
+function render(){
+  const p = PKG[S.pk], t = total();
+  document.querySelector(`#pkgs input[value="${S.pk}"]`).checked = true;
+  $('prNow').textContent = inr(p.price);
+  $('prWas').textContent = p.stands ? inr(p.price + p.stands*STANDEE) : ''; $('prWas').hidden = !p.stands; $('prOff').hidden = !p.stands;
+  $('prOff').textContent = p.stands ? `${p.stands} standees FREE` : '';
+  const col = S.pk==='smart'?2:1; $('inc').innerHTML = FEAT.filter(f=>f[1]!==null && f[col]===true).slice(S.pk==='smart'?5:0, S.pk==='smart'?12:5).map(f => `<li>${tick}${f[0]}</li>`).join('') + (S.pk==='smart'?`<li>${tick}Everything in QR Menu</li>`:'');
+  $('dName').textContent = D[S.di][1];
+  document.querySelectorAll('#sw button').forEach((b,j) => b.setAttribute('aria-pressed', j===S.di));
+  document.querySelectorAll('.qv').forEach(o => o.textContent = S.extra);
+  $('stTotal').textContent = stands() + (stands()===1?' standee':' standees');
+  $('stSub').textContent = p.stands ? `${p.stands} free + ${S.extra} extra (${inr(S.extra*STANDEE)})` : (S.extra ? `${S.extra} × ₹99 = ${inr(S.extra*STANDEE)}` : 'Not included in QR Menu · add any number');
+  $('tot').textContent = inr(t); $('totSub').textContent = `₹500 now · ${inr(t-ADVANCE)} on delivery`;
+  $('mbP').textContent = inr(t);
+  renderCheckout();
+}
+
+/* ===== packages section ===== */
+$('pk').innerHTML = Object.entries(PKG).map(([k,p],ci) => `
+  <div class="pkc${k==='smart'?' hl':''}">${k==='smart'?'<span class="tag">Most popular · 10 standees FREE</span>':''}
+    <h3>${p.name}</h3><div class="for">${p.for}</div>
+    <div class="p">${inr(p.price)}<small>one-time setup</small></div>
+    <div class="bk">₹500 now · ${inr(p.price-ADVANCE)} on delivery</div>
+    <ul>${FEAT.map(f => f[1]===null ? `<li class="grp">${f[0]}</li>` : (f[ci+1]===true ? `<li>${tick}${f[0]}</li>` : f[ci+1]===false ? `<li class="no">${cross}${f[0]}</li>` : `<li>${tick}${f[0]}: <b>${f[ci+1]}</b></li>`)).join('')}</ul>
+    <button class="btn ${k==='smart'?'btn--o':'btn--k'} btn--full" type="button" data-checkout="${k}">Book ${p.name} · ₹500</button>
+  </div>`).join('');
+
+/* ===== live demo: working menu with real Kohuke data ===== */
+const KH = {"M":[[196,"Classic Indo-Chinese Menu","6a4bd699b5995"],[195,"Urban Sandwiches","6a4bd1d95e773"],[194,"Royal Rolls","6a4bcedf05885"],[193,"Signature Snacks","6a4bcbb2ba57c"],[192,"Value Plates","6a4bc1b0a004f"],[191,"Balanced Combo Meals","6a4b9952cb756"],[190,"Executive Thali","6a4b91b8b9deb"]],"I":[[503,193,"Aloo Onion Paratha","Paratha stuffed with spiced potato and onion.","Veg",60,"6a4bccccf3c8f",""],[502,193,"Aloo Paratha","Stuffed potato paratha served fresh.","Veg",55,"6a4bcc71774d6",""],[498,192,"Boiled Egg (1 Pc)","Freshly boiled egg, lightly seasoned.","Non Veg",15,"6a4bc86bef9e5",""],[516,195,"Cheese Sandwich","Crispy sandwich loaded with melted cheese.","Veg",60,"6a4bd34ef0cb8",""],[543,196,"Chicken 65 (8 Pcs)","South Indian-style spicy fried chicken bites.","Non Veg",135,"6a4be179e88c8",""],[546,196,"Chicken Biryani (Wednesday & Friday Only)","Aromatic chicken biryani with authentic spices.","Non Veg",130,"6a4cb7909839c",""],[544,196,"Chicken Crispy","Crunchy fried chicken with bold seasoning.","Non Veg",120,"6a4cb6553df3e",""],[479,191,"Chicken Curry (2 Pcs) + Rice","Delicious chicken curry with steamed rice.","Non Veg",110,"6a4bbca718eb0",""],[536,196,"Chicken Fried Rice (Half/Full)","Fried rice loaded with juicy chicken.","Non Veg",150,"6a4bdf057c724","HALF:100|FULL:150"],[537,196,"Chicken Hakka Noodles (Half/Full)","Hakka noodles tossed with chicken.","Non Veg",150,"6a4bdf6236f65","HALF:100|FULL:150"],[545,196,"Chicken Lollipop Masala (Dry/Gravy) (6 Pcs)","Chicken lollipops served in dry or gravy style.","Non Veg",150,"6a4cb784906a9",""],[496,192,"Chicken Masala (4 Pcs)","Spicy chicken masala with rich flavors.","Non Veg",100,"6a51fdd19c35a",""],[480,191,"Chicken Masala (4 Pcs) + Paratha (2 Pcs)","Spicy chicken masala served with two parathas.","Non Veg",150,"6a4bbd1763c5f",""],[510,194,"Chicken Roll","Juicy chicken wrapped in a fresh roll.","Non Veg",95,"6a4bd144e7ff8",""],[517,195,"Chicken Sandwich","Juicy chicken filling in toasted bread.","Non Veg",80,"6a4bd39aea66c",""],[539,196,"Chicken Schezwan Noodles (Half/Full)","Chicken noodles in spicy Schezwan sauce.","Non Veg",155,"6a4be00696002","HALF:105|FULL:155"],[538,196,"Chicken Schezwan Rice (Half/Full)","Spicy Schezwan rice with chicken.","Non Veg",155,"6a4bdfaeb0863","HALF:105|FULL:155"],[467,190,"Chicken Thali","Rice, 3 Roti, Dal, Chicken Curry (3 Pcs), Chutney, Papad, Salad","Non Veg",140,"6a4b9853e7387",""],[541,196,"Chicken Triple Noodles","Triple noodles served with chicken Manchurian gravy.","Non Veg",170,"6a4be0b1af67f",""],[540,196,"Chicken Triple Rice","Rice, noodles & chicken gravy combo.","Non Veg",170,"6a4be05de880f",""],[484,191,"Chilli Chicken (6 Pcs) + 2 Paratha","Spicy chilli chicken served with two parathas.","Non Veg",175,"6a4bbfa5a108b",""],[542,196,"Chilli Chicken (8 Pcs)","Crispy chicken tossed in spicy chilli sauce","Non Veg",130,"6a4be13cc4b25",""],[522,196,"Chilli Paneer","Paneer tossed in spicy Indo-Chinese sauce.","Veg",90,"6a4bd8a44b6af",""],[473,191,"Chole Bhature","Spicy chickpea curry with soft, fluffy bhature.","Veg",90,"6a4ba0afdb61f",""],[472,191,"Chole Masala + Rice","Flavorful chickpea curry served with steamed rice","Veg",70,"6a4b9f476b3c2",""],[490,192,"Dal","Simple and comforting lentil curry","Veg",30,"6a4bc31a6596c",""],[471,191,"Dal + Rice","Classic lentil curry paired with fluffy rice.","Veg",55,"6a4b9eec52522",""],[469,191,"Dal Khichdi","Comforting rice and lentils cooked with mild spices.","Veg",80,"6a4b9a023d42c",""],[488,192,"Dal Tadka","Yellow lentils tempered with aromatic spices","Veg",50,"6a4bc23e05d38",""],[509,194,"Double Egg Roll","Double egg filling wrapped in a soft roll.","Non Veg",75,"6a4bcfdc5398d",""],[483,191,"Egg Bhurji + 2 Paratha","Flavorful egg bhurji served with two parathas.","Non Veg",100,"6a4bbf2c05b23",""],[482,191,"Egg Bhurji + 3 Roti","Spiced scrambled eggs served with three rotis.","Non Veg",85,"6a4bbe79ead43",""],[519,195,"Egg Bhurji + Pav (2 Pcs)","Spiced egg bhurji served with two soft pav.","Non Veg",65,"6a4bd4948b7ee",""],[511,194,"Egg Chicken Roll","Egg and chicken filling in a flavorful roll.","Non Veg",105,"6a4bd151c7e2e",""],[475,191,"Egg Curry + Rice","Boiled eggs in flavorful curry with rice.","Non Veg",90,"6a4ba197d8b1e",""],[530,196,"Egg Fried Rice (Half/Full)","Fried rice tossed with scrambled egg.","Egg",130,"6a4bdcdda3348","Half:85|Full:130"],[531,196,"Egg Hakka Noodles (Half/Full)","Hakka noodles with egg and vegetables.","Egg",130,"6a4bdd3b89064","Half:90|Full:130"],[497,192,"Egg Masala (2 Pcs)","Boiled eggs cooked in spicy masala gravy.","Non Veg",60,"6a4bc677dc4e8",""],[476,191,"Egg Masala + Paratha (2 Pcs)","Spiced egg masala served with two flaky parathas.","Non Veg",110,"6a4ba229b3e73",""],[518,195,"Egg Mayo Sandwich","Creamy egg mayo served in fresh bread.","Non Veg",70,"6a4bd41608084",""],[508,194,"Egg Roll","Soft roll filled with seasoned egg.","Non Veg",65,"6a4bcf6c34eef",""],[533,196,"Egg Schezwan Noodles (Half/Full)","Egg noodles tossed in Schezwan sauce.","Egg",140,"6a4bde1c5e164","HALF:95|FULL:140"],[532,196,"Egg Schezwan Rice (Half/Full)","Spicy Schezwan fried rice with egg.","Egg",135,"6a4bdda17fb12","HALF:90|FULL:135"],[466,190,"Egg Thali","Rice, 3 Roti, Dal, Egg Curry (2 Pcs), Chutney, Papad, Salad","Egg",110,"6a4b97f416e42",""],[535,196,"Egg Triple Noodles","Triple noodles served with rich Indo-Chinese gravy.","Egg",160,"6a4bdead1e9cc",""],[534,196,"Egg Triple Rice","Rice, noodles & egg Manchurian-style gravy combo.","Egg",150,"6a4bde61af8f3",""],[481,191,"Fish Curry (2 Pcs) + Rice","Fresh fish curry paired with steamed rice.","Non Veg",165,"6a4bbd880f954",""],[468,190,"Fish Thali","Rice, 3 Roti, Dal, Fish Curry (2 Pcs), Chutney, Papad, Salad","Non Veg",189,"6a4b98cc5c049",""],[495,192,"Jeera Rice","Fragrant basmati rice flavored with cumin.","Veg",45,"6a4bc5966a137",""],[487,191,"Jeera Rice + Dal Tadka","Fragrant cumin rice served with dal tadka.","Veg",100,"6a4bc0c67a282",""],[485,191,"Masala Tawa Pulav","Aromatic spiced vegetable tawa pulao.","Veg",100,"6a4bbfec20fb3",""],[523,196,"Paneer 65","Crispy paneer bites with bold spices.","Veg",110,"6a4bd8c5b04a9",""],[499,192,"Paneer Bhurji","Steamed basmati rice served fresh.","Veg",90,"6a4bc788a9a6a",""],[505,193,"Paneer Cheese Paratha","Stuffed with paneer and melted cheese.","Veg",85,"6a4bcd8b34534",""],[491,192,"Paneer Gravy","Cottage cheese in a rich, flavorful gravy","Veg",60,"6a4bc3a5d5e99",""],[474,191,"Paneer Gravy + Rice","Cottage cheese in rich gravy served with rice.","Veg",80,"6a4ba1032350b",""],[486,191,"Paneer Masala Pulav","Flavorful paneer pulao cooked with aromatic spices.","Veg",120,"6a4bc059d351e",""],[504,193,"Paneer Paratha","Soft paratha filled with seasoned paneer.","Veg",70,"6a4bcd1a3d0a9",""],[512,194,"Paneer Roll","Soft roll stuffed with spiced paneer.","Veg",85,"6a4bd0ca12c0d",""],[515,195,"Paneer Sandwich","Grilled sandwich filled with spiced paneer.","Veg",60,"6a4bd3005f603",""],[465,190,"Paneer Thali","Rice, 3 Roti, Dal, Paneer Masala, Chutney, Papad, Salad","Veg",100,"6a4b977eaf570",""],[493,192,"Paratha (1 Pc)","Crispy, flaky Indian flatbread.","Veg",20,"6a4bc4f075c86",""],[507,193,"Poori (4 Pcs) + Chana Masala","Four pooris served with spicy chana masala.","Veg",70,"6a4bce4f1c258",""],[506,193,"Poori (4 Pcs) + Paneer Masala","Four pooris served with rich paneer masala.","Veg",80,"6a4bcde88d601",""],[501,193,"Poori + Aloo Sabji","Fluffy pooris served with flavorful potato curry.","Veg",60,"6a4bcc2740c33",""],[470,191,"Rajma Masala + Rice","Spiced kidney bean curry served with steamed rice.","Veg",70,"6a4b9a607d79c",""],[500,192,"Rice (Per Plate)","Steamed basmati rice served fresh.","Veg",30,"6a4bc832a3169",""],[492,192,"Roti (1 Pc)","Soft and freshly made whole wheat roti.","Veg",12,"6a4bc3fde60d0",""],[478,191,"Roti (3 Pcs) + Paneer","Three soft rotis served with paneer curry.","Veg",80,"6a4ba384cc69a",""],[477,191,"Roti (3 Pcs) + Sabji","","Veg",55,"6a4ba26deb1be",""],[489,192,"Sabji","Fresh seasonal vegetables cooked with spices.","Veg",30,"6a4bc2c31a749",""],[524,196,"Veg Fried Rice (Half/Full)","Stir-fried rice with fresh vegetables.","Veg",120,"6a4bd9292864b","Half:75|Full:120"],[525,196,"Veg Hakka Noodles (Half/Full)","Classic Hakka noodles with vegetables.","Veg",125,"6a4bd995d596b","Half:80|Full:125"],[520,196,"Veg Manchurian (8 Pcs)","Crispy vegetable dumplings tossed in savory sauce.","Veg",75,"6a4bd76435b79",""],[521,196,"Veg Manchurian Rice (Half/Full)","Veg Manchurian served with flavorful fried rice.","Veg",125,"6a4bd7e8aca2e","Half:85|Full:125"],[513,194,"Veg Roll","Fresh vegetables wrapped in a soft roll.","Veg",55,"6a4bd1080b164",""],[514,195,"Veg Sandwich","Fresh vegetables layered in toasted bread.","Veg",50,"6a4bd23871837",""],[527,196,"Veg Schezwan Noodles (Half/Full)","Noodles tossed in spicy Schezwan sauce.","Veg",130,"6a4bda3f31f38","Half:85|Full:125"],[526,196,"Veg Schezwan Rice (Half/Full)","Spicy Schezwan-style vegetable fried rice.","Veg",125,"6a4bd9ef9921b","Half:80|Full:125"],[464,190,"Veg Thali","Rice, 3 Roti, Dal, Sabji, Chutney, Papad, Salad","Veg",89,"6a4b931cd7a8d",""],[529,196,"Veg Triple Noodles","Hakka noodles served with rice and Manchurian gravy.","Veg",150,"6a4bdaf941951",""],[528,196,"Veg Triple Rice","Fried rice, noodles & Manchurian gravy combo.","Veg",140,"6a4bda9f5738b",""]]};
+function mountMenu(app, DATA, OPT){ OPT = OPT || {};
+  if (!app) return; const SP = !!OPT.sprite, RN = OPT.rname || 'Restaurant';
+  const cats = DATA.M.map((m,i) => ({id:m[0], name:m[1], sp:SP?i:null}));
+  const items = DATA.I.map((r,i) => ({id:r[0], cat:r[1], name:r[2], desc:r[3], type:r[4]==='Veg'?'v':r[4]==='Egg'?'e':'n', price:r[5], sp:SP?7+i:null,
+    vars: r[7] ? r[7].split('|').map(v => { const [n,p] = v.split(':'); return {n:n[0]+n.slice(1).toLowerCase(), p:+p}; }) : null}));
+  const pos = (sp, size) => `background-position:${-(sp%10)*size}px ${-Math.floor(sp/10)*size}px`;
+  const clean = n => n.replace(/\s*\(Half\/Full\)/,'');
+  const minP = it => it.vars ? Math.min(...it.vars.map(v=>v.p)) : it.price;
+  const cart = new Map(); let cat = 0, vegOnly = false, q = '', pending = null, orderNo = 1043, cur = null;
+  const ico = {back:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="m15 18-6-6 6-6"/></svg>', list:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>', home:'<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M12 3 2 12h3v9h5v-6h4v6h5v-9h3z"/></svg>'};
+  app.innerHTML = `
+    <div class="app__hd"><button class="app__ib" aria-label="Back" type="button">${ico.back}</button>${OPT.logo?`<img src="${OPT.logo}" alt="${RN}" style="height:20px;width:auto">`:`<b style="font-size:13px;max-width:120px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${RN}</b>`}<button class="veg" type="button" aria-pressed="false" data-x="veg">Veg <i></i></button><button class="app__ib" type="button" aria-label="Menu list">${ico.list}</button></div>
+    <div class="app__srch"><label>🔍<input type="search" placeholder="Search for 'Chole Bhature'" aria-label="Search dishes" data-x="q"></label></div>
+    <div class="app__body"><nav class="rail" aria-label="Categories"></nav><div class="list"></div></div>
+    <button class="cbar" type="button" data-x="cart"><span class="cb1"></span><span class="cb2">View Cart ›</span></button>
+    <div class="scr" data-s="cart"><div class="scr__hd"><button type="button" data-x="back" aria-label="Back">‹</button>${RN}</div><div class="scr2"></div><div class="ppl"><button type="button" data-x="checkout" class="kbar"></button></div></div>
+    <div class="scr" data-s="pay"><div class="scr__hd"><button type="button" data-x="paycancel" aria-label="Back">‹</button>Payment</div><div class="scr2"></div></div>
+    <div class="scr" data-s="done"><div class="scr__hd"><button type="button" data-x="home" aria-label="Back to menu">‹</button>Track your order</div><div class="scr2"></div></div>
+    <div class="vsheet" data-v="var"><div></div></div>
+    <div class="vsheet" data-v="co"><div class="co2"></div></div>
+    <div class="toast2"></div>`;
+  const rail = app.querySelector('.rail'), list = app.querySelector('.list');
+  rail.innerHTML = `<button type="button" class="all" aria-pressed="true" data-c="0"><i>▦</i>All</button>` + cats.map(c => `<button type="button" aria-pressed="false" data-c="${c.id}">${c.sp==null?`<i style="background:#fdeceb;color:#b3171d;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:15px">${c.name[0]}</i>`:`<i style="${pos(c.sp,38)}"></i>`}${c.name}</button>`).join('');
+  const qty = id => [...cart.values()].filter(c => c.it.id===id).reduce((a,c) => a+c.n, 0);
+  const tot = () => [...cart.values()].reduce((a,c)=>a+c.n*c.p,0), cnt = () => [...cart.values()].reduce((a,c)=>a+c.n,0);
+  function itemHTML(it){
+    const n = qty(it.id);
+    const btn = n ? `<div class="add q"><span data-m="${it.id}">−</span>${n}<span data-p="${it.id}">+</span></div>` : `<button type="button" class="add" data-a="${it.id}">ADD +</button>`;
+    return `<div class="it"><div><span class="mk ${it.type==='v'?'':it.type==='e'?'eg':'nv'}"></span><b>${it.name}</b><p class="ip">₹${minP(it)}</p><p>${it.desc}</p></div><div>${it.sp==null?`<div class="it__im" style="background:none;height:30px">${btn}</div>`:`<div class="it__im" style="${pos(it.sp,84)}">${btn}</div>`}${it.vars?'<span class="cust">customisable</span>':''}</div></div>`;
+  }
+  function draw(){
+    const L = items.filter(it => (!vegOnly || it.type==='v') && (!q || it.name.toLowerCase().includes(q)));
+    let h = ''; const groups = cat ? cats.filter(c => c.id===cat) : cats;
+    groups.forEach(c => { const g = L.filter(it => it.cat===c.id); if (g.length) h += `<h4>${c.name} (${g.length})</h4>` + g.map(itemHTML).join(''); });
+    list.innerHTML = h || '<div class="empty">No dishes found</div>';
+    const n = cnt(); app.querySelector('.cbar').classList.toggle('on', n>0);
+    app.querySelector('.cb1').textContent = `${n} item${n>1?'s':''} | ₹${tot()}.00`;
+  }
+  function addItem(it, v){ const key = it.id + (v?':'+v.n:''); const c = cart.get(key);
+    if (c) c.n++; else cart.set(key, {it, v, n:1, p: v ? v.p : it.price}); toast(`${clean(it.name)} added`); draw(); drawCart(); }
+  function minus(id){ const k = [...cart.keys()].reverse().find(k => cart.get(k).it.id===id); if (!k) return; const c = cart.get(k); c.n--; if (!c.n) cart.delete(k); draw(); drawCart(); }
+  function toast(t){ const el = app.querySelector('.toast2'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 1600); }
+  const show = (s, on) => app.querySelector(`[data-s="${s}"]`).classList.toggle('on', on);
+  const sheet = (v, on) => app.querySelector(`[data-v="${v}"]`).classList.toggle('on', on);
+  function drawCart(){
+    const box = app.querySelector('[data-s="cart"] .scr2'); const C = [...cart.entries()]; const sub = tot();
+    const sug = items.filter(it => (OPT.sug ? OPT.sug.includes(it.id) : true) && !qty(it.id) && !it.vars).slice(0,3);
+    box.innerHTML = `<div class="card2"><h5>Your order <span style="float:right;color:#999;font-weight:500">${cnt()} item${cnt()>1?'s':''}</span></h5>${C.map(([k,c]) => `<div class="ci">${c.it.sp==null?'':`<i class="ci__im" style="${pos(c.it.sp,40)}"></i>`}<span><b><span class="mk ${c.it.type==='v'?'':c.it.type==='e'?'eg':'nv'}"></span> ${clean(c.it.name)}</b><small>${c.v?c.v.n:''}</small><span class="st2"><button type="button" data-cm="${k}">−</button><span>${c.n}</span><button type="button" data-cp="${k}">+</button></span></span><b>₹${c.n*c.p}.00</b></div>`).join('')}<button type="button" class="more" data-x="back">+ Add more items</button></div>
+      ${sug.length?`<div class="card2"><h5>Complete your meal<small>Picked to go with your order</small></h5><div class="ups2">${sug.map(it => `<div>${it.sp==null?"":`<div class="it__im" style="background-size:615px 554px;${pos(it.sp,61.5)}"></div>`}<b>${it.name}</b><span style="color:#7c3aed;font-size:9.5px">Popular here</span><br>₹${minP(it)}<button type="button" data-a="${it.id}">ADD +</button></div>`).join('')}</div></div>`:''}
+      <div class="card2"><h5>Offers &amp; coupons</h5><div class="cpn"><input placeholder="Enter coupon code" aria-label="Coupon code"><button type="button" data-x="cpn">Apply</button></div></div>
+      <div class="card2"><h5>Note for the restaurant<small>Allergies, spice level, delivery notes</small></h5><div class="chips2">${['No onion','No garlic','Less spicy','Extra spicy','Jain food'].map(c=>`<button type="button" data-x="chip">${c}</button>`).join('')}</div></div>
+      <div class="card2 bill"><h5>Bill details</h5><div><span>Item total</span><span>₹${sub}.00</span></div><div class="t"><span>Subtotal</span><span>₹${sub}.00</span></div><p style="margin:6px 0 0;color:#999;font-size:10.5px">Taxes and charges are added at checkout, before you pay.</p></div>`;
+    app.querySelector('[data-x="checkout"]').innerHTML = `<span>${cnt()} item${cnt()>1?'s':''} | ₹${sub}.00</span><span class="w">Checkout →</span>`;
+    if (!C.length) show('cart', false);
+  }
+  function openCheckout(){
+    const C = [...cart.values()], sub = tot();
+    app.querySelector('.co2').innerHTML = `<h5 style="display:flex;justify-content:space-between">Checkout<button type="button" data-x="coclose" style="border:0;background:#f2f2f2;border-radius:50%;width:26px;height:26px">×</button></h5>
+      <label class="fl">Full Name *<input id="gName" value="Rahul Sharma"></label>
+      <label class="fl">Phone Number *<span class="ph2"><em>+91</em><input id="gPhone" value="98765 43210" inputmode="numeric"></span></label>
+      <div class="osum"><b>Order Summary</b>${C.map(c=>`<div><span>${clean(c.it.name)}${c.v?' ('+c.v.n+')':''} x${c.n}</span><span>₹${c.n*c.p}.00</span></div>`).join('')}<div class="t"><span>Total</span><span>₹${sub}.00</span></div></div>
+      <div class="fl">Order Type<div class="seg" data-g="type"><button type="button" data-o="Takeaway">🛍️<br>Takeaway</button><button type="button" class="on" data-o="Dine in">🍽️<br>Dine in</button></div></div>
+      <label class="fl" id="tblRow">Choose your table<select id="gTable"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+      <div class="fl">When?<div class="seg" data-g="when"><button type="button" class="on" data-o="now">⚡<br>Order now</button><button type="button" data-o="later">📅<br>Schedule for later</button></div></div>
+      <label class="fl">Payment Method<select id="gPay"><option>UPI</option><option>Pay at Counter</option><option>NetBanking</option></select></label>
+      <div class="cobtns"><button type="button" data-x="coclose">Cancel</button><button type="button" data-x="place">Place Order</button></div>`;
+    sheet('co', true);
+  }
+  function startPay(o){
+    const box = app.querySelector('[data-s="pay"] .scr2');
+    box.innerHTML = `<div class="card2 paycard"><small>Paying to</small><b>${RN}</b><div class="amt">₹${o.total}.00</div><small>Order #${o.no}</small></div>
+      <div class="card2"><h5>${o.pay==='NetBanking'?'Choose your bank':'Pay with UPI app'}</h5><div class="upis">${(o.pay==='NetBanking'?['SBI','HDFC','ICICI','Axis']:['GPay','PhonePe','Paytm','BHIM']).map(u=>`<button type="button" data-x="paynow">${u}</button>`).join('')}</div><p class="demo">Demo: no money is charged.</p></div>`;
+    show('pay', true);
+  }
+  function placeOrder(){
+    const C = [...cart.values()]; if (!C.length) return;
+    const o = {no: orderNo++, items: C.map(c => ({n:c.n, name: clean(c.it.name) + (c.v?' ('+c.v.n+')':''), type:c.it.type})), total: tot(),
+      type: app.querySelector('[data-g="type"] .on').dataset.o, table: app.querySelector('#gTable').value, pay: app.querySelector('#gPay').value,
+      name: app.querySelector('#gName').value || 'Guest'};
+    cur = o; sheet('co', false);
+    if (o.pay === 'Pay at Counter') finish(o, false); else startPay(o);
+  }
+  function finish(o, paid){
+    o.paid = paid; show('pay', false); show('cart', false);
+    const box = app.querySelector('[data-s="done"] .scr2');
+    box.innerHTML = `<div class="card2 ok"><i>✓</i><h5>Order placed!</h5><p>#${o.no} · ${o.type==='Dine in'?'Table '+o.table:'Takeaway'} · ₹${o.total}.00</p><p class="paid ${paid?'':'cnt'}">${paid?'Paid by '+o.pay:'Pay at counter'}</p></div>
+      <div class="card2"><h5>Order status</h5><ul class="trk"><li class="d"><i>✓</i><span>Order placed<small>Sent to the restaurant</small></span></li><li data-st="acc"><i></i><span>Accepted by restaurant<small>Waiting for staff to accept</small></span></li><li data-st="cook"><i></i><span>Preparing</span></li><li data-st="ready"><i></i><span>${o.type==='Dine in'?'Served at your table':'Ready for pickup'}</span></li></ul></div>
+      <div class="card2" style="font-size:11.5px;color:#555">${o.items.map(i=>`${i.n} × ${i.name}`).join('<br>')}</div>`;
+    show('done', true); cart.clear(); draw();
+    document.dispatchEvent(new CustomEvent('rg-order', {detail:o}));
+  }
+  document.addEventListener('rg-status', e => { if (!cur || e.detail.no !== cur.no) return; const box = app.querySelector('[data-s="done"] .scr2');
+    const order = ['acc','cook','ready']; const upto = order.indexOf(e.detail.st);
+    order.forEach((k,i) => { const li = box.querySelector(`[data-st="${k}"]`); if (li && i<=upto){ li.classList.add('d'); li.querySelector('i').textContent='✓'; } });
+    toast(e.detail.st==='acc'?'Restaurant accepted your order':e.detail.st==='cook'?'Your food is being prepared':'Your order is ready'); });
+  app.addEventListener('click', e => {
+    const t = e.target.closest('[data-c],[data-a],[data-p],[data-m],[data-x],[data-cm],[data-cp],[data-v],[data-o],label');
+    if (!t) return;
+    if (t.dataset.v && e.target === t){ t.classList.remove('on'); return; }
+    if (t.dataset.o){ t.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b===t)); if (t.parentElement.dataset.g==='type') app.querySelector('#tblRow').style.display = t.dataset.o==='Dine in'?'':'none'; return; }
+    if (t.dataset.c !== undefined){ cat = +t.dataset.c; rail.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b===t)); list.scrollTop = 0; draw(); return; }
+    const getIt = id => items.find(i => i.id===+id);
+    if (t.dataset.a || t.dataset.p){ const it = getIt(t.dataset.a || t.dataset.p);
+      if (it.vars){ pending = it; const vs = app.querySelector('[data-v="var"]'); vs.firstElementChild.innerHTML = `<h5>${clean(it.name)}</h5>${it.vars.map((v,i)=>`<label><span><input type="radio" name="vv" value="${i}" ${i===it.vars.length-1?'checked':''}>${v.n}</span><span>₹${v.p}</span></label>`).join('')}<button type="button" data-x="addv">Add item</button>`; vs.classList.add('on'); }
+      else addItem(it); return; }
+    if (t.dataset.m){ minus(+t.dataset.m); return; }
+    if (t.dataset.cm || t.dataset.cp){ const k = t.dataset.cm || t.dataset.cp, c = cart.get(k); if (t.dataset.cp) c.n++; else { c.n--; if (!c.n) cart.delete(k); } draw(); drawCart(); return; }
+    const x = t.dataset.x;
+    if (x==='veg'){ vegOnly = !vegOnly; t.setAttribute('aria-pressed', vegOnly); draw(); }
+    if (x==='cart'){ drawCart(); show('cart', true); }
+    if (x==='back') show('cart', false);
+    if (x==='home') show('done', false);
+    if (x==='checkout') openCheckout();
+    if (x==='coclose') sheet('co', false);
+    if (x==='place') placeOrder();
+    if (x==='paycancel') show('pay', false);
+    if (x==='paynow'){ t.closest('.scr2').insertAdjacentHTML('beforeend','<div class="card2 proc"><span class="spin"></span>Processing payment…</div>'); setTimeout(() => finish(cur, true), 1400); }
+    if (x==='chip') t.classList.toggle('on');
+    if (x==='cpn') toast('Enter a valid coupon code');
+    if (x==='addv'){ const i = +app.querySelector('[name=vv]:checked').value; addItem(pending, pending.vars[i]); sheet('var', false); }
+  });
+  app.querySelector('[data-x="q"]').addEventListener('input', e => { q = e.target.value.trim().toLowerCase(); draw(); });
+  draw();
+}
+
+/* ===== owner counter (KOT screen) reacting to the guest's order ===== */
+(function(){
+  const box = $('kot'); if (!box) return;
+  let audio;
+  const beep = () => { try { audio = audio || new (window.AudioContext||window.webkitAudioContext)(); [0,0.18].forEach(d => { const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = 880; o.connect(g); g.connect(audio.destination); g.gain.setValueAtTime(.12, audio.currentTime+d); g.gain.exponentialRampToValueAtTime(.001, audio.currentTime+d+.15); o.start(audio.currentTime+d); o.stop(audio.currentTime+d+.16); }); } catch(e){} };
+  document.addEventListener('rg-order', e => {
+    const o = e.detail; beep();
+    $('kotEmpty').hidden = true;
+    const now = new Date(), stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    const card = document.createElement('div'); card.className = 'kc new'; card.dataset.no = o.no;
+    card.innerHTML = `<div class="kc__h"><span class="kc__n">1</span><div><small>KOT</small><b>#KOT-${stamp}-${o.no}</b></div><span class="kc__t">just now</span></div>
+      <div class="kc__tags"><span class="st">● NEW</span><span>${o.type==='Dine in'?'🍽️ Table '+o.table:'🛍️ Takeaway'}</span><span class="${o.paid?'pd':''}">${o.paid?'✓ Paid · '+o.pay:'💵 Pay at counter'}</span></div>
+      <div class="kc__i"><small>${o.items.length} DISH${o.items.length>1?'ES':''} · ${o.items.reduce((a,i)=>a+i.n,0)} ITEMS</small>${o.items.map(i=>`<div><em>${i.n}</em>${i.name}</div>`).join('')}</div>
+      <div class="kc__f"><span>${o.name}</span><b>₹${o.total}.00</b></div>
+      <button type="button" class="kc__b" data-k="acc">Accept order</button>`;
+    box.prepend(card);
+    $('kotAlert').classList.add('on'); $('kotAlert').querySelector('b').textContent = `New order #${o.no} · ₹${o.total}`;
+    setTimeout(() => $('kotAlert').classList.remove('on'), 3500);
+    const tabBtn = document.querySelector('[data-dev="owner"]'); if (tabBtn && getComputedStyle(tabBtn.parentElement).display!=='none' && tabBtn.getAttribute('aria-pressed')!=='true') setTimeout(() => tabBtn.click(), 1300);
+  });
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-k]'); if (!b) return; const card = b.closest('.kc'), no = +card.dataset.no, k = b.dataset.k;
+    const next = {acc:['cook','Start cooking','ACCEPTED'], cook:['ready','Mark ready','IN KITCHEN'], ready:[null,'Done','READY']}[k];
+    card.querySelector('.st').textContent = '● ' + next[2]; card.classList.remove('new');
+    if (next[0]) { b.dataset.k = next[0]; b.textContent = next[1]; } else { b.disabled = true; b.textContent = 'Completed ✓'; }
+    document.dispatchEvent(new CustomEvent('rg-status', {detail:{no, st:k}})); const g = document.querySelector('[data-dev="guest"]'); if (g && g.getAttribute('aria-pressed')!=='true') g.classList.add('ping');
+  });
+  document.querySelectorAll('[data-dev]').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-dev]').forEach(b => b.setAttribute('aria-pressed', b===btn)); btn.classList.remove('ping');
+    document.querySelector('.devs').dataset.show = btn.dataset.dev;
+  }));
+})();
+
+mountMenu($('app'), KH, {logo:'img/kh-logo.png', rname:'Kohuke Restaurant', sprite:true, sug:[502,520,523,473]});
+
+
+/* ===== builder: menu photo -> AI -> live menu on the phone ===== */
+/* Backend: set window.RG_MENU_EXTRACT_URL. POST multipart (files[], restaurant). Response JSON:
+   {categories:[{name, items:[{name, price, description, type:"veg|nonveg|egg", variants:[{name, price}]}]}]} */
+(function(){
+  const inp = $('bFile'), drop = $('drop'); if (!inp) return;
+  const bar = $('bBar'), msg = $('bMsg');
+  function toData(r){
+    const M = [], I = []; let id = 1;
+    (r.categories||[]).forEach((c,ci) => { M.push([ci+1, c.name || 'Menu', null]);
+      (c.items||[]).forEach(it => { const t = String(it.type||'veg').toLowerCase();
+        I.push([id++, ci+1, it.name, it.description||'', t.startsWith('non')?'Non Veg':t.startsWith('egg')?'Egg':'Veg', +it.price||0, null,
+          (it.variants||[]).map(v => (v.name||'')+':'+(+v.price||0)).join('|')]); }); });
+    return {M, I};
+  }
+  async function go(files){
+    if (!files.length) return;
+    const st = $('bStat'); st.classList.add('on');
+    if (files[0].type.startsWith('image/')) $('bThumb').src = URL.createObjectURL(files[0]);
+    let w = 8; bar.style.width = w+'%'; const t = setInterval(() => { w = Math.min(w + 6, 90); bar.style.width = w+'%'; }, 500);
+    msg.innerHTML = '<b>Reading your menu…</b>Finding dishes and prices';
+    const name = $('bName').value.trim() || 'Your restaurant';
+    try {
+      if (!window.RG_MENU_EXTRACT_URL) throw new Error('offline');
+      const fd = new FormData(); [...files].slice(0,4).forEach(f => fd.append('files[]', f)); fd.append('restaurant', name);
+      const r = await (await fetch(window.RG_MENU_EXTRACT_URL, {method:'POST', body:fd})).json();
+      const D = toData(r); if (!D.I.length) throw new Error('empty');
+      clearInterval(t); bar.style.width = '100%';
+      msg.innerHTML = `<b>Done! ${D.I.length} dishes in ${D.M.length} categories</b>Try your menu on the phone`;
+      mountMenu($('app2'), D, {rname:name});
+      $('bCtas').style.display = 'flex';
+    } catch(e){
+      clearInterval(t); bar.style.width = '100%';
+      msg.innerHTML = `<b>Photo received</b>Send it on WhatsApp and get your ready menu link within 24 hours.`;
+      const a = document.createElement('a'); a.className = 'btn btn--wa'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Send on WhatsApp';
+      a.href = wa(`Hi RestroGrow, please make my QR menu.\nRestaurant: ${name}\nI'm sending my menu photo here.`);
+      const c = $('bCtas'); c.innerHTML = ''; c.appendChild(a); c.style.display = 'flex';
+    }
+  }
+  inp.addEventListener('change', () => go(inp.files));
+  ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); if (ev==='drop') go(e.dataTransfer.files); }));
+})();
+
+/* ===== dashboard tour ===== */
+(function(){
+  const T=[['01-dashboard','Today','Sales, orders, tables','All'],['03-kitchen-KOT','Kitchen tickets','Every order with a timer','QR Ordering'],['04-POS-billing','POS & billing','Bill and print KOT','QR Ordering'],
+    ['05-menu-items-edit','Edit menu','Price, hide, sold out','All'],['06-todays-special','Today\'s special','Dishes of the day','QR Ordering'],['07-upsell-complete-your-meal','Upsell','Drinks & desserts','QR Ordering'],
+    ['09-customers-blurred','Customers','Every guest\'s number','QR Ordering'],['10-whatsapp-auto-messages','WhatsApp offers','Birthday, win-back','QR Ordering']];
+  const L=$('tour'), im=$('tourImg');
+  L.innerHTML=T.map((t,i)=>`<button type="button" role="tab" aria-selected="${i===0}" data-t="${i}"><em>${t[3]==='All'?'All packages':t[3]}</em><b>${t[1]}</b><span>${t[2]}</span></button>`).join('');
+  T.forEach(t=>{const p=new Image();p.src='img/adm/'+t[0]+'.jpg'});
+  L.addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;const t=T[+b.dataset.t];im.src='img/adm/'+t[0]+'.jpg';im.alt=t[1];L.querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected',x===b))});
+})();
+
+/* ===== video ===== */
+(function(){
+  const V={hi:'vid/demo-hi.mp4',en:'vid/demo-en.mp4'}; const v=$('vid'), cover=$('vidCover'); let lang='hi';
+  document.querySelectorAll('.lang button').forEach(b=>b.addEventListener('click',()=>{lang=b.dataset.lang;document.querySelectorAll('.lang button').forEach(x=>x.setAttribute('aria-pressed',x===b));if(cover.hidden){v.src=V[lang];v.play().catch(()=>{})}}));
+  cover.addEventListener('click',()=>{v.src=V[lang];cover.hidden=true;v.play().catch(()=>{})});
+})();
+
+/* ===== checkout ===== */
+const co = $('co');
+function renderCheckout(){
+  const p = PKG[S.pk], t = total();
+  let L = `<div class="li"><div class="li__img"><img src="img/${D[S.di][0]}.jpg" alt=""></div><div><b>Smart QR Menu · ${p.name}</b><small>${p.stands?p.stands+' standees · '+D[S.di][1]:'Digital menu'}</small></div><div class="li__p">${inr(p.price)}</div></div>`;
+  if (S.extra) L += `<div class="li"><div class="li__img"><img src="img/${D[S.di][0]}.jpg" alt=""><i>${S.extra}</i></div><div><b>Extra QR standees</b><small>${S.extra} × ₹99</small><button class="rm" type="button" data-rm="extra">Remove</button></div><div class="li__p">${inr(S.extra*STANDEE)}</div></div>`;
+  if (S.del) L += `<div class="li"><div class="li__img" style="display:flex;align-items:center;justify-content:center">🛵</div><div><b>Takeaway &amp; delivery orders</b><small>Add-on</small><button class="rm" type="button" data-rm="del">Remove</button></div><div class="li__p">${inr(ADD_DEL)}</div></div>`;
+  if (S.pay) L += `<div class="li"><div class="li__img" style="display:flex;align-items:center;justify-content:center">💳</div><div><b>Online payments</b><small>Add-on</small><button class="rm" type="button" data-rm="pay">Remove</button></div><div class="li__p">${inr(ADD_PAY)}</div></div>`;
+  $('lines').innerHTML = L;
+  $('sum').innerHTML = `<div><span>Subtotal</span><span>${inr(t)}</span></div><div><span>Shipping</span><span class="z">FREE</span></div><div class="t"><span>Total</span><span>${inr(t)}</span></div>`;
+  const full = document.querySelector('input[name=pay][value=full]').checked;
+  $('spNow').textContent = full ? inr(t) : inr(ADVANCE); $('spLater').textContent = full ? '₹0' : inr(t-ADVANCE);
+  $('payCodAmt').textContent = inr(ADVANCE); $('payFullAmt').textContent = inr(t);
+  $('cosumTot').textContent = inr(t);
+  $('place').textContent = full ? `Pay ${inr(t)} & place order` : `Pay ₹500 & place order`;
+  $('save').textContent = p.stands ? `You save ${inr(p.stands*STANDEE)} on ${p.stands} free standees` : '';
+  // upsells
+  const U = [];
+  if (S.pk !== 'smart') U.push(`<div class="up hl"><div class="up__img"><img src="img/p08-unboxing-kit.jpg" alt=""></div><div><b>Upgrade to QR Ordering</b><small>Table ordering, KOT, customer data + 10 standees FREE</small><em>+${inr(PKG.smart.price-p.price)}</em></div><button type="button" data-up="smart">Upgrade</button></div>`);
+  U.push(`<div class="up"><div class="up__img"><img src="img/${D[S.di][0]}.jpg" alt=""></div><div><b>Add 5 more standees</b><small>For more tables · ₹99 each</small><em>+₹495</em></div><button type="button" data-up="st5">Add</button></div>`);
+  if (S.pk !== 'basic') U.push(`<div class="up"><div class="up__img" style="font-size:24px">🛵</div><div><b>Takeaway &amp; delivery orders</b><small>Customers order from home on the same menu</small><em>+₹999</em></div><button type="button" data-up="del" class="${S.del?'on':''}">${S.del?'Added':'Add'}</button></div>`);
+  U.push(`<div class="up"><div class="up__img" style="font-size:24px">💳</div><div><b>Online payments</b><small>Guests pay by UPI or card on the menu</small><em>+₹1,999</em></div><button type="button" data-up="pay" class="${S.pay?'on':''}">${S.pay?'Added':'Add'}</button></div>`);
+  $('ups').innerHTML = U.join('');
+}
+co.addEventListener('click', e => {
+  const u = e.target.closest('[data-up]');
+  if (u){ const k = u.dataset.up; if (k==='smart') S.pk='complete'; if (k==='st5') S.extra+=5; if (k==='del') S.del=!S.del; if (k==='pay') S.pay=!S.pay; render(); }
+  const r = e.target.closest('[data-rm]');
+  if (r){ const k = r.dataset.rm; if (k==='extra') S.extra=0; else S[k]=false; render(); }
+});
+co.addEventListener('change', e => { if (e.target.name === 'pay') renderCheckout(); });
+$('cosumT').addEventListener('click', () => { const on = $('cosum').classList.toggle('on'); $('cosumT').setAttribute('aria-expanded', on); $('cosumT').firstElementChild.textContent = on ? 'Hide order summary ▴' : 'Show order summary ▾'; });
+let lastF = null;
+function openCo(k){ if (k && PKG[k]) S.pk = k; render(); lastF = document.activeElement; co.classList.add('open'); co.scrollTop = 0; document.body.style.overflow = 'hidden'; history.pushState({co:1}, '', '#checkout'); setTimeout(() => $('cName').focus({preventScroll:true}), 50); }
+function closeCo(fromPop){ co.classList.remove('open'); document.body.style.overflow = ''; if (!fromPop && location.hash === '#checkout') history.back(); if (lastF) lastF.focus(); }
+document.addEventListener('click', e => { const b = e.target.closest('[data-checkout]'); if (b) openCo(b.dataset.checkout); });
+$('coBack').onclick = () => closeCo();
+addEventListener('popstate', () => { if (co.classList.contains('open')) closeCo(true); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && co.classList.contains('open')) closeCo(); });
+const chk = (id, ok) => { $(id).closest('.f').classList.toggle('bad', !ok); return ok; };
+$('place').addEventListener('click', async () => {
+  const ok = [chk('cName',$('cName').value.trim()), chk('cPhone',/^[6-9]\d{9}$/.test($('cPhone').value.trim())), chk('cRest',$('cRest').value.trim()),
+    chk('cAddr',$('cAddr').value.trim()), chk('cCity',$('cCity').value.trim()), chk('cState',$('cState').value.trim()), chk('cPin',/^\d{6}$/.test($('cPin').value.trim()))].every(Boolean);
+  if (!ok){ const b = co.querySelector('.f.bad input,.f.bad textarea'); if (b) b.focus(); return; }
+  const p = PKG[S.pk], t = total(), full = document.querySelector('input[name=pay][value=full]').checked;
+  const order = {package:p.name, price:p.price, design:D[S.di][1], standees:stands(), extraStandees:S.extra, takeawayDelivery:S.del, onlinePayments:S.pay,
+    total:t, payNow: full ? t : ADVANCE, payOnDelivery: full ? 0 : t-ADVANCE, paymentMode: full ? 'full_online' : 'advance_cod',
+    name:$('cName').value.trim(), phone:$('cPhone').value.trim(), restaurant:$('cRest').value.trim(), address:$('cAddr').value.trim(), city:$('cCity').value.trim(), state:$('cState').value.trim(), pincode:$('cPin').value.trim()};
+  if (typeof window.RG_PLACE_ORDER === 'function'){ try { await window.RG_PLACE_ORDER(order); } catch(e){} }
+  else window.open(wa(`New QR Menu order\n\nPackage: ${order.package} (${inr(order.price)})\nStandees: ${order.standees} · ${order.design}\nTakeaway & delivery: ${order.takeawayDelivery?'Yes':'No'}\nOnline payments: ${order.onlinePayments?'Yes':'No'}\nTotal: ${inr(t)}\nPay now: ${inr(order.payNow)} · On delivery: ${inr(order.payOnDelivery)}\n\nName: ${order.name}\nPhone: ${order.phone}\nRestaurant: ${order.restaurant}\nAddress: ${order.address}, ${order.city}, ${order.state} - ${order.pincode}\n\nPlease send the payment link.`), '_blank', 'noopener');
+  $('coBody').innerHTML = `<div class="done"><i>${tick.replace(/17/g,'30')}</i><h2 style="font-size:26px">Order received</h2><p style="color:var(--ink-2);margin:12px 0 22px">Thank you, ${order.name.split(' ')[0]}! We'll WhatsApp you on ${order.phone} with the payment link for ${inr(order.payNow)} and ask for your menu. Your menu goes live within 24 hours.</p><button class="btn btn--k" type="button" onclick="location.hash='';location.reload()">Back to RestroGrow</button></div>`;
+});
+
+/* sticky bar */
+(function(){
+  const bar=$('mbar'), cta=document.querySelector('.ctas'), fin=document.querySelector('footer');
+  let past=false, atFin=false; const u=()=>bar.classList.toggle('on',past&&!atFin);
+  new IntersectionObserver(([e])=>{past=!e.isIntersecting&&e.boundingClientRect.top<0;u()}).observe(cta);
+  new IntersectionObserver(([e])=>{atFin=e.isIntersecting;u()}).observe(fin);
+})();
+render();
+</script>
 </body>
 </html>
