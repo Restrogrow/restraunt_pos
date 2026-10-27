@@ -56,7 +56,7 @@ function inviteCreate(PDO $conn, array $d): string
             $conn->prepare('INSERT INTO signup_invites (code, note, restaurant_name, phone, email, country, business_type, city, trial_days, max_uses, expires_at, created_by)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
                 ->execute([$code, $d['note'] ?: null, $d['restaurant_name'] ?: null, $d['phone'] ?: null, $d['email'] ?: null,
-                           $d['country'] ?: null, $d['business_type'] ?: null, $d['city'] ?: null, $d['trial_days'] ?: null, max(1, (int)$d['max_uses']), $d['expires_at'] ?: null, $d['created_by'] ?? null]);
+                           $d['country'] ?: null, $d['business_type'] ?: null, $d['city'] ?: null, $d['trial_days'] ?? null, max(1, (int)$d['max_uses']), $d['expires_at'] ?: null, $d['created_by'] ?? null]);
             return $code;
         } catch (PDOException $e) {
             if ($e->getCode() !== '23000') throw $e;   // same code by chance: try another

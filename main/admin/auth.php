@@ -816,7 +816,8 @@ function handleSignup() {
 
     // one use of the sign-up link (given back if the account can't be made); its own trial length if it has one
     if ($invite && !inviteTake($pdo, (int)$invite['id'])) throw new Exception('This sign-up link has already been used.');
-    $trialDays = $invite && (int)$invite['trial_days'] > 0 ? min(365, (int)$invite['trial_days']) : obTrialDays($pdo);
+    // 0 = no free trial: the trial ends today, and from tomorrow the owner pays to keep going
+    $trialDays = $invite && $invite['trial_days'] !== null ? max(0, min(365, (int)$invite['trial_days'])) : obTrialDays($pdo);
     $source = $viaGoogle ? 'google' : ($invite ? 'invite' : 'phone');
 
     // Insert new user with the free trial (Super Admin › Platform › trial days, 7 by default), currency derived from chosen country

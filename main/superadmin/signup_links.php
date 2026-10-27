@@ -2,7 +2,8 @@
 /**
  * Sign-up links (Super Admin only): a private link for one client, restrogrow.com/join/<code>
  * (config/signup_invites.php). It opens the normal sign-up page, where the client fills in all their own
- * details; the link skips the WhatsApp code and gives its own free trial (7 days, or a custom number).
+ * details (the country can be picked here); the link skips the WhatsApp code and gives its own free trial
+ * (7 days, none, or a custom number).
  * Each link works a set number of
  * times until its expiry date; "Switch off" stops it at once.
  * All POST + CSRF token.
@@ -27,15 +28,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) throw new InvalidArgumentException('Your session changed. Please try again.');
         $action = (string)($_POST['action'] ?? '');
         if ($action === 'create') {
-            $trial = ($_POST['trial'] ?? '') === 'custom' ? (int)($_POST['trial_days'] ?? 0) : INVITE_TRIAL;
-            if ($trial < 1 || $trial > 365) throw new InvalidArgumentException('Free days must be between 1 and 365.');
+            $pick = (string)($_POST['trial'] ?? '');
+            $trial = $pick === 'custom' ? (int)($_POST['trial_days'] ?? -1) : ($pick === '0' ? 0 : INVITE_TRIAL);
+            if ($trial < 0 || $trial > 365) throw new InvalidArgumentException('Free days must be between 0 and 365.');
+            $country = trim((string)($_POST['country'] ?? ''));
+            if ($country !== '' && !getCountryByName($country)) $country = '';
             $uses = (int)($_POST['max_uses'] ?? 1);
             if ($uses < 1 || $uses > 50) throw new InvalidArgumentException('A link can be used 1 to 50 times.');
             $valid = (int)($_POST['valid_days'] ?? 14);
             $newCode = inviteCreate($conn, [
                 // the client fills in all their own details on the sign-up page
                 'note' => mb_substr(trim(strip_tags((string)($_POST['note'] ?? ''))), 0, 120),
-                'restaurant_name' => '', 'phone' => '', 'email' => '', 'country' => '', 'business_type' => '', 'city' => '',
+                'restaurant_name' => '', 'phone' => '', 'email' => '', 'country' => $country, 'business_type' => '', 'city' => '',
                 'trial_days' => $trial, 'max_uses' => $uses,
                 'expires_at' => $valid > 0 ? date('Y-m-d 23:59:59', strtotime('+' . min($valid, 365) . ' days')) : null,
                 'created_by' => $_SESSION['superadmin_username'] ?? null,
@@ -126,8 +130,13 @@ $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is you
     <input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>"><input type="hidden" name="action" value="create">
     <div class="grid">
       <label>Client name (only for you)<input name="note" maxlength="120" placeholder="e.g. Rahul, Sharma Dhaba"></label>
-      <label>Free trial<select name="trial" id="trialPick"><option value="7" selected>7 days</option><option value="custom">Custom…</option></select></label>
-      <label id="trialCustom" hidden>Free days<input name="trial_days" type="number" min="1" max="365" value="7"></label>
+      <label>Country<select name="country"><option value="">Let the client pick</option>
+        <?php foreach (getCountryData() as $iso2 => $c): ?>
+        <option value="<?php echo $h($c['name']); ?>"<?php echo $iso2 === 'IN' ? ' selected' : ''; ?>><?php echo $h($c['name'] . ' (' . $c['dial_code'] . ')'); ?></option>
+        <?php endforeach; ?>
+      </select></label>
+      <label>Free trial<select name="trial" id="trialPick"><option value="7" selected>7 days</option><option value="0">0 days (no free trial)</option><option value="custom">Custom…</option></select></label>
+      <label id="trialCustom" hidden>Free days<input name="trial_days" type="number" min="0" max="365" value="7"></label>
       <label>Can be used<select name="max_uses"><option value="1">Once</option><option value="5">5 times</option><option value="20">20 times</option></select></label>
       <label>Works for<select name="valid_days"><option value="7">7 days</option><option value="14" selected>14 days</option><option value="30">30 days</option><option value="0">No end date</option></select></label>
     </div>
@@ -145,7 +154,7 @@ $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is you
     <tr>
       <td><small><?php echo $h(date('j M Y', strtotime($r['created_at']))); ?><?php echo $r['created_by'] ? '<br>' . $h($r['created_by']) : ''; ?></small></td>
       <td><?php echo $h($r['note'] ?: '—'); ?><?php echo $r['restaurant_name'] ? '<br><small>' . $h($r['restaurant_name']) . '</small>' : ''; ?>
-        <br><small><?php echo $r['trial_days'] ? (int)$r['trial_days'] . ' free days' : 'usual free days'; ?></small></td>
+        <br><small><?php echo $r['trial_days'] === null ? 'usual free days' : ((int)$r['trial_days'] ? (int)$r['trial_days'] . ' free days' : 'no free trial'); ?><?php echo $r['country'] ? ' · ' . $h($r['country']) : ''; ?></small></td>
       <td><code><?php echo $h(inviteUrl($r['code'])); ?></code></td>
       <td><?php echo $why === '' ? '<span class="pill p-ok">Open</span>' : '<span class="pill ' . ((int)$r['active'] ? 'p-mute' : 'p-bad') . '">' . $h(rtrim(str_replace('This sign-up link ', '', $why), '.')) . '</span>'; ?>
         <br><small>Used <?php echo (int)$r['uses']; ?> of <?php echo (int)$r['max_uses']; ?><?php echo $r['expires_at'] ? ' · until ' . $h(date('j M', strtotime($r['expires_at']))) : ''; ?></small></td>

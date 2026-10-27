@@ -24,7 +24,7 @@ if (isset($_GET['invite'])) {
             $signupInvite = ['code' => $inv['code'], 'restaurant_name' => (string)$inv['restaurant_name'], 'phone' => (string)$inv['phone'],
                              'email' => (string)$inv['email'], 'country' => (string)$inv['country'],
                              'business_type' => (string)$inv['business_type'], 'city' => (string)$inv['city']];
-            if ((int)$inv['trial_days'] > 0) $trialDays = min(365, (int)$inv['trial_days']);
+            if ($inv['trial_days'] !== null) $trialDays = max(0, min(365, (int)$inv['trial_days']));   // 0 = no free trial
         }
     } catch (Throwable $e) { error_log('login invite: ' . $e->getMessage()); $inviteError = 'Could not open this sign-up link. Please reload the page.'; }
 }
@@ -836,7 +836,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 <h1 class="login-heading" id="leftHeading">Log in to your account</h1>
                 <p class="login-tagline" id="leftTagline">Let us make your restaurant grow!</p>
                 <ul class="su-perks" id="suPerks" hidden>
-                    <li><b>✓</b> <?php echo (int)$trialDays; ?> days free, no card needed</li>
+                    <?php if ($trialDays > 0): ?><li><b>✓</b> <?php echo (int)$trialDays; ?> days free, no card needed</li><?php endif; ?>
                     <li><b>✓</b> POS, kitchen tickets, online orders and your own website</li>
                     <li><b>✓</b> Ready in about 10 minutes, we guide you step by step</li>
                 </ul>
@@ -1225,9 +1225,10 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             // "Login / Please sign in to continue." even while the signup
             // form was showing.
             if (tab === 'signup') {
-                document.getElementById('authHeaderTitle').textContent = 'Start your free trial';
-                document.getElementById('authHeaderSubtitle').textContent = TRIAL_DAYS + ' days free · no card needed · takes a minute';
-                document.getElementById('leftHeading').textContent = 'Start your free ' + TRIAL_DAYS + '-day trial';
+                // a sign-up link can come with no free trial (TRIAL_DAYS 0): the owner picks a plan in the dashboard
+                document.getElementById('authHeaderTitle').textContent = TRIAL_DAYS ? 'Start your free trial' : 'Create your account';
+                document.getElementById('authHeaderSubtitle').textContent = TRIAL_DAYS ? TRIAL_DAYS + ' days free · no card needed · takes a minute' : 'Takes a minute';
+                document.getElementById('leftHeading').textContent = TRIAL_DAYS ? 'Start your free ' + TRIAL_DAYS + '-day trial' : 'Set up your restaurant';
                 document.getElementById('leftTagline').textContent = 'Everything your restaurant needs, in one place.';
             } else {
                 document.getElementById('authHeaderTitle').textContent = 'Login';
