@@ -1935,7 +1935,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 document.getElementById('suNote1').textContent = 'Your private sign-up link from RestroGrow, so no WhatsApp code is needed.';
                 var ig = document.querySelector('#signupForm .su-step[data-step="1"] .btn-google'); if (ig) ig.style.display = 'none';
                 var io = document.querySelector('#signupForm .su-step[data-step="1"] .or-divider'); if (io) io.style.display = 'none';
-                showMessage('Welcome! Check your details, then set a password to open your restaurant.', 'info');
+                showMessage('Welcome! Fill in your details and set a password to open your restaurant.', 'info');
             } else if (inviteError) {
                 switchTab('signup');
                 showMessage(inviteError, 'error');

@@ -1,9 +1,9 @@
 <?php
 /**
  * Sign-up links (Super Admin only): a private link for one client, restrogrow.com/join/<code>
- * (config/signup_invites.php). It opens the normal sign-up page with what is typed here filled in
- * (every sign-up question but the password), skips the WhatsApp code, and gives its own free trial
- * (7 days, or a custom number). Each link works a set number of
+ * (config/signup_invites.php). It opens the normal sign-up page, where the client fills in all their own
+ * details; the link skips the WhatsApp code and gives its own free trial (7 days, or a custom number).
+ * Each link works a set number of
  * times until its expiry date; "Switch off" stops it at once.
  * All POST + CSRF token.
  */
@@ -11,7 +11,6 @@ require_once __DIR__ . '/auth.php';
 require_superadmin();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/countries.php';
-require_once __DIR__ . '/../config/onboarding.php';
 require_once __DIR__ . '/../config/signup_invites.php';
 require_once __DIR__ . '/../config/prg.php';
 
@@ -28,20 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) throw new InvalidArgumentException('Your session changed. Please try again.');
         $action = (string)($_POST['action'] ?? '');
         if ($action === 'create') {
-            $clean = fn($k, $n) => mb_substr(trim(strip_tags((string)($_POST[$k] ?? ''))), 0, $n);
-            $email = $clean('email', 190);
-            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('That email doesn\'t look right.');
-            $country = $clean('country', 60);
-            if ($country !== '' && !getCountryByName($country)) $country = '';
             $trial = ($_POST['trial'] ?? '') === 'custom' ? (int)($_POST['trial_days'] ?? 0) : INVITE_TRIAL;
             if ($trial < 1 || $trial > 365) throw new InvalidArgumentException('Free days must be between 1 and 365.');
             $uses = (int)($_POST['max_uses'] ?? 1);
             if ($uses < 1 || $uses > 50) throw new InvalidArgumentException('A link can be used 1 to 50 times.');
             $valid = (int)($_POST['valid_days'] ?? 14);
             $newCode = inviteCreate($conn, [
-                'note' => $clean('note', 120), 'restaurant_name' => $clean('restaurant_name', 120),
-                'phone' => preg_replace('/\D/', '', (string)($_POST['phone'] ?? '')), 'email' => $email, 'country' => $country,
-                'business_type' => isset(OB_TYPES[$_POST['business_type'] ?? '']) ? $_POST['business_type'] : '', 'city' => $clean('city', 80),
+                // the client fills in all their own details on the sign-up page
+                'note' => mb_substr(trim(strip_tags((string)($_POST['note'] ?? ''))), 0, 120),
+                'restaurant_name' => '', 'phone' => '', 'email' => '', 'country' => '', 'business_type' => '', 'city' => '',
                 'trial_days' => $trial, 'max_uses' => $uses,
                 'expires_at' => $valid > 0 ? date('Y-m-d 23:59:59', strtotime('+' . min($valid, 365) . ' days')) : null,
                 'created_by' => $_SESSION['superadmin_username'] ?? null,
@@ -109,8 +103,8 @@ $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is you
 <body>
 <div class="box">
   <h1>Sign-up links</h1>
-  <p>A private link for a client you are bringing on yourself. It opens the normal sign-up page with what you type here
-     already filled in, and skips the WhatsApp code. The client checks the details, sets a password and lands in their new dashboard.</p>
+  <p>A private link for a client you are bringing on yourself. It opens the normal sign-up page without the WhatsApp code.
+     The client fills in their details, sets a password and lands in their new dashboard.</p>
 
   <?php if ($message): ?><div class="msg ok"><?php echo $h($message); ?></div><?php endif; ?>
   <?php if ($error): ?><div class="msg err"><?php echo $h($error); ?></div><?php endif; ?>
@@ -127,23 +121,11 @@ $waText = fn($r) => 'Hi' . ($r['note'] ? ' ' . $r['note'] : '') . ', here is you
   <?php endforeach; ?>
 
   <h2>Make a link</h2>
-  <p><small>These are the sign-up page's questions. Leave a box empty and the client fills it in; the client always sets their own password.</small></p>
+  <p><small>The client fills in all their own details (restaurant, phone, email, password…) on the link.</small></p>
   <form method="post" style="display:block">
     <input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>"><input type="hidden" name="action" value="create">
     <div class="grid">
       <label>Client name (only for you)<input name="note" maxlength="120" placeholder="e.g. Rahul, Sharma Dhaba"></label>
-      <label>Restaurant name<input name="restaurant_name" maxlength="120"></label>
-      <label>Country<select name="country">
-        <?php foreach (getCountryData() as $iso2 => $c): ?>
-        <option value="<?php echo $h($c['name']); ?>"<?php echo $iso2 === 'IN' ? ' selected' : ''; ?>><?php echo $h($c['name'] . ' (' . $c['dial_code'] . ')'); ?></option>
-        <?php endforeach; ?>
-      </select></label>
-      <label>Phone<input name="phone" type="tel" maxlength="15" placeholder="Without the country code"></label>
-      <label>Type of place<select name="business_type"><option value="">Let the client pick</option>
-        <?php foreach (OB_TYPES as $k => $v): ?><option value="<?php echo $h($k); ?>"><?php echo $h($v); ?></option><?php endforeach; ?>
-      </select></label>
-      <label>City<input name="city" maxlength="80" placeholder="e.g. Bengaluru"></label>
-      <label>Email<input name="email" type="email" maxlength="190"></label>
       <label>Free trial<select name="trial" id="trialPick"><option value="7" selected>7 days</option><option value="custom">Custom…</option></select></label>
       <label id="trialCustom" hidden>Free days<input name="trial_days" type="number" min="1" max="365" value="7"></label>
       <label>Can be used<select name="max_uses"><option value="1">Once</option><option value="5">5 times</option><option value="20">20 times</option></select></label>
