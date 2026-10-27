@@ -10,6 +10,24 @@ $googleReady = googleLoginReady();
 $trialDays = 7;
 try { require_once __DIR__ . '/../db_connection.php'; require_once __DIR__ . '/../config/onboarding.php'; $trialDays = obTrialDays(getConnection()); } catch (Throwable $e) {}
 $openSignup = ($_GET['tab'] ?? '') === 'signup';
+// a private sign-up link from Super Admin (restrogrow.com/join/<code>, config/signup_invites.php):
+// details filled in, no WhatsApp code, maybe its own trial length
+$signupInvite = null; $inviteError = '';
+if (isset($_GET['invite'])) {
+    $openSignup = true;
+    try {
+        require_once __DIR__ . '/../config/signup_invites.php';
+        $inv = inviteFind(getConnection(), strtolower(trim((string)$_GET['invite'])));
+        if (!$inv) $inviteError = 'This sign-up link is not valid. You can still sign up below.';
+        elseif (($why = inviteProblem($inv)) !== '') $inviteError = $why . ' Ask RestroGrow for a new one, or sign up below.';
+        else {
+            $signupInvite = ['code' => $inv['code'], 'restaurant_name' => (string)$inv['restaurant_name'], 'phone' => (string)$inv['phone'],
+                             'email' => (string)$inv['email'], 'country' => (string)$inv['country'],
+                             'business_type' => (string)$inv['business_type'], 'city' => (string)$inv['city']];
+            if ((int)$inv['trial_days'] > 0) $trialDays = min(365, (int)$inv['trial_days']);
+        }
+    } catch (Throwable $e) { error_log('login invite: ' . $e->getMessage()); $inviteError = 'Could not open this sign-up link. Please reload the page.'; }
+}
 // came back from Google with no account yet (admin/google_finish.php): sign-up without the WhatsApp code
 $gp = $_SESSION['google_owner_pending'] ?? null;
 $googleSignup = is_array($gp) && (int)($gp['exp'] ?? 0) > time() ? ['email' => $gp['email'], 'name' => $gp['name']] : null;
@@ -1468,7 +1486,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         function suTrack(step, extra) {
             if (suTrack.sent && suTrack.sent[step]) return;
             suTrack.sent = suTrack.sent || {}; suTrack.sent[step] = 1;
-            const body = new URLSearchParams(Object.assign({ action: 'signupStep', token: SU.token, step: step, source: window.googleSignup ? 'google' : 'phone' }, extra || {}));
+            const body = new URLSearchParams(Object.assign({ action: 'signupStep', token: SU.token, step: step, source: window.googleSignup ? 'google' : (window.signupInvite ? 'invite' : 'phone') }, extra || {}));
             fetch('auth.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body, keepalive: true }).catch(() => {});
         }
         function suGo(n) {
@@ -1520,7 +1538,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             SU.codeSent = false; SU.verified = false;
             suEl('signupOtpGroup').style.display = 'none';
             suEl('signupOtpCode').value = '';
-            suEl('suNext1Text').textContent = window.googleSignup ? 'Continue' : 'Send code on WhatsApp';
+            suEl('suNext1Text').textContent = window.googleSignup || window.signupInvite ? 'Continue' : 'Send code on WhatsApp';
             suLockPhone(false);
             if (SU.timer) { clearInterval(SU.timer); SU.timer = null; }
             const resend = suEl('signupOtpResend');
@@ -1540,7 +1558,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             const ph = suPhone(), btn = suEl('suNext1'), txt = suEl('suNext1Text');
             if (!ph.ok) { showMessage(ph.country ? `Please enter a valid phone number for ${ph.country} (${ph.need}).` : 'Please choose your country.', 'error'); suEl('signupPhone').focus(); return; }
             // came back from Google: Google replaces the WhatsApp code
-            if (window.googleSignup) { SU.verified = true; suTrack('verified', { phone: ph.digits, country: ph.country }); suGo(2); return; }
+            // came back from Google, or a private sign-up link: they replace the WhatsApp code
+            if (window.googleSignup || window.signupInvite) { SU.verified = true; suTrack('verified', { phone: ph.digits, country: ph.country }); suGo(2); return; }
             if (SU.verified) { suGo(2); return; }
             btn.disabled = true;
             try {
@@ -1635,6 +1654,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     action: 'signup', username: '', email: email, password: password,
                     restaurant_name: suEl('restaurantName').value.trim(), country: ph.country, phone: suEl('signupPhone').value.trim(),
                     business_type: type ? type.value : '', city: suEl('signupCity').value.trim(), signup_token: SU.token,
+                    invite_code: window.signupInvite ? window.signupInvite.code : '',
                 });
                 const response = await fetch('auth.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body });
                 const result = await response.json();
@@ -1895,10 +1915,30 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         
         // Back from "Continue with Google": an error, or a new owner to sign up (name + email filled in)
         window.googleSignup = <?php echo json_encode($googleSignup, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+        window.signupInvite = <?php echo json_encode($googleSignup ? null : $signupInvite, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
         (function () {
             var q = new URLSearchParams(location.search);
+            var inviteError = <?php echo json_encode($inviteError, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
             if (q.get('google_error')) {
                 showMessage(q.get('google_error'), 'error');
+            } else if (window.signupInvite) {
+                // private sign-up link: what RestroGrow already typed is filled in, and no WhatsApp code
+                switchTab('signup');
+                var inv = window.signupInvite, set = function (id, v) { var el = document.getElementById(id); if (el && v) el.value = v; };
+                if (inv.country) {
+                    var sel = document.getElementById('signupCountry');
+                    if ([].some.call(sel.options, function (o) { return o.value === inv.country; })) { sel.value = inv.country; sel.dispatchEvent(new Event('change')); }
+                }
+                set('signupPhone', inv.phone); set('restaurantName', inv.restaurant_name); set('signupEmail', inv.email); set('signupCity', inv.city);
+                var bt = inv.business_type && document.querySelector('#signupForm input[name=business_type][value="' + inv.business_type + '"]'); if (bt) bt.checked = true;
+                document.getElementById('suNext1Text').textContent = 'Continue';
+                document.getElementById('suNote1').textContent = 'Your private sign-up link from RestroGrow, so no WhatsApp code is needed.';
+                var ig = document.querySelector('#signupForm .su-step[data-step="1"] .btn-google'); if (ig) ig.style.display = 'none';
+                var io = document.querySelector('#signupForm .su-step[data-step="1"] .or-divider'); if (io) io.style.display = 'none';
+                showMessage('Welcome! Check your details, then set a password to open your restaurant.', 'info');
+            } else if (inviteError) {
+                switchTab('signup');
+                showMessage(inviteError, 'error');
             } else if (window.googleSignup) {
                 switchTab('signup');
                 var email = window.googleSignup.email;

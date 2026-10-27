@@ -31,6 +31,9 @@ RewriteRule ^api/v1/?(.*)$ main/api/v1/index.php?route=$1 [L,QSA]
 RewriteRule ^\.well-known/oauth-protected-resource(/mcp)?/?$ main/oauth/metadata.php?doc=resource [L]
 RewriteRule ^\.well-known/(oauth-authorization-server|openid-configuration)(/.*)?$ main/oauth/metadata.php?doc=server [L]
 
+# Private sign-up links from Super Admin › Sign-up links (config/signup_invites.php)
+RewriteRule ^join/([a-z0-9]{6,16})/?$ /main/admin/login.php?tab=signup&invite=$1 [R=302,L]
+
 # Allow direct access to admin/api scripts (main/ directory)
 RewriteRule ^main/ - [L]
 

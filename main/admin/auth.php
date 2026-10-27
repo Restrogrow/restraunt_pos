@@ -780,8 +780,18 @@ function handleSignup() {
     // person, so that replaces the WhatsApp code (every other detail is still required).
     $gp = $_SESSION['google_owner_pending'] ?? null;
     $viaGoogle = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && strtolower($email) === ($gp['email'] ?? '');
+    // A private sign-up link from Super Admin (restrogrow.com/join/<code>, config/signup_invites.php):
+    // RestroGrow already knows this client, so the link replaces the WhatsApp code too.
+    $invite = null;
+    $inviteCode = strtolower(trim((string)($_POST['invite_code'] ?? '')));
+    if ($inviteCode !== '') {
+        require_once __DIR__ . '/../config/signup_invites.php';
+        $invite = inviteFind($pdo, $inviteCode);
+        if (!$invite) throw new Exception('This sign-up link is not valid.');
+        if (($why = inviteProblem($invite)) !== '') throw new Exception($why);
+    }
     $phoneDigits = preg_replace('/\D/', '', $phone);
-    if (!$viaGoogle && !isPhoneVerifiedRecently($pdo, 'SIGNUP', $phoneDigits, 'owner_signup')) {
+    if (!$viaGoogle && !$invite && !isPhoneVerifiedRecently($pdo, 'SIGNUP', $phoneDigits, 'owner_signup')) {
         throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
     }
 
@@ -804,23 +814,37 @@ function handleSignup() {
     // Hash password
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
+    // one use of the sign-up link (given back if the account can't be made); its own trial length if it has one
+    if ($invite && !inviteTake($pdo, (int)$invite['id'])) throw new Exception('This sign-up link has already been used.');
+    $trialDays = $invite && (int)$invite['trial_days'] > 0 ? min(365, (int)$invite['trial_days']) : obTrialDays($pdo);
+    $source = $viaGoogle ? 'google' : ($invite ? 'invite' : 'phone');
+
     // Insert new user with the free trial (Super Admin › Platform › trial days, 7 by default), currency derived from chosen country
     $insertStmt = $pdo->prepare("
         INSERT INTO users (username, email, password, restaurant_id, restaurant_name, country, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL " . obTrialDays($pdo) . " DAY), NOW(), NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL " . $trialDays . " DAY), NOW(), NOW())
     ");
-    $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
+    try {
+        $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
+    } catch (Throwable $e) {
+        if ($invite) inviteGiveBack($pdo, (int)$invite['id']);
+        throw $e;
+    }
+    if ($invite) {
+        if ($result) inviteRecord($pdo, (int)$invite['id'], $restaurantId);
+        else inviteGiveBack($pdo, (int)$invite['id']);
+    }
     // the country's own time zone and tax name/rate (Nepal: Asia/Kathmandu, VAT 13% off until they switch it on)
     if ($result) applyCountryDefaults($pdo, $restaurantId, $country);
     if ($result) {
         try {
             $pdo->prepare('UPDATE users SET business_type = ?, city = ?, signup_source = ? WHERE restaurant_id = ?')
-                ->execute([$businessType, $city !== '' ? $city : null, $viaGoogle ? 'google' : 'phone', $restaurantId]);
+                ->execute([$businessType, $city !== '' ? $city : null, $source, $restaurantId]);
             // set up to suit the type of place: a cloud kitchen has no dine-in (switch it on in Settings any time)
             if ($businessType === 'cloud_kitchen') $pdo->prepare('UPDATE users SET enable_dinein = 0 WHERE restaurant_id = ?')->execute([$restaurantId]);
         } catch (Throwable $e) { error_log('signup extras: ' . $e->getMessage()); }
         obFunnel($pdo, (string)($_POST['signup_token'] ?? ''), 'created', ['phone' => $phone, 'country' => $country, 'restaurant_name' => $restaurantName,
-                 'restaurant_id' => $restaurantId, 'source' => $viaGoogle ? 'google' : 'phone']);
+                 'restaurant_id' => $restaurantId, 'source' => $source]);
         // which website visit brought this restaurant (Instagram, Google, a campaign…), and from where
         require_once __DIR__ . '/../config/site_visitors.php';
         siteAttribute($pdo, 'signup', (string)$restaurantId);
