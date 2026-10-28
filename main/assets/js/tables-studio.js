@@ -5,6 +5,8 @@
  * status, grid or list view, edit in a preview editor (rename warns that the
  * printed QR code changes), switch a table off, see and print its QR code, and
  * change many at once (move, seats, on/off, delete). Refreshes every 30 s.
+ * A busy table's Bill button opens the whole table as one bill (api/table_bill.php: every order at the
+ * table, from every guest's phone): print it, mark it all paid, free the table.
  * Shared look and helpers: assets/css/studio-ui.css, assets/js/studio-ui.js.
  */
 (function () {
@@ -12,12 +14,14 @@
 
   var API = '../api/tables_studio.php';
   var D = null, q = '', fArea = 0, fStatus = 'all', view = 'grid', selecting = false, sel = {}, edit = null, qrFor = null, pollT = null, delAsk = false;
+  var billFor = null, B = null, payWith = 'Cash', paying = false;
   try { view = localStorage.getItem('rgTablesView') || 'grid'; } catch (e) {}
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return SX.esc(s); }
   function money(n) { return SX.money(n, D && D.currency); }
   function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
+  function post2(b) { return fetch('../api/table_bill.php', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
   function area(id) { return D.areas.filter(function (a) { return a.id === id; })[0]; }
   function look(id) { var a = area(id); return SX.look(a, D.areas.indexOf(a)); }
   function mins(t) { return SX.minsBetween(t.since, D.now); }
@@ -29,7 +33,7 @@
       if (!d.success) { el.innerHTML = '<div class="sx-empty"><span class="material-symbols-rounded">error</span><b>' + esc(d.message || 'Could not load tables') + '</b></div>'; return; }
       D = d; draw();
       clearTimeout(pollT);
-      pollT = setTimeout(function () { if (SX.isActive('tablesPage') && !edit && !qrFor && !selecting) load(); }, 30000);
+      pollT = setTimeout(function () { if (SX.isActive('tablesPage') && !edit && !qrFor && !selecting && !billFor) load(); }, 30000);
     }).catch(function () { if (!D) el.innerHTML = '<div class="sx-empty"><span class="material-symbols-rounded">wifi_off</span><b>Network error</b><span>Please try again.</span></div>'; });
   }
 
@@ -59,7 +63,8 @@
         (selecting ? '<label class="sx-check"><input type="checkbox" data-tb-sel="' + t.id + '"' + (on ? ' checked' : '') + '><span></span></label>' : '') +
         '<span class="tb-num">' + esc(t.number) + '</span><span class="tb-area"><span class="material-symbols-rounded">' + L.icon + '</span>' + esc(a ? a.name : '—') + '</span>' +
         seatDots(t.seats) + '<span class="tb-row-st">' + statusPill(t) + '</span><span class="tb-today">' + (t.today.orders ? t.today.orders + ' · ' + money(t.today.revenue) : '<i>No orders today</i>') + '</span>' +
-        '<span class="tb-acts"><button type="button" class="sx-icon-btn" data-tb-qr="' + t.id + '" title="QR code"><span class="material-symbols-rounded">qr_code_2</span></button>' +
+        '<span class="tb-acts">' + (t.status === 'busy' ? '<button type="button" class="sx-icon-btn tb-bill-btn" data-tb-bill="' + t.id + '" title="Table bill"><span class="material-symbols-rounded">receipt_long</span></button>' : '') +
+        '<button type="button" class="sx-icon-btn" data-tb-qr="' + t.id + '" title="QR code"><span class="material-symbols-rounded">qr_code_2</span></button>' +
         '<button type="button" class="sx-icon-btn" data-tb-edit="' + t.id + '" title="Edit"><span class="material-symbols-rounded">edit</span></button></span></div>';
     }
     return '<div class="tb-card ' + t.status + (on ? ' sel' : '') + (stale ? ' stale' : '') + '" data-tb="' + t.id + '" style="--c:' + L.color + '">' +
@@ -67,7 +72,8 @@
       '<div class="tb-head"><span class="tb-num">' + esc(t.number) + '</span>' + seatDots(t.seats) + '</div>' +
       '<div class="tb-st">' + statusPill(t) + '</div>' +
       (t.status === 'reserved' && t.guest ? '<div class="tb-sub">For ' + esc(t.guest) + '</div>' : '<div class="tb-sub">' + (t.today.orders ? t.today.orders + ' order' + (t.today.orders > 1 ? 's' : '') + ' today · ' + money(t.today.revenue) : 'No orders today') + '</div>') +
-      '<div class="tb-foot"><button type="button" class="sx-icon-btn" data-tb-qr="' + t.id + '" title="QR code"><span class="material-symbols-rounded">qr_code_2</span></button>' +
+      '<div class="tb-foot">' + (t.status === 'busy' ? '<button type="button" class="sx-icon-btn tb-bill-btn" data-tb-bill="' + t.id + '" title="Table bill"><span class="material-symbols-rounded">receipt_long</span></button>' : '') +
+        '<button type="button" class="sx-icon-btn" data-tb-qr="' + t.id + '" title="QR code"><span class="material-symbols-rounded">qr_code_2</span></button>' +
         '<button type="button" class="sx-icon-btn tb-toggle' + (t.available ? ' on' : '') + '" data-tb-toggle="' + t.id + '" title="' + (t.available ? 'Switch off (no new orders)' : 'Switch on') + '"><span class="material-symbols-rounded">' + (t.available ? 'toggle_on' : 'toggle_off') + '</span></button>' +
         '<button type="button" class="sx-icon-btn" data-tb-edit="' + t.id + '" title="Edit"><span class="material-symbols-rounded">edit</span></button></div></div>';
   }
@@ -151,11 +157,87 @@
         '<button type="button" class="btn btn-primary" data-tb-qr-dl="' + t.id + '"><span class="material-symbols-rounded">download</span> Download</button></div></div></div>';
   }
 
+  // ── One bill for the table (api/table_bill.php) ──
+  function billModal() {
+    if (!billFor) return '';
+    var t = D.tables.filter(function (x) { return x.id === billFor; })[0]; if (!t) return '';
+    var L = look(t.area_id), c = B ? B.currency : (D.currency || '');
+    var m = function (n) { return c + (Math.round((+n || 0) * 100) / 100).toFixed(2); };   // a bill shows the paise
+    var inner;
+    if (!B) inner = '<div class="sx-loading"><span></span><span></span><span></span></div>';
+    else if (!B.orders.length) inner = '<div class="sx-empty"><span class="material-symbols-rounded">receipt_long</span><b>Nothing open on this table</b><span>Every order here is paid. You can free the table.</span></div>';
+    else inner = '<div class="tbb-list">' + B.orders.map(function (o) {
+        return '<div class="tbb-order"><div class="tbb-h"><b>' + esc(o.name) + '</b><span class="sx-muted">#' + esc(o.number) + ' · ' + esc(o.status) + '</span>' +
+          '<span class="sx-pill ' + (o.paid ? 'ok' : 'wait') + '">' + (o.paid ? 'Paid' : 'Unpaid') + '</span><b class="tbb-amt">' + m(o.total) + '</b></div>' +
+          o.items.map(function (it) { return '<div class="tbb-it"><span>' + it.qty + ' × ' + esc(it.name) + '</span><span>' + m(it.amount) + '</span></div>'; }).join('') + '</div>';
+      }).join('') + '</div>' +
+      '<div class="tbb-sum"><div><span>Subtotal</span><span>' + m(B.sum.subtotal) + '</span></div>' +
+        (B.sum.discount > 0 ? '<div><span>Discount</span><span>−' + m(B.sum.discount) + '</span></div>' : '') +
+        (B.sum.tax > 0 ? '<div><span>Tax</span><span>' + m(B.sum.tax) + '</span></div>' : '') +
+        '<div class="tot"><span>Table total</span><b>' + m(B.sum.total) + '</b></div>' +
+        (B.sum.paid > 0 ? '<div class="ok"><span>Paid</span><span>' + m(B.sum.paid) + '</span></div>' : '') +
+        '<div class="due"><span>To pay</span><b>' + m(B.sum.due) + '</b></div></div>';
+    var due = B ? B.sum.due : 0;
+    var guests = B ? B.orders.map(function (o) { return o.name; }).filter(function (n, i, a) { return a.indexOf(n) === i; }) : [];
+    return '<div class="sx-modal" data-tb-modal><div class="sx-sheet" role="dialog" aria-label="Bill for table ' + esc(t.number) + '">' +
+      '<div class="sx-sheet-hero" style="--c:' + L.color + '"><span class="sx-ic material-symbols-rounded">receipt_long</span><div><b>Table ' + esc(t.number) + ' · one bill</b><small>' +
+        (B ? B.orders.length + ' order' + (B.orders.length === 1 ? '' : 's') + (guests.length ? ' · ' + esc(guests.join(', ')) : '') : 'Loading…') + '</small></div></div>' +
+      '<div class="sx-form">' + inner +
+        (B && due > 0 ? '<div class="sx-lbl">Paid with</div><div class="sx-chips sx-chips-wrap">' + ['Cash', 'UPI', 'Card'].map(function (w) {
+          return '<button type="button" class="' + (payWith === w ? 'on' : '') + '" data-tbb-with="' + w + '">' + w + '</button>'; }).join('') + '</div>' : '') +
+      '</div>' +
+      '<div class="sx-sheet-acts"><button type="button" class="btn btn-secondary" data-tb-close>Close</button>' +
+        (B && B.orders.length ? '<button type="button" class="btn btn-secondary" data-tbb-print><span class="material-symbols-rounded">print</span> Print bill</button>' : '') +
+        (B && due > 0 ? '<button type="button" class="btn btn-primary" data-tbb-pay' + (paying ? ' disabled' : '') + '>' + (paying ? 'Saving…' : 'Mark all paid · ' + m(due)) + '</button>'
+          : (B ? '<button type="button" class="btn btn-primary" data-tbb-free>Free table</button>' : '')) +
+      '</div></div></div>';
+  }
+  function loadBill() {
+    var id = billFor;
+    return fetch('../api/table_bill.php?table_id=' + id, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (billFor !== id) return;
+      if (!d.success) { SX.notify(d.message || 'Could not load the bill', 'error'); billFor = null; draw(); return; }
+      B = d; draw();
+    }).catch(function () { if (billFor === id) { SX.notify('Network error. Please try again.', 'error'); billFor = null; draw(); } });
+  }
+  // every unpaid order, one after another, through the normal Mark paid (api/update_payment_status.php)
+  function payAll() {
+    var left = B.orders.filter(function (o) { return !o.paid; }), failed = 0;
+    paying = true; draw();
+    var next = function () {
+      var o = left.shift();
+      if (!o) { paying = false; SX.notify(failed ? failed + ' could not be marked paid' : 'Table ' + B.table + ' paid', failed ? 'error' : 'success'); return loadBill().then(load); }
+      var f = new FormData(); f.append('orderId', o.id); f.append('status', 'Paid'); f.append('payment_method', payWith);
+      return fetch('../api/update_payment_status.php', { method: 'POST', credentials: 'same-origin', body: f }).then(function (r) { return r.json(); })
+        .then(function (d) { if (!d.success) failed++; }, function () { failed++; }).then(next);
+    };
+    next();
+  }
+  // the whole table on one bill, printed like any order (script.js printOrder: preview / printer)
+  function printBill() {
+    if (typeof window.printOrder !== 'function' || !B) return;
+    // the same dish at the same price from several guests: one line ("4 × Tomato Shorba")
+    var items = [], at = {};
+    B.orders.forEach(function (o) { o.items.forEach(function (it) {
+      var k = it.name + '|' + it.rate;
+      if (at[k] !== undefined) { items[at[k]].quantity += it.qty; items[at[k]].total_price += it.amount; return; }
+      at[k] = items.length; items.push({ item_name: it.name, quantity: it.qty, unit_price: it.rate, price: it.rate, total_price: it.amount });
+    }); });
+    var guests = B.orders.map(function (o) { return o.name; }).filter(function (n, i, a) { return a.indexOf(n) === i; });
+    window.printOrder(0, {
+      id: 0, order_number: 'TABLE-' + B.table, bill_label: B.orders.map(function (o) { return String(o.number).split('-').pop(); }).join(', '), items: items, order_type: 'Dine-in', table_number: B.table, area_name: B.area || '',
+      created_at: (B.session && B.session.since) || (B.orders[0] && B.orders[0].at) || new Date().toISOString(),
+      customer_name: guests.join(', '), subtotal: B.sum.subtotal, tax: B.sum.tax, discount: B.sum.discount, total: B.sum.total,
+      payment_method: B.orders.map(function (o) { return o.payment_method; }).filter(function (n, i, a) { return n && a.indexOf(n) === i; }).join(' + ') || 'Cash',
+      payment_status: B.sum.due > 0 ? 'Pending' : 'Paid', order_status: 'Served'
+    });
+  }
+
   function draw(keepFocus) {
     var el = $('tablesRoot'); if (!el || !D) return;
     var f = document.activeElement && document.activeElement.id === 'tbSearch' ? document.activeElement.selectionStart : null;
     var list = visible();
-    el.innerHTML = stats() + toolbar(list) + '<div class="tb-body' + (selecting ? ' selecting' : '') + '">' + body(list) + '</div>' + bulkBar() + editor() + qrModal();
+    el.innerHTML = stats() + toolbar(list) + '<div class="tb-body' + (selecting ? ' selecting' : '') + '">' + body(list) + '</div>' + bulkBar() + editor() + qrModal() + billModal();
     if (f !== null) { var s = $('tbSearch'); s.focus(); s.setSelectionRange(f, f); }
     if (edit && !keepFocus) { var n = $('tbNum'); if (n && !edit.number) n.focus(); }
   }
@@ -169,7 +251,18 @@
   document.addEventListener('click', function (e) {
     if (!e.target.closest || !e.target.closest('#tablesRoot') || !D) return;
     var t;
-    if (e.target.matches('[data-tb-modal]') || e.target.closest('[data-tb-close]')) { edit = null; qrFor = null; draw(); return; }
+    if (e.target.matches('[data-tb-modal]') || e.target.closest('[data-tb-close]')) { edit = null; qrFor = null; billFor = null; B = null; draw(); return; }
+    if ((t = e.target.closest('[data-tb-bill]'))) { billFor = +t.getAttribute('data-tb-bill'); B = null; payWith = 'Cash'; draw(); loadBill(); return; }
+    if ((t = e.target.closest('[data-tbb-with]'))) { payWith = t.getAttribute('data-tbb-with'); draw(); return; }
+    if (e.target.closest('[data-tbb-pay]')) { if (!paying && B) payAll(); return; }
+    if (e.target.closest('[data-tbb-print]')) { printBill(); return; }
+    if (e.target.closest('[data-tbb-free]')) {
+      post2({ action: 'free', table_id: billFor }).then(function (d) {
+        SX.notify(d.success ? 'Table is free' : (d.message || 'Could not free the table'), d.success ? 'success' : 'error');
+        if (d.success) { billFor = null; B = null; load(); } else loadBill();
+      });
+      return;
+    }
     if ((t = e.target.closest('[data-tb-status]'))) { fStatus = t.getAttribute('data-tb-status'); draw(); return; }
     if ((t = e.target.closest('[data-tb-area]'))) { fArea = +t.getAttribute('data-tb-area'); draw(); return; }
     if ((t = e.target.closest('[data-tb-view]'))) { view = t.getAttribute('data-tb-view'); try { localStorage.setItem('rgTablesView', view); } catch (x) {} draw(); return; }
@@ -264,8 +357,8 @@
     }
   });
   document.addEventListener('keydown', function (e) {
-    if (!edit && !qrFor) return;
-    if (e.key === 'Escape') { edit = null; qrFor = null; draw(); }
+    if (!edit && !qrFor && !billFor) return;
+    if (e.key === 'Escape') { edit = null; qrFor = null; billFor = null; B = null; draw(); }
     if (e.key === 'Enter' && edit && e.target && (e.target.id === 'tbNum' || e.target.id === 'tbSeats')) { e.preventDefault(); var s = document.querySelector('[data-tb-save]'); if (s) s.click(); }
   });
 

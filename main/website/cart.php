@@ -3294,6 +3294,8 @@ function showCheckoutModal(cartData) {
   html += '<select id="chkTableId" style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
   html += '<option value="">Select a table...</option></select>';
   html += '</div>';  // close dineinTableSection
+  // "Table T4 is already ordering: Rahul, Priya" (rgTableGroupNote, api/table_session.php)
+  html += '<div id="rgTableGroupNote" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12.5px;line-height:1.45"></div>';
   html += '</div>';  // close form-group
 
   // Order Now vs Schedule for Later
@@ -3582,8 +3584,10 @@ function loadTablesForCheckout() {
       for (var i = 0; i < tables.length; i++) {
         var t = tables[i];
         var selected = (autoTable && String(t.table_number) === String(autoTable)) ? ' selected' : '';
-        sel.innerHTML += '<option value="' + t.id + '"' + selected + '>' + (t.area_name ? t.area_name + ' - ' : '') + 'Table ' + t.table_number + (t.capacity ? ' (Cap: ' + t.capacity + ')' : '') + '</option>';
+        sel.innerHTML += '<option value="' + t.id + '" data-num="' + esc(t.table_number) + '"' + selected + '>' + (t.area_name ? t.area_name + ' - ' : '') + 'Table ' + t.table_number + (t.capacity ? ' (Cap: ' + t.capacity + ')' : '') + '</option>';
       }
+      if (!sel.getAttribute('data-rg-group')) { sel.setAttribute('data-rg-group', '1'); sel.addEventListener('change', rgTableGroupNote); }
+      rgTableGroupNote();
       // If auto-selected, also make sure Dine-in option is active
       if (autoTable) {
         var dineinLabel = document.querySelector('.order-type-option[data-ot="dinein"]');
@@ -3593,6 +3597,24 @@ function loadTablesForCheckout() {
     .catch(function() {
       sel.innerHTML = '<option value="">Failed to load tables</option>';
     });
+}
+
+// Others at this table have already ordered: say that this order joins their bill (config/table_session.php)
+function rgTableGroupNote() {
+  var box = document.getElementById('rgTableGroupNote');
+  if (!box) return;
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || window.websiteRestaurantId || '';
+  var sel = document.getElementById('chkTableId'), opt = sel && sel.selectedIndex > 0 ? sel.options[sel.selectedIndex] : null;
+  var num = sessionStorage.getItem('qrTable') || (opt ? opt.getAttribute('data-num') || '' : '');
+  if (!rid || !num) { box.style.display = 'none'; return; }
+  fetch('../api/table_session.php?restaurant_id=' + encodeURIComponent(rid) + '&table=' + encodeURIComponent(num), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.success || !d.open || !d.orders || !d.orders.length) { box.style.display = 'none'; return; }
+      box.innerHTML = '<b>Table ' + esc(d.table) + ' is already ordering</b> (' + esc(d.guests.join(', ')) + '). Your order goes on the same table bill.';
+      box.style.display = '';
+    })
+    .catch(function() { box.style.display = 'none'; });
 }
 
 function processOrder(cartData) {
@@ -3777,6 +3799,7 @@ function processOrder(cartData) {
   btn.disabled = true;
 
   var rid = document.querySelector('meta[name=restaurant-id]')?.content || 'RES001';
+  var clientRef = rgOrderRef();
 
   fetchJsonWithRetry('../api/process_website_order.php?restaurant_id=' + encodeURIComponent(rid), {
     method: 'POST',
@@ -3794,6 +3817,7 @@ function processOrder(cartData) {
       notes: savedInstruction || '',
       order_type: orderType,
       table_id: tableId,
+      client_ref: clientRef,
       room_qr: window.websiteRoom ? window.websiteRoom.param : '',
       items: items,
       combos: combos,
@@ -3966,7 +3990,18 @@ function ppShowChoices(orderNumber, title, msg, s) {
 
 // The order is placed: empty the cart, and drop its notes, add-ons and coupon so
 // they don't ride along unseen on the customer's next order.
+// This order's own name (api/process_website_order.php client_ref): kept until the order is placed, so tapping
+// Place order again after a dropped connection gets back the same order instead of a second one
+function rgOrderRef() {
+  try {
+    var r = sessionStorage.getItem('rgOrderRef');
+    if (!r) { r = 'o' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12); sessionStorage.setItem('rgOrderRef', r); }
+    return r;
+  } catch (e) { return ''; }
+}
+
 function clearPlacedOrder() {
+  try { sessionStorage.removeItem('rgOrderRef'); } catch (e) {}
   cartItems = {};
   saveCart();
   savedInstruction = '';

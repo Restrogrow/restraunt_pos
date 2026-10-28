@@ -11305,11 +11305,12 @@ window.printSentTickets = function (result, then) {
   };
   
 // Print Order
-window.printOrder = async function(orderId) {
+// preset: an order made on the page instead of fetched (Tables › table bill: every order at a table, tables-studio.js)
+window.printOrder = async function(orderId, preset) {
   try {
     // Fetch order details
-    const response = await rgFetchRetry(`../api/get_order_details_by_id.php?id=${orderId}`);
-    const data = await response.json();
+    const data = preset ? { success: true, order: preset }
+      : await (await rgFetchRetry(`../api/get_order_details_by_id.php?id=${orderId}`)).json();
     
     if (!data.success || !data.order) {
       showSweetAlert('Unable to load order details');

@@ -164,6 +164,19 @@
 .tb-prev .tb-num { font-size: 1.3rem; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-seat-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .tb-qr { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 20px 4px; }
+/* Tables › table bill: every order at the table on one bill (tables-studio.js billModal) */
+.tb-bill-btn { color: var(--sx-accent); }
+.tbb-list { display: grid; gap: 10px; }
+.tbb-order { border: 1px solid var(--sx-line); border-radius: 14px; padding: 10px 12px; }
+.tbb-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.tbb-h .sx-muted { font-size: .78rem; }
+.tbb-amt { margin-left: auto; }
+.tbb-it { display: flex; justify-content: space-between; gap: 10px; font-size: .86rem; color: #374151; padding: 2px 0; }
+.tbb-sum { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--sx-line); display: grid; gap: 4px; font-size: .9rem; }
+.tbb-sum div { display: flex; justify-content: space-between; gap: 10px; }
+.tbb-sum .tot b { font-size: 1.05rem; }
+.tbb-sum .ok { color: #15803d; }
+.tbb-sum .due b { font-size: 1.15rem; color: var(--sx-ink, #111827); }
 .tb-qr img { width: 220px; height: 220px; border-radius: 16px; border: 1px solid var(--sx-line); padding: 8px; background: #fff; }
 .tb-qr code { max-width: 100%; overflow-wrap: anywhere; padding: 6px 10px; border-radius: 8px; background: var(--sx-soft); color: #374151; font-size: .74rem; text-align: center; }
 

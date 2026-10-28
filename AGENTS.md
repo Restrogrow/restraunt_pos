@@ -107,6 +107,20 @@ page only has to include `header.php` like the others.
 - Check a new page at 360, 390, 768, 1024 and 1366 px wide: nothing cut off at the right edge, no text spilling out of
   a button or pill, no tabs drawn on top of each other.
 
+## Table sessions (everyone at one table, one bill)
+
+- `main/config/table_session.php`: the first website Dine-in order from a table opens a session (`table_sessions`);
+  every later one from that table (other phones, "Order more") gets the same `orders.table_session_id`. Each order stays
+  its own order (prices, payment, KOT unchanged). Read a session only through `tsCurrent()`, which closes it when it's
+  settled (has orders, none open and unpaid), idle `TS_IDLE_CLOSE` (3 h) with nothing open, or a day old.
+- Guests: `api/table_session.php` (first names, no phones) feeds the tracking page's "Table T4 · one bill" card and the
+  cart's "Table T4 is already ordering" note. Staff: `api/table_bill.php` + Tables › Bill (`tables-studio.js`): the table as
+  one bill, Print bill (`printOrder(0, preset)`), Mark all paid (each order through `update_payment_status.php`), Free table
+  (only when nothing is left to pay).
+- `orders.client_ref`: the cart sends one per Place order (`rgOrderRef()`, kept until it succeeds); the same ref again returns
+  the order already placed. With a client_ref, the old same-phone-same-total 10-minute dedupe no longer merges two real
+  rounds of the same dishes.
+
 ## Printing bills
 
 - Printer settings live in the browser (`localStorage.printerSettings`, per device and per address), so localhost and

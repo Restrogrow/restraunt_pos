@@ -182,6 +182,19 @@ $statusLabels = [
 .tk-acts.served > :last-child:not(.bill) .material-symbols-rounded { margin: 0; }
 .tk-acts.served > :last-child:not(.bill) small { margin-left: auto; }
 #rgcwFab { display: none !important; }   /* the page has its own Call waiter / Ask for bill buttons */
+/* everyone at the table, one bill */
+.tk-g-order { padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.tk-g-order.mine .tk-g-h b { color: var(--tk-dark); }
+.tk-g-h { display: flex; align-items: baseline; gap: 8px; }
+.tk-g-h b { font-size: 14px; font-weight: 700; }
+.tk-g-st { font-size: 11.5px; color: var(--muted); }
+.tk-g-amt { margin-left: auto; font-size: 13.5px; font-weight: 700; }
+.tk-g-items { margin-top: 3px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.tk-group-sum { padding-top: 10px; }
+.tk-group-sum div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 14px; }
+.tk-group-sum div b { font-size: 16px; font-weight: 800; }
+.tk-group-sum .paid { color: #15803d; font-size: 13px; }
+.tk-group-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
 .tk-help { display: flex; gap: 10px; margin-bottom: 14px; }
 .tk-help a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-radius: 16px; background: #fff; color: var(--ink); font-size: 13.5px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(17,24,39,.05); }
 .tk-help a .material-symbols-rounded { font-size: 19px; color: var(--tk); }
@@ -613,6 +626,52 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
     <div class="content">
     <div id="tkScratch" data-order="<?php echo htmlspecialchars($order['order_number'], ENT_QUOTES, 'UTF-8'); ?>" data-phone="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>" data-rid="<?php echo htmlspecialchars($order['restaurant_id'], ENT_QUOTES, 'UTF-8'); ?>" data-cur="<?php echo htmlspecialchars($currency, ENT_QUOTES, 'UTF-8'); ?>"></div>
     <script src="rg-scratch.js?v=<?php echo @filemtime(__DIR__ . '/rg-scratch.js'); ?>" defer></script>
+
+    <?php if ($tkDine && $tkTable !== ''): ?>
+    <!-- Everyone at this table: one bill (config/table_session.php, api/table_session.php) -->
+    <details class="card tk-fold tk-group" id="tkGroup" open hidden>
+      <summary><span class="f-ic"><span class="material-symbols-rounded">groups</span></span><span class="f-t"><b>Table <?php echo htmlspecialchars($tkTable); ?> · one bill</b><small id="tkGroupSub">Everyone's orders at this table</small></span><span class="material-symbols-rounded chev">expand_more</span></summary>
+      <div class="f-body">
+        <div id="tkGroupList"></div>
+        <div class="tk-group-sum" id="tkGroupSum"></div>
+        <p class="tk-group-note">Everyone at the table orders from their own phone. It all goes on one bill; you can split it at the counter.</p>
+      </div>
+    </details>
+    <script>
+    (function () {
+      var box = document.getElementById('tkGroup'); if (!box) return;
+      var url = '../api/table_session.php?restaurant_id=' + encodeURIComponent(<?php echo json_encode((string)$order['restaurant_id']); ?>)
+        + '&table=' + encodeURIComponent(<?php echo json_encode($tkTable); ?>) + '&order=' + encodeURIComponent(<?php echo json_encode((string)$order['order_number']); ?>);
+      var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+      var stat = { Pending: 'Placed', Accepted: 'Confirmed', Preparing: 'Preparing', Ready: 'Ready', Served: 'Served', Completed: 'Served', Scheduled: 'Scheduled' };
+      var timer = 0, last = '';
+      function money(cur, n) { return cur + (Math.round(n * 100) / 100).toFixed(2); }
+      function draw(d) {
+        // only worth showing when the table has more than this one order
+        if (!d.open || !d.orders || d.orders.length < 2) { box.hidden = true; return; }
+        var key = JSON.stringify([d.orders, d.sum]); if (key === last) return; last = key;
+        box.hidden = false;
+        var c = d.currency || '';
+        document.getElementById('tkGroupSub').textContent = d.orders.length + ' orders · ' + d.guests.join(', ');
+        document.getElementById('tkGroupList').innerHTML = d.orders.map(function (o) {
+          return '<div class="tk-g-order' + (o.mine ? ' mine' : '') + '"><div class="tk-g-h"><b>' + esc(o.mine ? 'You' : o.name) + '</b>'
+            + '<span class="tk-g-st">' + esc(stat[o.status] || o.status) + (o.paid ? ' · Paid' : '') + '</span><span class="tk-g-amt">' + esc(money(c, o.total)) + '</span></div>'
+            + '<div class="tk-g-items">' + o.items.map(function (it) { return esc(it.qty + ' × ' + it.name); }).join('<br>') + '</div></div>';
+        }).join('');
+        var s = d.sum;
+        document.getElementById('tkGroupSum').innerHTML = '<div><span>Table total</span><b>' + esc(money(c, s.total)) + '</b></div>'
+          + (s.paid > 0 ? '<div class="paid"><span>Paid</span><span>' + esc(money(c, s.paid)) + '</span></div><div><span>Still to pay</span><b>' + esc(money(c, s.due)) + '</b></div>' : '');
+      }
+      function load() {
+        clearTimeout(timer);
+        fetch(url, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { if (d && d.success) draw(d); })
+          .catch(function () {}).then(function () { timer = setTimeout(load, document.hidden ? 20000 : 6000); });
+      }
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+      load();
+    })();
+    </script>
+    <?php endif; ?>
 
     <?php if ($tkType === 'Delivery'): ?>
     <details class="card tk-fold">

@@ -59,6 +59,9 @@ $order_type = $input['order_type'] ?? 'Delivery';
 $table_id = $input['table_id'] ?? null;
 // Ensure table_id is null if it's an empty string (e.g. for Delivery or non-Dine-in orders)
 if ($table_id === '' || $table_id === 0) $table_id = null;
+// the guest's phone names each Place order: the same name sent again returns the order already placed
+// (config/table_session.php). Letters, digits and dashes only.
+$client_ref = is_string($input['client_ref'] ?? null) && preg_match('/^[A-Za-z0-9-]{8,40}$/', $input['client_ref']) ? $input['client_ref'] : '';
 $items = is_array($input['items'] ?? null) ? $input['items'] : [];
 // Offers > Combos & Deals: [{id, quantity, picks: {slot id: choice id}}], priced on the server (config/combo_helpers.php)
 $combos_in = is_array($input['combos'] ?? null) ? array_slice($input['combos'], 0, 20) : [];
@@ -638,6 +641,14 @@ if ($table_id !== null) {
 // bill rule columns are added before the transaction (an ALTER TABLE would end it)
 require_once __DIR__ . '/../config/bill_rules.php';
 billRulesEnsure($conn);
+// Dine-in at a table: the order joins the table's session (everyone at the table, one bill), opened by the
+// first order. Made before the transaction: its tables / columns may be created now.
+require_once __DIR__ . '/../config/table_session.php';
+tsEnsure($conn);
+$tableSession = null;
+if ($order_type === 'Dine-in' && $table_id !== null && empty($roomService)) {
+    try { $tableSession = tsCurrent($conn, (string)$restaurant_id, (int)$table_id, true); } catch (Throwable $e) { error_log('table session: ' . $e->getMessage()); }
+}
 $conn->beginTransaction();
     
     // Validate coupon if provided (WITH row lock to prevent race condition)
@@ -1187,6 +1198,22 @@ $conn->beginTransaction();
         exit();
     }
 
+    // Sent again with the same client_ref (no answer reached the phone the first time): that order, not a new one
+    if ($client_ref !== '') {
+        $refStmt = $conn->prepare("SELECT id, order_number, payment_method, payment_status, order_status FROM orders
+            WHERE restaurant_id = ? AND client_ref = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) ORDER BY id DESC LIMIT 1");
+        $refStmt->execute([$restaurant_id, $client_ref]);
+        $refOrder = $refStmt->fetch(PDO::FETCH_ASSOC);
+        if ($refOrder) {
+            $conn->rollBack();
+            ob_end_clean();
+            $refOnline = $refOrder['payment_method'] === 'UPI / NetBanking' && $refOrder['payment_status'] !== 'Paid' && in_array($refOrder['order_status'], ['Pending', 'Scheduled'], true);
+            echo json_encode(['success' => true, 'order_id' => $refOrder['id'], 'order_number' => $refOrder['order_number'],
+                'phonepe_required' => $refOnline, 'message' => 'Order already placed. No duplicate created.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
     // Deduplication check: if an identical order from the same customer
     // exists within the last 10 minutes, return it instead of creating a
     // duplicate. This prevents network failures/timeouts around order
@@ -1196,13 +1223,15 @@ $conn->beginTransaction();
     // rare false-positive if they intentionally reorder the exact same cart
     // total within that window — acceptable trade-off for launch.
     $dedupStmt = $conn->prepare(
-        "SELECT id, order_number, payment_method, payment_status, order_status FROM orders
+        "SELECT id, order_number, payment_method, payment_status, order_status, client_ref FROM orders
          WHERE restaurant_id = ? AND customer_phone = ? AND total = ?
          AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) AND order_status NOT IN ('Cancelled', 'Rejected')
          ORDER BY id DESC LIMIT 1"
     );
     $dedupStmt->execute([$restaurant_id, $customer_phone, $grand_total]);
     $dupOrder = $dedupStmt->fetch(PDO::FETCH_ASSOC);
+    // both placed with their own client_ref: two real orders (a second round of the same dishes at the table)
+    if ($dupOrder && $client_ref !== '' && !empty($dupOrder['client_ref']) && $dupOrder['client_ref'] !== $client_ref) $dupOrder = null;
     $dupUnpaidOnline = $dupOrder && $dupOrder['payment_method'] === 'UPI / NetBanking' && $dupOrder['payment_status'] !== 'Paid'
         && in_array($dupOrder['order_status'], ['Pending', 'Scheduled'], true);
     if ($dupUnpaidOnline && $payment_method === 'UPI / NetBanking') {
@@ -1256,6 +1285,11 @@ $conn->beginTransaction();
         }
     }
     $order_id = $conn->lastInsertId();
+    if ($client_ref !== '' || $tableSession) {
+        $conn->prepare('UPDATE orders SET client_ref = ?, table_session_id = ? WHERE id = ?')
+            ->execute([$client_ref !== '' ? $client_ref : null, $tableSession ? (int)$tableSession['id'] : null, (int)$order_id]);
+        if ($tableSession) tsTouch($conn, (int)$tableSession['id']);
+    }
     billSaveExtras($conn, (int)$order_id, $billCalc['service_charge']);
     if (!empty($roomService)) roomServiceLink($conn, $restaurant_id, (int)$order_id, $roomService, $payment_method === 'Room bill');
 
