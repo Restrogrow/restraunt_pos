@@ -613,4 +613,215 @@
       frame.remove();
     }
   };
+
+  /* ── The bill as text, laid out like its preview (Bluetooth / USB) ───────
+     A picture of a bill is ~75 KB: over Bluetooth (20-byte packets) that takes a minute and comes out in
+     strips. These links get the preview turned into printer text instead (a few KB, prints at once): the
+     HTML is laid out at the paper's width, every piece of text goes in the column where the preview shows
+     it (left / centred / right), bold stays bold, the big name prints double size, ruled lines become
+     ---- / ====, and the logo and payment QR go as small pictures. Returns an EscPosBuilder, or null when
+     it can't be made (the caller then prints buildBillEscPos). */
+  global.rgHtmlBillText = async function (html, widthMM, charWidth) {
+    if (typeof document === 'undefined') return null;
+    widthMM = widthMM === 58 ? 58 : 80;
+    var width = charWidth || (widthMM === 58 ? 32 : 48);
+    var dotWidth = widthMM === 58 ? 384 : 576;
+    var cssWidth = Math.round(widthMM * 96 / 25.4);
+    var frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + cssWidth + 'px;height:200px;border:0;visibility:hidden;pointer-events:none';
+    document.body.appendChild(frame);
+    try {
+      var doc = frame.contentDocument, win = frame.contentWindow;
+      doc.open(); doc.write(html); doc.close();
+      var st = doc.createElement('style');
+      st.textContent = 'html,body{margin:0!important}';
+      (doc.head || doc.documentElement).appendChild(st);
+      // the logo / QR must be loaded before measuring, or they take no room and are left out
+      // a hidden frame may not fetch its pictures: give them as data: (as the picture bill does)
+      await Promise.all([].slice.call(doc.images).map(function (im) {
+        var src = im.getAttribute('src');
+        if (!src || /^data:/.test(src)) return null;
+        return dataUrlOf(new URL(src, location.href).href).then(function (d) { im.setAttribute('src', d); }, function () { im.remove(); });
+      }));
+      for (var waited = 0; waited < 4000; waited += 50) {
+        if ([].every.call(doc.images, function (im) { return im.complete && (im.naturalWidth > 0 || !im.getAttribute('src')); })) break;
+        await new Promise(function (ok) { setTimeout(ok, 50); });
+      }
+      if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+      await new Promise(function (ok) { setTimeout(ok, 30); });
+
+      // every word with its box, weight and size
+      var words = [], sizes = [];
+      var walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+      for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+        var el = n.parentElement;
+        if (!el || /^(SCRIPT|STYLE|TITLE)$/.test(el.tagName)) continue;
+        var cs = win.getComputedStyle(el);
+        if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+        var fs = parseFloat(cs.fontSize) || 12, bold = (parseInt(cs.fontWeight, 10) || 400) >= 600;
+        var upper = cs.textTransform === 'uppercase';
+        // how its paragraph is aligned in the preview (centre / right), for lines that wrap on paper
+        var blk = el;
+        while (blk.parentElement && /^inline/.test(win.getComputedStyle(blk).display)) blk = blk.parentElement;
+        var talign = win.getComputedStyle(blk).textAlign;
+        talign = talign === 'center' || talign === '-webkit-center' ? 'center' : (talign === 'right' || talign === 'end' ? 'right' : 'left');
+        // words, and long codes split after "-" the way the browser wraps them
+        var re = /[^\s-]+-*|-+/g, m, txt = n.nodeValue;
+        while ((m = re.exec(txt))) {
+          var r = doc.createRange();
+          r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+          var rects = r.getClientRects();
+          if (!rects.length || !rects[0].width) continue;
+          var b = rects[0];
+          var w = upper ? m[0].toUpperCase() : m[0];
+          words.push({ t: w, x1: b.left, x2: b.right, y: b.top + b.height / 2, h: b.height, top: b.top, bold: bold, fs: fs, al: talign,
+            glued: m.index > 0 && !/\s/.test(txt.charAt(m.index - 1)) });
+          sizes.push(fs);
+        }
+      }
+      if (!words.length) return null;
+      sizes.sort(function (a, c) { return a - c; });
+      var baseFs = sizes[Math.floor(sizes.length / 2)];
+      var minL = Math.min.apply(null, words.map(function (w) { return w.x1; }));
+      var maxR = Math.max.apply(null, words.map(function (w) { return w.x2; }));
+      var span = Math.max(1, maxR - minL), cpx = span / width, mid = (minL + maxR) / 2;
+
+      // ruled lines (borders across most of the bill) and pictures (logo, QR)
+      var marks = [];
+      [].slice.call(doc.body.querySelectorAll('*')).forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (!r.width || !r.height && el.tagName !== 'HR') return;
+        if (el.tagName === 'IMG') {
+          if (r.width >= 30) marks.push({ kind: 'img', y: r.top, h: r.height, url: el.currentSrc || el.src, w: r.width });
+          return;
+        }
+        if (r.width < span * 0.55) return;
+        var cs = win.getComputedStyle(el);
+        [['Top', r.top], ['Bottom', r.bottom]].forEach(function (side) {
+          var sw = parseFloat(cs['border' + side[0] + 'Width']) || 0, ss = cs['border' + side[0] + 'Style'];
+          if (sw < 1 || ss === 'none' || ss === 'hidden') return;
+          marks.push({ kind: 'rule', y: side[1], ch: (ss === 'double' || (ss === 'solid' && sw >= 2)) ? '=' : '-' });
+        });
+        if (el.tagName === 'HR') marks.push({ kind: 'rule', y: r.top, ch: '-' });
+      });
+
+      // words into lines (by height on the page), lines into runs (words close together)
+      words.sort(function (a, c) { return a.y - c.y || a.x1 - c.x1; });
+      var lines = [];
+      words.forEach(function (w) {
+        var L = lines[lines.length - 1];
+        if (L && Math.abs(w.y - L.y) < Math.min(w.h, L.h) * 0.5) { L.words.push(w); L.bottom = Math.max(L.bottom, w.top + w.h); }
+        else lines.push({ y: w.y, h: w.h, top: w.top, bottom: w.top + w.h, words: [w] });
+      });
+      lines.forEach(function (L) {
+        L.words.sort(function (a, c) { return a.x1 - c.x1; });
+        var runs = [];
+        L.words.forEach(function (w) {
+          var R = runs[runs.length - 1];
+          if (R && w.x1 - R.x2 < Math.max(cpx * 1.6, w.fs * 0.9)) {
+            R.t += (w.glued && w.x1 - R.x2 < 1.5 ? '' : ' ') + w.t; R.x2 = w.x2; R.bold = R.bold || w.bold; R.fs = Math.max(R.fs, w.fs);
+          } else runs.push({ t: w.t, x1: w.x1, x2: w.x2, bold: w.bold, fs: w.fs, al: w.al });
+        });
+        L.runs = runs;
+        L.big = runs.some(function (r) { return r.fs >= baseFs * 1.3; });
+      });
+
+      var items = lines.map(function (L) { return { kind: 'text', y: L.top, L: L }; }).concat(marks);
+      items.sort(function (a, c) { return a.y - c.y || (a.kind === 'rule' ? -1 : 1); });
+
+      var p = new EscPosBuilder();
+      sawUnprintable = false;
+      p.init();
+      var lastRuleY = -99, lastKind = '', lastBottom = null;
+      var emitRule = function (ch) { p.align('left').line(ch.repeat(width)); };
+      var place = function (L, w) {
+        // runs into columns: right edge → right, middle → centred, else where the preview starts it
+        var cells = L.runs.map(function (r) {
+          var t = toAscii(r.t), len = t.length, s;
+          if (L.runs.length === 1 && r.al === 'center') s = Math.round((w - len) / 2);
+          else if (L.runs.length === 1 && r.al === 'right') s = w - len;
+          else if (Math.abs(r.x2 - maxR) <= cpx * 0.9 && r.x1 - minL > cpx) s = w - len;
+          else if (Math.abs((r.x1 + r.x2) / 2 - mid) <= cpx * 1.2 && r.x1 - minL > cpx) s = Math.round((w - len) / 2);
+          else s = Math.round((r.x1 - minL) / span * w);
+          return { t: t, s: Math.max(0, s), bold: r.bold };
+        });
+        var cur = 0;
+        cells.forEach(function (c) { if (c.s < cur) c.s = cur; cur = c.s + c.t.length + 1; });
+        var end = cells.length ? cells[cells.length - 1].s + cells[cells.length - 1].t.length : 0;
+        if (end > w) {
+          // too wide: pull from the right, then squeeze to one space apart
+          var over = end - w;
+          for (var i = cells.length - 1; i >= 0 && over > 0; i--) {
+            var gap = i ? cells[i].s - (cells[i - 1].s + cells[i - 1].t.length + 1) : cells[i].s;
+            var mv = Math.min(gap, over); if (mv > 0) { for (var j = i; j < cells.length; j++) cells[j].s -= mv; over -= mv; }
+          }
+          if (over > 0) return null;
+        }
+        return cells;
+      };
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k];
+        if (it.kind === 'rule') {
+          if (it.y - lastRuleY < 6 || lastKind === 'rule') continue;
+          emitRule(it.ch); lastRuleY = it.y; lastKind = 'rule'; lastBottom = it.y;
+          continue;
+        }
+        if (it.kind === 'img') {
+          var dots = Math.min(dotWidth, Math.max(96, Math.round(it.w / cssWidth * dotWidth / 8) * 8));
+          var ras = await imageUrlToRaster(it.url, dots, 180);
+          if (ras) { p.align('center').raster(ras).align('left'); lastKind = 'img'; lastBottom = it.y + it.h; }
+          continue;
+        }
+        var L = it.L;
+        // a clear gap in the preview: one empty line
+        if (lastBottom != null && lastKind === 'text' && L.top - lastBottom > L.h * 0.9) p.line('');
+        var single = L.runs.length === 1 ? toAscii(L.runs[0].t) : null;
+        if (L.big && single && single.length <= Math.floor(width / 2)) {
+          var centred = L.runs[0].al === 'center' || Math.abs((L.runs[0].x1 + L.runs[0].x2) / 2 - mid) <= cpx * 1.5;
+          p.align(centred ? 'center' : 'left').bold(true).size(true).line(single).size(false).bold(false).align('left');
+        } else {
+          var cells = place(L, width);
+          if (L.big) p.bold(true).doubleHeight(true);
+          if (!cells) {
+            // one line can't hold it: wrap the words like the preview does
+            var all = L.runs.map(function (r) { return r.t; }).join(' ');
+            p.align(L.runs[0].al === 'center' ? 'center' : L.runs[0].al === 'right' ? 'right' : 'left');
+            if (L.runs.every(function (r) { return r.bold; })) p.bold(true);
+            wrapText(all, width).forEach(function (l) { p.line(l); });
+            p.bold(false).align('left');
+          } else {
+            var pos = 0;
+            cells.forEach(function (cl) {
+              if (cl.s > pos) p.text(' '.repeat(cl.s - pos));
+              if (cl.bold && !L.big) p.bold(true);
+              p.text(cl.t);
+              if (cl.bold && !L.big) p.bold(false);
+              pos = cl.s + cl.t.length;
+            });
+            p.line('');
+          }
+          if (L.big) p.doubleHeight(false).bold(false);
+        }
+        lastKind = 'text'; lastBottom = L.bottom;
+      }
+      p.feed(3).cut();
+      p.hadUnprintable = p.hadUnprintable || sawUnprintable;
+      return p;
+    } catch (e) {
+      if (global.console) console.warn('Bill text from preview failed, printing the standard layout', e);
+      return null;
+    } finally {
+      frame.remove();
+    }
+  };
+
+  // What a bill sends to the printer in Printer settings: the picture on a network printer (fast link),
+  // the preview as text on Bluetooth / USB (slow links). null: print buildBillEscPos instead.
+  global.rgBillForPrinter = async function (html, settings) {
+    settings = settings || (global.getPrinterSettings ? global.getPrinterSettings() : { widthMM: 80, mode: 'browser' });
+    var cw = global.getPrinterCharWidth ? global.getPrinterCharWidth(settings.widthMM) : null;
+    if (settings.mode === 'network') return (await global.rgHtmlBillBuilder(html, settings.widthMM)) || (await global.rgHtmlBillText(html, settings.widthMM, cw));
+    return global.rgHtmlBillText(html, settings.widthMM, cw);
+  };
 })(window);

@@ -9200,9 +9200,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const billPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(billPrinterSettings.mode)) {
-      // the printer gets the bill exactly as the preview shows it (escpos.js rgHtmlBillBuilder: the HTML as a
-      // picture); only if that can't be made, the phone app's text layout (buildBillEscPos)
-      const billPicture = window.rgHtmlBillBuilder ? await window.rgHtmlBillBuilder(billHtml, billPrinterSettings.widthMM) : null;
+      // the printer gets the bill as the preview shows it (escpos.js rgBillForPrinter: a picture on a network
+      // printer, the preview as text on Bluetooth / USB); only if that can't be made, buildBillEscPos
+      const billPicture = window.rgBillForPrinter ? await window.rgBillForPrinter(billHtml, billPrinterSettings) : null;
       const billImages = billPicture ? {} : await window.rgReceiptImages(restaurantInfo, billPrinterSettings.widthMM);
       const afterTotal = [];
       if (payResult.walletPaid > 0) afterTotal.push(['Paid from wallet', '-' + payResult.walletPaid.toFixed(2)]);
@@ -11548,9 +11548,9 @@ window.printOrder = async function(orderId) {
 
     const orderPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(orderPrinterSettings.mode)) {
-      // the printer gets the invoice exactly as the preview shows it (escpos.js rgHtmlBillBuilder); only if
-      // that picture can't be made, the phone app's text layout (buildBillEscPos)
-      const orderPicture = window.rgHtmlBillBuilder ? await window.rgHtmlBillBuilder(html, orderPrinterSettings.widthMM) : null;
+      // the printer gets the invoice as the preview shows it (escpos.js rgBillForPrinter); only if that
+      // can't be made, buildBillEscPos
+      const orderPicture = window.rgBillForPrinter ? await window.rgBillForPrinter(html, orderPrinterSettings) : null;
       const orderImages = orderPicture ? {} : await window.rgReceiptImages(restaurantInfo, orderPrinterSettings.widthMM);
       const escBuilder = orderPicture || window.buildBillEscPos({
         charWidth: window.getPrinterCharWidth(orderPrinterSettings.widthMM),

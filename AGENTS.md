@@ -112,9 +112,11 @@ page only has to include `header.php` like the others.
 - Printer settings live in the browser (`localStorage.printerSettings`, per device and per address), so localhost and
   restrogrow.com can be on different modes. Browser mode shows the HTML preview; the direct modes (USB / Bluetooth /
   network) send bytes.
-- A bill (POS bill after payment, Orders › Print) goes to a direct printer as the preview's own HTML drawn as a picture
-  (`rgHtmlBillBuilder` in `assets/js/escpos.js`), so paper and preview always match. `buildBillEscPos` (text) is only the
-  fallback when the picture can't be made. Change a bill's look in its HTML, not in the text layout.
+- A bill (POS bill after payment, Orders › Print) is printed from its preview HTML (`rgBillForPrinter` in
+  `assets/js/escpos.js`), so paper and preview match: a network printer gets the HTML as a picture (`rgHtmlBillBuilder`,
+  ~75 KB); Bluetooth / USB get the preview turned into printer text in the same columns, bold and sizes, with the logo and
+  QR as small pictures (`rgHtmlBillText`, ~4 KB: a picture over Bluetooth's 20-byte packets takes a minute and prints in
+  strips). `buildBillEscPos` is only the fallback. Change a bill's look in its HTML, not in the text layout.
 
 ## Private sign-up links
 
