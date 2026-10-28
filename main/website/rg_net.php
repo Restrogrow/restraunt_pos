@@ -14,11 +14,13 @@
  *    again by itself when the connection comes back.
  *  - A small "You're offline" bar while the phone has no connection.
  *  - Phone boxes (type="tel") get the number keypad and keep only digits.
+ *
+ * The owner and staff dashboards use the network part only: rgNetScript(false) (with assets/js/rg-load.js for
+ * the loading skeletons and Try again).
  */
 if (!function_exists('rgNetScript')) {
-    function rgNetScript(): string {
-        return <<<'JS'
-<script>
+    function rgNetScript(bool $sitePage = true): string {
+        $net = <<<'JS'
 (function () {
   if (window.rgFetchJson) return;
   var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
@@ -49,6 +51,8 @@ if (!function_exists('rgNetScript')) {
         return r;
       }, function (err) {
         if ((err && err.name === 'AbortError') || n >= 3) throw err;
+        // dashboards: offline answers straight away (the POS then serves its saved menu) instead of waiting
+        if (window.rgNetNoOfflineWait && navigator.onLine === false) throw err;
         return wait(n).then(go);
       });
     }
@@ -116,6 +120,9 @@ if (!function_exists('rgNetScript')) {
   window.addEventListener('online', function () { if (bar) note(false); });
   document.addEventListener('DOMContentLoaded', function () { if (navigator.onLine === false) note(true); });
 })();
+
+JS;
+        $site = <<<'JS'
 // Phone boxes (type="tel") on every page: the number keypad, and digits only, so a browser's saved username
 // can't end up as the phone number
 document.addEventListener('focusin', function (e) { var t = e.target; if (t && t.type === 'tel' && !t.inputMode) t.inputMode = 'numeric'; });
@@ -141,7 +148,10 @@ document.addEventListener('keydown', function (e) {
   else return;
   e.preventDefault();
 });
-</script>
+
 JS;
+        return "<script>
+" . ($sitePage ? '' : "window.rgNetNoOfflineWait = true;
+") . $net . ($sitePage ? $site : '') . "</script>";
     }
 }

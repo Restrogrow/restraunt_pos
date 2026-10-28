@@ -97,6 +97,13 @@ page only has to include `header.php` like the others.
 - Every box inside `.page` gets `min-width: 0` (zero specificity), so a long number, name or dropdown can't push a grid
   or flex column past the screen. Give a tab bar a `<nav>` parent (its items keep their width and the bar scrolls
   sideways) or `flex: none` on the items; let rows of buttons `flex-wrap: wrap`.
+- **Loading and bad connections:** every dashboard (`views/dashboard.php`, manager, waiter, chef, rider, branches) has
+  `rgNetScript(false)` (`website/rg_net.php`: GET requests try again on a dropped connection or 502/503/504/429; POSTs never
+  twice; offline fails at once so the POS uses its saved menu) and `assets/js/rg-load.js`. rg-load turns any placeholder
+  whose text is "Loading…" (or a word-less `.sx-loading` / `.cbx-loading`) into a shimmer skeleton, and after 20 s on
+  screen, or on an "Error loading / Could not load / Network error" message, adds Try again (reopens the page with
+  `showPage`, else reloads on `?page=`). A new page only has to write "Loading…" where its data will go and replace it
+  when the data comes; `data-no-skel` opts out.
 - Check a new page at 360, 390, 768, 1024 and 1366 px wide: nothing cut off at the right edge, no text spilling out of
   a button or pill, no tabs drawn on top of each other.
 

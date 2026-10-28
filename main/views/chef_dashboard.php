@@ -52,6 +52,9 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
 <!DOCTYPE html>
 <html lang="en" class="st">
 <head>
+<?php /* network safety net (retries data requests, offline bar) + loading skeletons and Try again: assets/js/rg-load.js */
+require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
+<script src="../assets/js/rg-load.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-load.js'); ?>"></script>
     <meta charset="UTF-8">
   <script src="../assets/js/quiet-console.js?v=<?php echo $v('js/quiet-console.js'); ?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
