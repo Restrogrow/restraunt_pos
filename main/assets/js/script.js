@@ -9091,9 +9091,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const itemsHtml = cartSnapshot.map((it) => `
       <tr>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;width:40px;">${it.quantity}</td>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;width:70px;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;vertical-align:top;text-align:center;width:10%;">${it.quantity}</td>
+        <td style="padding:6px 0 6px 4px;border-bottom:1px dashed #d1d5db;font-size:12px;vertical-align:top;text-align:right;width:21%;">${(window.posLineTotal(it) / (it.quantity || 1)).toFixed(2)}</td>
+        <td style="padding:6px 0 6px 4px;border-bottom:1px dashed #d1d5db;font-size:13px;vertical-align:top;text-align:right;width:27%;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
       </tr>
     `).join('');
 
@@ -9170,7 +9171,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
 
       <table>
-        <thead><tr><th style="text-align:left;">Item</th><th style="text-align:center; width:40px;">Qty</th><th style="text-align:right; width:70px;">Amt</th></tr></thead>
+        <thead><tr><th style="text-align:left;">Item</th><th style="text-align:center; width:10%;">Qty</th><th style="text-align:right; width:21%;">Rate</th><th style="text-align:right; width:27%;">Amt</th></tr></thead>
         <tbody>${itemsHtml}</tbody>
       </table>
 
