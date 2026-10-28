@@ -27,8 +27,11 @@ if ($orderNumber && $customerPhone) {
         $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
         if (!$conn) throw new Exception('No connection');
 
-        $stmt = $conn->prepare("SELECT o.*, u.restaurant_name, u.currency_symbol, u.address as restaurant_address
+        $stmt = $conn->prepare("SELECT o.*, u.restaurant_name, u.currency_symbol, u.address as restaurant_address,
+                t.table_number AS tk_table, a.area_name AS tk_area
             FROM orders o JOIN users u ON o.restaurant_id = u.restaurant_id
+            LEFT JOIN tables t ON t.id = o.table_id AND t.restaurant_id = o.restaurant_id
+            LEFT JOIN areas a ON a.id = t.area_id
             WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website'
             LIMIT 1");
         require_once __DIR__ . '/../config/guess_guard.php';
@@ -152,6 +155,33 @@ $statusLabels = [
 .tk-rider .who span { font-size: 12px; color: var(--muted); }
 .tk-call { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: #16a34a; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(22,163,74,.35); }
 .tk-call .material-symbols-rounded { font-size: 20px; }
+/* Dine-in: the table, and what a guest at it can do */
+.tk-table { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 12px 14px; border-radius: 18px; background: color-mix(in srgb, var(--tk) 8%, #fff); border: 1px solid color-mix(in srgb, var(--tk) 18%, #fff); }
+.tk-table .ic { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px; background: #fff; color: var(--tk-dark); font-size: 26px; }
+.tk-table .tt { flex: 1; min-width: 0; }
+.tk-table .tt small { display: block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.tk-table .tt b { display: block; font-size: 19px; font-weight: 800; line-height: 1.2; color: var(--ink); }
+.tk-table .tt span { display: block; font-size: 12.5px; color: var(--muted); }
+.tk-table .pay { flex-shrink: 0; padding: 5px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.tk-table .pay.paid { background: #dcfce7; color: #15803d; }
+.tk-table .pay.due { background: #fff; color: var(--tk-dark); border: 1px solid color-mix(in srgb, var(--tk) 30%, #fff); }
+.tk-acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tk-acts > a, .tk-acts > button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border: 0; border-radius: 16px; background: #fff; color: var(--ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; box-shadow: 0 2px 10px rgba(17,24,39,.05); -webkit-tap-highlight-color: transparent; }
+.tk-acts > :active { transform: scale(.98); }
+.tk-acts .material-symbols-rounded { font-size: 24px; color: var(--tk); margin-bottom: 4px; }
+.tk-acts b { font-size: 14px; font-weight: 700; }
+.tk-acts small { font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+.tk-acts > :last-child:nth-child(odd) { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 10px; }
+.tk-acts > :last-child:nth-child(odd) .material-symbols-rounded { margin: 0; }
+.tk-acts > :last-child:nth-child(odd) small { margin-left: auto; }
+/* served: the bill is what they need next */
+.tk-acts.served .bill { order: -1; grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 10px; background: var(--tk); color: #fff; }
+.tk-acts.served .bill .material-symbols-rounded, .tk-acts.served .bill small { color: #fff; margin: 0; }
+.tk-acts.served .bill small { margin-left: auto; opacity: .85; }
+.tk-acts.served > :last-child:not(.bill) { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 10px; }
+.tk-acts.served > :last-child:not(.bill) .material-symbols-rounded { margin: 0; }
+.tk-acts.served > :last-child:not(.bill) small { margin-left: auto; }
+#rgcwFab { display: none !important; }   /* the page has its own Call waiter / Ask for bill buttons */
 .tk-help { display: flex; gap: 10px; margin-bottom: 14px; }
 .tk-help a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-radius: 16px; background: #fff; color: var(--ink); font-size: 13.5px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(17,24,39,.05); }
 .tk-help a .material-symbols-rounded { font-size: 19px; color: var(--tk); }
@@ -463,6 +493,19 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
     }
     $itemCount = 0;
     foreach ($items as $it) $itemCount += (int)$it['quantity'];
+    // Dine-in: the page is about the table (which table, paid or not, order more / call waiter / ask for the bill)
+    $tkDine = $tkType !== 'Delivery' && $tkType !== 'Takeaway';
+    $tkTable = (string)($order['tk_table'] ?? '');
+    $tkArea = (string)($order['tk_area'] ?? '');
+    $tkRoom = preg_match('/ROOM SERVICE - Room (\S+)/', (string)($order['notes'] ?? ''), $tkRm) ? $tkRm[1] : '';
+    $tkPaid = in_array((string)($order['payment_status'] ?? ''), ['Paid', 'Completed'], true);
+    $tkWaiter = false;
+    if ($tkDine && $tkRoom === '') {
+        require_once __DIR__ . '/../config/waiter_call.php';
+        try { $tkWaiter = waiterCallAvailable(getConnection(), (string)$order['restaurant_id']); } catch (Throwable $e) { $tkWaiter = false; }
+    }
+    $tkMenuUrl = restaurantPageUrl('menu');
+    if ($tkTable !== '') $tkMenuUrl .= (strpos($tkMenuUrl, '?') === false ? '?' : '&') . 'table=' . rawurlencode($tkTable);
   ?>
     <div class="tk-hero" id="tkHero">
       <div class="tk-scene sc-placed" id="tkScene" aria-hidden="true">
@@ -478,6 +521,18 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         <div class="nm"><b><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></b><small>#<?php echo htmlspecialchars($order['order_number']); ?> · <?php echo htmlspecialchars($tkType); ?></small></div>
         <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge"><span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span></div>
       </div>
+
+      <?php if ($tkDine): ?>
+      <div class="tk-table">
+        <span class="ic material-symbols-rounded" aria-hidden="true"><?php echo $tkRoom !== '' ? 'bed' : 'table_restaurant'; ?></span>
+        <div class="tt">
+          <small><?php echo $tkRoom !== '' ? 'Room service' : 'Dine-in'; ?></small>
+          <b><?php echo $tkRoom !== '' ? 'Room ' . htmlspecialchars($tkRoom) : ($tkTable !== '' ? 'Table ' . htmlspecialchars($tkTable) : 'At your table'); ?></b>
+          <?php if ($tkArea !== ''): ?><span><?php echo htmlspecialchars($tkArea); ?></span><?php endif; ?>
+        </div>
+        <span class="pay <?php echo $tkPaid ? 'paid' : 'due'; ?>"><?php echo $tkPaid ? 'Paid' : ($tkRoom !== '' ? 'On your room bill' : 'Pay at the table'); ?></span>
+      </div>
+      <?php endif; ?>
 
       <div class="tk-status-text">
         <b id="tkStatusTitle">We've got your order</b>
@@ -522,7 +577,18 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
       </div>
 
-      <?php if (!empty($restaurant_phone)): ?>
+      <?php if ($tkDine): ?>
+      <div class="tk-acts" id="tkActs">
+        <a href="<?php echo htmlspecialchars($tkMenuUrl, ENT_QUOTES, 'UTF-8'); ?>"><span class="material-symbols-rounded">add_circle</span><b>Order more</b><small>Added to your table</small></a>
+        <?php if ($tkWaiter): ?>
+        <button type="button" data-tk-waiter="waiter"><span class="material-symbols-rounded">notifications_active</span><b>Call waiter</b><small>Water, cutlery, help</small></button>
+        <button type="button" class="bill" data-tk-waiter="bill"><span class="material-symbols-rounded">receipt_long</span><b>Ask for bill</b><small>Brought to your table</small></button>
+        <?php endif; ?>
+        <?php if (!empty($restaurant_phone)): ?>
+        <a href="tel:<?php echo htmlspecialchars(preg_replace('/[^\d+]/', '', $restaurant_phone)); ?>"><span class="material-symbols-rounded">call</span><b>Call restaurant</b><small>Talk to the staff</small></a>
+        <?php endif; ?>
+      </div>
+      <?php elseif (!empty($restaurant_phone)): ?>
       <div class="tk-help">
         <a href="tel:<?php echo htmlspecialchars(preg_replace('/[^\d+]/', '', $restaurant_phone)); ?>"><span class="material-symbols-rounded">call</span>Call restaurant</a>
         <a href="<?php echo restaurantPageUrl('menu'); ?>"><span class="material-symbols-rounded">restaurant_menu</span>Order more</a>
@@ -620,6 +686,15 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
 <script>
 (function() {
     var statusLabels = <?php echo json_encode($statusLabels); ?>;
+    var tkCanBill = <?php echo !empty($tkWaiter) ? 'true' : 'false'; ?>;
+    // Call waiter / Ask for bill open the call-waiter sheet (call_waiter.php) with that need picked
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-tk-waiter]'), fab = document.getElementById('rgcwFab');
+        if (!b || !fab) return;
+        fab.click();
+        var r = document.querySelector('#rgcwSheet [data-reason="' + b.getAttribute('data-tk-waiter') + '"]');
+        if (r) r.click();
+    });
     var orderType = <?php echo json_encode($order['order_type']); ?>;
     var map = null, riderMarker = null, leafletPromise = null, riderName = <?php echo json_encode($tracking['rider_name'] ?? ''); ?>;
 
@@ -653,6 +728,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
             done:      ['Enjoy your meal!', take ? 'Collected' : 'Served', 'check_circle', take ? 'Order collected' : 'Served at your table', 'check_circle', take ? 'Collected — enjoy!' : 'Served — enjoy!', 'Hope you enjoy it. You can rate it from your profile.']
         };
         var w = W[st.k].slice();
+        if (dine && st.k === 'done' && tkCanBill) w[6] = 'Enjoy your meal! Tap "Ask for bill" when you are done.';
         // the "in a moment" words only while that is true: a while later they say what is going on instead
         var since = Math.round((Date.now() - (scheduledFor || placedAt)) / 60000);
         if (st.k === 'placed' && since >= 10) { w[3] = 'Waiting for the restaurant'; w[6] = 'This is taking longer than usual. You can call the restaurant to check.'; }
@@ -797,6 +873,8 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         bubble.style.setProperty('--arrow', (st.i * 25 + 12.5) + '%');
         var key = st.i + st.k;
         setScene(st.k); setTips(st.k);
+        var acts = document.getElementById('tkActs');
+        if (acts) acts.classList.toggle('served', st.k === 'done');
         if (lastStage && key !== lastStage) { bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop'); celebrate(final); }
         lastStage = key;
     }
@@ -991,6 +1069,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
     schedule(2500);
 })();
 </script>
+<?php if (!empty($tkWaiter)) { if ($tkTable !== '') $qr_table = $tkTable; include __DIR__ . '/call_waiter.php'; } ?>
 <?php endif; ?>
 <script>
 // Keep the embedding iframe sized to this page's content (same as cart/menu)
