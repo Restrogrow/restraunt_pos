@@ -626,6 +626,14 @@ try {
 
 // A table from an old QR code or another restaurant (deleted, re-created) must not sink the
 // whole order on the tables foreign key: keep the order as dine-in without a table instead.
+// A guest from a table's QR code sends its number when the page couldn't match it to an id (the table list
+// hadn't loaded, "t4" vs "T4"): find it here instead of asking them to pick the table they're sitting at
+$table_number_in = is_string($input['table_number'] ?? null) ? mb_substr(trim($input['table_number']), 0, 50) : '';
+if ($table_id === null && $order_type === 'Dine-in' && $table_number_in !== '' && empty($roomService)) {
+    $tblByNum = $conn->prepare('SELECT id FROM tables WHERE restaurant_id = ? AND LOWER(table_number) = LOWER(?) LIMIT 1');
+    $tblByNum->execute([$restaurant_id, $table_number_in]);
+    $table_id = $tblByNum->fetchColumn() ?: null;
+}
 if ($table_id !== null) {
     $tblCheck = $conn->prepare('SELECT id FROM tables WHERE id = ? AND restaurant_id = ? LIMIT 1');
     $tblCheck->execute([(int)$table_id, $restaurant_id]);

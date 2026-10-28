@@ -1337,6 +1337,19 @@ window.allCategoryIcon = <?php echo json_encode($all_category_icon ?? null); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.websitePageBase = <?php echo json_encode($rg_page_base ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>; // a brand outlet's address (config/brand.php)
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.websiteRoom = window.websiteRoom || null;
+// The table this guest scanned (header.php $qr_table, kept 4 h on the server) is also kept in this tab, where
+// the cart's checkout looks for it: without it a guest who scanned the QR was asked to "select a table"
+(function () {
+  if (!window.websiteTableNumber || window.websiteRoom) return;
+  try {
+    var rid = (document.querySelector('meta[name=restaurant-id]') || {}).content || '';
+    if (sessionStorage.getItem('qrTable') === window.websiteTableNumber && sessionStorage.getItem('qrTableRid') === rid) return;
+    sessionStorage.setItem('qrTable', window.websiteTableNumber);
+    sessionStorage.setItem('qrTableRid', rid);
+    sessionStorage.setItem('qrTableAt', String(Date.now()));
+  } catch (e) {}
+})();
 // Restore table from sessionStorage if URL param missing but previously set (e.g., coming back from cart)
 (function() {
   if (!window.websiteTableNumber) {

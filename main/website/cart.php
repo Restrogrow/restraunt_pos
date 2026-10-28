@@ -1259,6 +1259,18 @@ window.codEnabled = <?php echo json_encode($cod_enabled ?? 1, JSON_HEX_TAG | JSO
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 // Room service from a hotel room's QR code (header.php $qr_room): {room, param, stay, charge} or null
 window.websiteRoom = <?php echo json_encode(!empty($qr_room) ? ['room' => $qr_room['room'], 'param' => $qr_room['param'], 'stay' => $qr_room['stay'], 'charge' => $qr_room['charge']] : null, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+// The table this guest scanned (header.php $qr_table, kept 4 h on the server) is also kept in this tab, where
+// the cart's checkout looks for it: without it a guest who scanned the QR was asked to "select a table"
+(function () {
+  if (!window.websiteTableNumber || window.websiteRoom) return;
+  try {
+    var rid = (document.querySelector('meta[name=restaurant-id]') || {}).content || '';
+    if (sessionStorage.getItem('qrTable') === window.websiteTableNumber && sessionStorage.getItem('qrTableRid') === rid) return;
+    sessionStorage.setItem('qrTable', window.websiteTableNumber);
+    sessionStorage.setItem('qrTableRid', rid);
+    sessionStorage.setItem('qrTableAt', String(Date.now()));
+  } catch (e) {}
+})();
 window.restaurantAddress = <?php echo json_encode($restaurant_address ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.loggedInCustomer = <?php echo $logged_in_customer ? json_encode([
     'name' => $logged_in_customer['customer_name'],
@@ -3583,7 +3595,7 @@ function loadTablesForCheckout() {
       var autoTable = sessionStorage.getItem('qrTable') || '';
       for (var i = 0; i < tables.length; i++) {
         var t = tables[i];
-        var selected = (autoTable && String(t.table_number) === String(autoTable)) ? ' selected' : '';
+        var selected = (autoTable && String(t.table_number).toLowerCase() === String(autoTable).toLowerCase()) ? ' selected' : '';
         sel.innerHTML += '<option value="' + t.id + '" data-num="' + esc(t.table_number) + '"' + selected + '>' + (t.area_name ? t.area_name + ' - ' : '') + 'Table ' + t.table_number + (t.capacity ? ' (Cap: ' + t.capacity + ')' : '') + '</option>';
       }
       if (!sel.getAttribute('data-rg-group')) { sel.setAttribute('data-rg-group', '1'); sel.addEventListener('change', rgTableGroupNote); }
@@ -3648,15 +3660,13 @@ function processOrder(cartData) {
     var sel = document.getElementById('chkTableId');
     if (sel) {
       for (var i = 0; i < sel.options.length; i++) {
-        // Exact match: extract the number after 'Table ' to avoid substring matches
+        // the table's own number (data-num), else the number after 'Table ' in the label; any case
         var txt = sel.options[i].text;
         var idx = txt.indexOf('Table ');
-        if (idx >= 0) {
-          var tableNum = txt.substring(idx + 6).split(/[\s(]/)[0];
-          if (tableNum === qrTableCheck) {
-            tableId = sel.options[i].value;
-            break;
-          }
+        var tableNum = sel.options[i].getAttribute('data-num') || (idx >= 0 ? txt.substring(idx + 6).split(/[\s(]/)[0] : '');
+        if (tableNum && tableNum.toLowerCase() === qrTableCheck.toLowerCase()) {
+          tableId = sel.options[i].value;
+          break;
         }
       }
     }
@@ -3664,7 +3674,8 @@ function processOrder(cartData) {
 
   var isDineInEnabled = window.enableDinein == 1 || window.enableDinein === true;
   if (window.websiteRoom) tableId = null;
-  if (orderType === 'Dine-in' && isDineInEnabled && !tableId && !window.websiteRoom) {
+  // a guest who scanned a table's QR is never asked to pick it: the server finds it by its number (table_number)
+  if (orderType === 'Dine-in' && isDineInEnabled && !tableId && !qrTableCheck && !window.websiteRoom) {
     showModal('Error', 'Please select a table');
     var btn = document.querySelector('#checkoutForm button[type=submit]');
     if (btn) { btn.textContent = 'Place Order'; btn.disabled = false; }
@@ -3817,6 +3828,7 @@ function processOrder(cartData) {
       notes: savedInstruction || '',
       order_type: orderType,
       table_id: tableId,
+      table_number: orderType === 'Dine-in' && !tableId ? qrTableCheck : '',
       client_ref: clientRef,
       room_qr: window.websiteRoom ? window.websiteRoom.param : '',
       items: items,
