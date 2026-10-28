@@ -107,6 +107,15 @@ page only has to include `header.php` like the others.
 - Check a new page at 360, 390, 768, 1024 and 1366 px wide: nothing cut off at the right edge, no text spilling out of
   a button or pill, no tabs drawn on top of each other.
 
+## Printing bills
+
+- Printer settings live in the browser (`localStorage.printerSettings`, per device and per address), so localhost and
+  restrogrow.com can be on different modes. Browser mode shows the HTML preview; the direct modes (USB / Bluetooth /
+  network) send bytes.
+- A bill (POS bill after payment, Orders › Print) goes to a direct printer as the preview's own HTML drawn as a picture
+  (`rgHtmlBillBuilder` in `assets/js/escpos.js`), so paper and preview always match. `buildBillEscPos` (text) is only the
+  fallback when the picture can't be made. Change a bill's look in its HTML, not in the text layout.
+
 ## Private sign-up links
 
 - Super Admin › Sign-up links (`main/superadmin/signup_links.php`, engine `main/config/signup_invites.php`) makes

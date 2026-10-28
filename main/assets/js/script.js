@@ -9200,13 +9200,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const billPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(billPrinterSettings.mode)) {
-      // the phone app's bill layout (escpos.js buildBillEscPos)
-      const billImages = await window.rgReceiptImages(restaurantInfo, billPrinterSettings.widthMM);
+      // the printer gets the bill exactly as the preview shows it (escpos.js rgHtmlBillBuilder: the HTML as a
+      // picture); only if that can't be made, the phone app's text layout (buildBillEscPos)
+      const billPicture = window.rgHtmlBillBuilder ? await window.rgHtmlBillBuilder(billHtml, billPrinterSettings.widthMM) : null;
+      const billImages = billPicture ? {} : await window.rgReceiptImages(restaurantInfo, billPrinterSettings.widthMM);
       const afterTotal = [];
       if (payResult.walletPaid > 0) afterTotal.push(['Paid from wallet', '-' + payResult.walletPaid.toFixed(2)]);
       if (payResult.dueAmount > 0) afterTotal.push(['Due', payResult.dueAmount.toFixed(2)]);
       if (payResult.returnAmount > 0) afterTotal.push(['Return', payResult.returnAmount.toFixed(2)]);
-      const escBuilder = window.buildBillEscPos({
+      const escBuilder = billPicture || window.buildBillEscPos({
         charWidth: window.getPrinterCharWidth(billPrinterSettings.widthMM),
         restaurantName: restaurantInfo.name,
         address: restaurantInfo.address,
@@ -11546,9 +11548,11 @@ window.printOrder = async function(orderId) {
 
     const orderPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(orderPrinterSettings.mode)) {
-      // the phone app's bill layout (escpos.js buildBillEscPos)
-      const orderImages = await window.rgReceiptImages(restaurantInfo, orderPrinterSettings.widthMM);
-      const escBuilder = window.buildBillEscPos({
+      // the printer gets the invoice exactly as the preview shows it (escpos.js rgHtmlBillBuilder); only if
+      // that picture can't be made, the phone app's text layout (buildBillEscPos)
+      const orderPicture = window.rgHtmlBillBuilder ? await window.rgHtmlBillBuilder(html, orderPrinterSettings.widthMM) : null;
+      const orderImages = orderPicture ? {} : await window.rgReceiptImages(restaurantInfo, orderPrinterSettings.widthMM);
+      const escBuilder = orderPicture || window.buildBillEscPos({
         charWidth: window.getPrinterCharWidth(orderPrinterSettings.widthMM),
         restaurantName: restaurantInfo.name,
         address: restaurantInfo.address,

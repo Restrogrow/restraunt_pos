@@ -514,4 +514,103 @@
   global.rgImageUrlToRaster = function (url, dotWidth, threshold) {
     return imageUrlToRaster(url, dotWidth, threshold);
   };
+
+  /* ── The bill as a picture ────────────────────────────────────────────────
+     A bill on the printer looks exactly like its print preview: the preview's HTML is laid out by the
+     browser at the paper's width, drawn onto a canvas (SVG foreignObject: the browser's own renderer, so
+     fonts, tables, logo and QR come out as on screen) and sent as raster bands. The direct print modes
+     (USB / Bluetooth / network) only exist in Chrome, where this works. Returns a builder-like object
+     that printDirect / printViaNetwork take like an EscPosBuilder, or null when anything fails (the
+     caller then prints the text layout instead, so a bill is never lost). */
+  function dataUrlOf(url) {
+    return fetch(url, { credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok) throw new Error('image ' + r.status);
+      return r.blob();
+    }).then(function (b) {
+      return new Promise(function (ok, no) { var fr = new FileReader(); fr.onload = function () { ok(fr.result); }; fr.onerror = no; fr.readAsDataURL(b); });
+    });
+  }
+
+  global.rgHtmlBillBuilder = async function (html, widthMM) {
+    if (typeof document === 'undefined' || !global.XMLSerializer) return null;
+    widthMM = widthMM === 58 ? 58 : 80;
+    var dotWidth = widthMM === 58 ? 384 : 576;
+    var cssWidth = Math.round(widthMM * 96 / 25.4);   // the paper at screen size, as the preview lays it out
+    var frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + cssWidth + 'px;height:200px;border:0;visibility:hidden;pointer-events:none';
+    document.body.appendChild(frame);
+    try {
+      var doc = frame.contentDocument;
+      doc.open(); doc.write(html); doc.close();
+      // what the printer gets is what @media print gives: black ink on white, nothing pale lost
+      var ink = doc.createElement('style');
+      ink.textContent = '*,*::before,*::after{color:#000!important;-webkit-text-fill-color:#000!important;text-shadow:none!important;box-shadow:none!important;border-color:#000!important}'
+        + 'html,body,*{background-color:#fff!important;background-image:none!important}html,body{margin:0!important}';
+      (doc.head || doc.documentElement).appendChild(ink);
+      // pictures (logo, payment QR) go in as data: so the canvas may read them
+      await Promise.all([].slice.call(doc.images).map(function (im) {
+        var src = im.getAttribute('src');
+        if (!src || /^data:/.test(src)) return null;
+        return dataUrlOf(new URL(src, location.href).href).then(function (d) { im.setAttribute('src', d); }, function () { im.remove(); });
+      }));
+      await Promise.all([].slice.call(doc.images).map(function (im) {
+        return im.complete ? null : new Promise(function (ok) { im.onload = im.onerror = ok; });
+      }));
+      if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+      var root = doc.documentElement;
+      var height = Math.ceil(Math.max(root.scrollHeight, doc.body ? doc.body.scrollHeight : 0));
+      if (!height) return null;
+      var scale = dotWidth / cssWidth;
+      var xml = new XMLSerializer().serializeToString(root);
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + dotWidth + '" height="' + Math.ceil(height * scale) + '" viewBox="0 0 ' + cssWidth + ' ' + height + '">'
+        + '<foreignObject x="0" y="0" width="' + cssWidth + '" height="' + height + '">' + xml + '</foreignObject></svg>';
+      var pic = await new Promise(function (ok, no) {
+        var im = new Image();
+        im.onload = function () { ok(im); };
+        im.onerror = function () { no(new Error('bill picture')); };
+        im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      });
+      var c = document.createElement('canvas');
+      c.width = dotWidth;
+      c.height = Math.ceil(height * scale);
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(pic, 0, 0, c.width, c.height);
+      // drop the white below the bill
+      var rows = c.height, data = ctx.getImageData(0, 0, c.width, c.height).data;
+      for (var y = c.height - 1; y > 0; y--) {
+        var dark = false;
+        for (var x = 0; x < c.width; x += 2) { var i = (y * c.width + x) * 4; if (data[i] + data[i + 1] + data[i + 2] < 540) { dark = true; break; } }
+        if (dark) { rows = Math.min(c.height, y + 8); break; }
+      }
+      // sent in bands of 240 rows: small printers have small buffers
+      var parts = [new Uint8Array([ESC, 0x40, ESC, 0x61, 0x00])], total = 5;
+      for (var top = 0; top < rows; top += 240) {
+        var h = Math.min(240, rows - top);
+        var band = document.createElement('canvas');
+        band.width = dotWidth; band.height = h;
+        band.getContext('2d').drawImage(c, 0, top, dotWidth, h, 0, 0, dotWidth, h);
+        var cmd = rasterCommand(dotWidth, h, canvasToRaster(band, 190));   // leans dark: small grey text stays readable
+        parts.push(cmd); total += cmd.length;
+      }
+      var tail = new Uint8Array([ESC, 0x64, 0x03, GS, 0x56, 0x00]);   // feed 3 + cut
+      parts.push(tail); total += tail.length;
+      var bytes = new Uint8Array(total), at = 0;
+      parts.forEach(function (p) { bytes.set(p, at); at += p.length; });
+      return {
+        isPicture: true,
+        hadUnprintable: false,
+        canvas: c,
+        rows: rows,
+        toUint8Array: function () { return bytes; },
+        toPlainText: function () { return ''; }
+      };
+    } catch (e) {
+      if (global.console) console.warn('Bill picture failed, printing the text layout', e);
+      return null;
+    } finally {
+      frame.remove();
+    }
+  };
 })(window);
