@@ -117,6 +117,13 @@ page only has to include `header.php` like the others.
   cart's "Table T4 is already ordering" note. Staff: `api/table_bill.php` + Tables › Bill (`tables-studio.js`): the table as
   one bill, Print bill (`printOrder(0, preset)`), Mark all paid (each order through `update_payment_status.php`), Free table
   (only when nothing is left to pay).
+- **A guest from a table's QR code** (`rgQrDineIn()` in cart.php: `$qr_table`, kept in the tab as `sessionStorage.qrTable` by
+  menu.php / cart.php) gets the short way: no login page, no coupon popup, no minimum order (the API skips it too for a
+  Dine-in order with a table), no email / order type / "When?", "Pay at the table" first, and the tracking page right
+  after ordering. Name and phone are still asked once (remembered on the phone): they make the guest's row in Customers.
+  The menu and cart show `website/table_session_bar.php` ("Table T4 · Aman, Bina ordered · ₹757 · See"). The order sends
+  `table_number` too, so the server finds the table when the page couldn't. Table orders skip the per-IP caps (a table
+  shares the restaurant's Wi-Fi) and are capped per table instead (20 in 30 min); the phone caps still apply.
 - `orders.client_ref`: the cart sends one per Place order (`rgOrderRef()`, kept until it succeeds); the same ref again returns
   the order already placed. With a client_ref, the old same-phone-same-total 10-minute dedupe no longer merges two real
   rounds of the same dishes.

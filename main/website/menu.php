@@ -1387,6 +1387,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <div class="phone-frame">
 <?php include __DIR__ . '/room_service_bar.php'; // Room service from a hotel room's QR code ?>
+<?php include __DIR__ . '/table_session_bar.php'; // a table's QR code: "Table T4", and what the table has ordered ?>
   <div class="bg-wrapper">
     <div class="pr-share-header">
       <button class="back-btn-cmon" onclick="goBack()"><i class="fa fa-arrow-circle-left"></i></button>

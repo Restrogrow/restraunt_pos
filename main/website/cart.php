@@ -1292,6 +1292,15 @@ window.enableKmDelivery = <?php echo json_encode((int)$enable_km_delivery, JSON_
 window.deliveryRatePerKm = <?php echo json_encode((float)$delivery_rate_per_km, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 
 // Helper: append ?table=X param from sessionStorage or window var to any URL
+// A guest at a table who scanned its QR code (not a hotel room): the short way through checkout. No login
+// page, no coupon popup, no email, "Pay at the table" first, and the tracking page right after ordering.
+// Name and phone are still asked (once, remembered on this phone): the order needs them, and they make the
+// guest's customer record in the restaurant's Customers list.
+function rgQrDineIn() {
+  if (window.websiteRoom) return false;
+  try { return !!(window.websiteTableNumber || sessionStorage.getItem('qrTable')); } catch (e) { return !!window.websiteTableNumber; }
+}
+
 function appendTableParam(url) {
   var tbl = window.websiteTableNumber || sessionStorage.getItem('qrTable') || '';
   if (tbl) {
@@ -1307,6 +1316,7 @@ function appendTableParam(url) {
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <div class="phone-frame">
 <?php include __DIR__ . '/room_service_bar.php'; // Room service from a hotel room's QR code ?>
+<?php include __DIR__ . '/table_session_bar.php'; // a table's QR code: "Table T4", and what the table has ordered ?>
   <div class="bg-wrapper">
 
     <!-- Header -->
@@ -1343,7 +1353,8 @@ function appendTableParam(url) {
 
 <script>
 var cartItems = {};
-var MIN_ORDER = parseFloat(window.minimumOrderValue) || 0;
+// no minimum for a guest at a table (the order API skips it too): "Order more" one chai on the table's bill
+var MIN_ORDER = rgQrDineIn() ? 0 : (parseFloat(window.minimumOrderValue) || 0);
 var PACKAGING_CHARGE = parseFloat(window.packagingCharge) || 0;
 var flatItems = [];
 
@@ -2930,18 +2941,18 @@ function proceedCheckout() {
   // accepts those), so the checkout opens with "Schedule for later" instead of a dead end
   window.__restaurantClosedNow = !isOpen;
   var cart = getCartTotal();
-  if (MIN_ORDER > 0 && cart.totalPrice < MIN_ORDER) {
+  if (MIN_ORDER > 0 && cart.totalPrice < MIN_ORDER && !rgQrDineIn()) {
     showModal('Minimum Order', getCurrency() + MIN_ORDER.toFixed(2) + ' minimum. Please add more items.');
     return;
   }
-  // A coupon is on the order: celebrate the saving first (3–4 s), then continue
-  if (maybeCelebrateCoupon()) return;
+  // A coupon is on the order: celebrate the saving first (3–4 s), then continue (not at a table: straight on)
+  if (!rgQrDineIn() && maybeCelebrateCoupon()) return;
   // Gate checkout behind login/signup/guest, same pattern as profile.php:
   // if this browser session hasn't logged in or already chosen "Continue as
   // Guest", send them to the login screen first. Guests still land right
   // back here (login.php redirects to ?redirect=cart) and the checkout form
   // below asks for the same name/phone/email it always has.
-  if (!window.loggedInCustomer) {
+  if (!window.loggedInCustomer && !rgQrDineIn()) {
     var guestSessionActive = false;
     try { guestSessionActive = sessionStorage.getItem('guestSessionActive') === '1'; } catch(e) {}
     if (!guestSessionActive) {
@@ -3112,7 +3123,7 @@ function showCheckoutModal(cartData) {
 
   var html = '<div class="modal-box">';
   html += '<div class="modal-header">';
-  html += '<h2>Checkout</h2>';
+  html += '<h2>' + (qrTable ? 'Order for Table ' + esc(qrTable) : 'Checkout') + '</h2>';
   html += '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button>';
   html += '</div>';
   html += '<div class="modal-body">';
@@ -3136,7 +3147,8 @@ function showCheckoutModal(cartData) {
       '<input type="checkbox" id="chkWaOptin"' + (waSaved ? ' checked' : '') + ' style="width:17px;height:17px;margin-top:2px;accent-color:#16a34a;flex-shrink:0">' +
       '<span><b style="display:block;color:#111827">Get my rewards and offers on WhatsApp</b>Gift codes, birthday treats and the odd special. Stop anytime.</span></label>';
   }
-  html += '<div class="form-group"><label>Email</label><input type="email" id="chkEmail" value="' + esc((cd && cd.email) || '') + '" placeholder="Your email (optional)"></div>';
+  if (qrTable) html += '<input type="hidden" id="chkEmail" value="' + esc((cd && cd.email) || '') + '">';
+  else html += '<div class="form-group"><label>Email</label><input type="email" id="chkEmail" value="' + esc((cd && cd.email) || '') + '" placeholder="Your email (optional)"></div>';
   html += '</div>';
 
   // Determine default order type (used for initial address visibility)
@@ -3285,6 +3297,10 @@ function showCheckoutModal(cartData) {
     }
   }
   if (roomSvc) otOptions = [{ key: 'dinein', label: '<i class="fa-solid fa-bell-concierge"></i>Room service \u00b7 Room ' + escapeHtml(roomSvc.room), val: 'Dine-in' }];
+  // a guest at a table (its QR code): it's Dine-in at that table, nothing to choose
+  if (qrTable && !roomSvc && otOptions.some(function(o) { return o.key === 'dinein'; })) {
+    otOptions = [{ key: 'dinein', label: '<i class="fa-solid fa-utensils"></i>Dine in \u00b7 Table ' + escapeHtml(qrTable), val: 'Dine-in' }];
+  }
   // The remembered type (shared by every restaurant in this browser) may be one this
   // restaurant has switched off: then preselect the first type it offers, so the
   // checkout never opens with nothing chosen
@@ -3310,8 +3326,8 @@ function showCheckoutModal(cartData) {
   html += '<div id="rgTableGroupNote" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12.5px;line-height:1.45"></div>';
   html += '</div>';  // close form-group
 
-  // Order Now vs Schedule for Later
-  html += '<div class="form-group">';
+  // Order Now vs Schedule for Later (not at a table: the food is for now)
+  html += '<div class="form-group"' + (qrTable && !roomSvc ? ' style="display:none"' : '') + '>';
   html += '<label>When?</label>';
   html += '<div style="display:flex;gap:10px;margin-top:4px;">';
   html += '<label class="schedule-option" data-sched="now" style="flex:1;padding:10px;border:2px solid var(--primary-red, #e53935);border-radius:10px;text-align:center;cursor:pointer;background:color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff);font-size:13px;">';
@@ -3325,7 +3341,7 @@ function showCheckoutModal(cartData) {
 
   // Payment method label depends on order type
   var isCounterOrder = (savedOrderType === 'takeaway' || savedOrderType === 'dinein');
-  var cashLabel = roomSvc ? 'Pay when it comes to the room' : isCounterOrder ? 'Pay at Counter' : 'Cash on Delivery';
+  var cashLabel = roomSvc ? 'Pay when it comes to the room' : qrTable ? 'Pay at the table (cash / UPI)' : isCounterOrder ? 'Pay at Counter' : 'Cash on Delivery';
   // COD can be turned off in restaurant settings, but never leave checkout with
   // zero payment options — if no online method is configured either, keep Cash.
   var codEnabled = (window.codEnabled == 1 || window.codEnabled === true || window.codEnabled === undefined);
@@ -3504,7 +3520,7 @@ function showCheckoutModal(cartData) {
       // Update payment label based on order type
       var payOpt = document.querySelector('#chkPayment option[value="Cash"]');
       if (payOpt && !roomSvc) {
-        payOpt.textContent = (ot === 'takeaway' || ot === 'dinein') ? 'Pay at Counter' : 'Cash on Delivery';
+        payOpt.textContent = ot === 'dinein' && rgQrDineIn() ? 'Pay at the table (cash / UPI)' : (ot === 'takeaway' || ot === 'dinein') ? 'Pay at Counter' : 'Cash on Delivery';
       }
       refreshCheckoutTotal();
     });
@@ -3877,8 +3893,8 @@ function processOrder(cartData) {
       var modal = document.getElementById('checkoutModal');
       if (modal) modal.remove();
       showSuccessModal(data.order_number || '', data.is_scheduled ? data.scheduled_at : null);
-      // WhatsApp redirect after cash order success
-      if (waInfo) {
+      // WhatsApp redirect after cash order success (not for a guest at a table: they go to the tracking page)
+      if (waInfo && !rgQrDineIn()) {
         setTimeout(function() { redirectToWhatsApp(waInfo); }, 500);
       }
     } else {
@@ -4162,6 +4178,8 @@ function showSuccessModal(orderNum, scheduledAt) {
 
   document.body.appendChild(modal);
   if (window.RGOrderPush) RGOrderPush.mount(document.getElementById('successPush'));
+  // at a table: straight on to the tracking page (the table, everyone's orders, Call waiter, Ask for bill)
+  if (trackUrl && rgQrDineIn() && !scheduledAt) setTimeout(function () { window.location.href = trackUrl; }, 900);
 }
 
 function redirectToWhatsApp(info) {

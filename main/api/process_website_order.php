@@ -184,9 +184,25 @@ try {
         exit();
     }
 
+    // Guests at a table (its QR code) usually share the restaurant's Wi-Fi: one IP sends the whole table's
+    // orders and their "Order more" rounds, so the per-IP caps below would stop a busy table's 6th order.
+    // Those orders are capped per table instead (20 in 30 minutes); the per-phone caps and the
+    // restaurant-wide cap still apply, and staff accept every order.
+    $rgTableOrder = $order_type === 'Dine-in' && ($table_id !== null || trim((string)($input['table_number'] ?? '')) !== '');
+    if ($rgTableOrder && $table_id !== null && ctype_digit((string)$table_id)) {
+        $tblFlood = $conn->prepare('SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND table_id = ? AND source = \'website\' AND created_at >= NOW() - INTERVAL 30 MINUTE');
+        $tblFlood->execute([$restaurant_id, (int)$table_id]);
+        if ((int)$tblFlood->fetchColumn() >= 20) {
+            ob_end_clean();
+            http_response_code(429);
+            echo json_encode(['success' => false, 'message' => 'This table has placed a lot of orders just now. Please ask the staff.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
     // IP flood cap: 5 website orders per IP per 30 minutes. A real customer
     // places one or two; a script hammering the endpoint hits this first.
-    $orderFlood = $rgInternalOrder ? 0 : orderAbuseCountRecentOrdersByIp($conn, $restaurant_id, $abuse_ip, 30);
+    $orderFlood = $rgInternalOrder || $rgTableOrder ? 0 : orderAbuseCountRecentOrdersByIp($conn, $restaurant_id, $abuse_ip, 30);
     if ($orderFlood >= 5) {
         ob_end_clean();
         http_response_code(429);
@@ -201,7 +217,7 @@ try {
     // The flood bot rotated many IPv6 addresses inside the same /64 — exact-IP
     // caps each saw one order, the /64 bucket sees them all. 12 leaves headroom
     // for offices/campuses where many customers share one egress prefix.
-    $ipPrefixFlood = $rgInternalOrder ? 0 : orderAbuseCountRecentOrdersByIpPrefix($conn, $restaurant_id, $abuse_ip, 30);
+    $ipPrefixFlood = $rgInternalOrder || $rgTableOrder ? 0 : orderAbuseCountRecentOrdersByIpPrefix($conn, $restaurant_id, $abuse_ip, 30);
     if ($ipPrefixFlood >= 12) {
         ob_end_clean();
         http_response_code(429);
@@ -981,7 +997,8 @@ $conn->beginTransaction();
     // checking this earlier against the raw client-submitted total let a
     // client submit an inflated number just to clear this gate while the
     // real (smaller, verified) cart still went through underneath it.
-    if ($minOrderValue > 0 && $total < $minOrderValue) {
+    // not for a guest at a table (the cart skips it too): "Order more" a chai on top of the table's bill
+    if ($minOrderValue > 0 && $total < $minOrderValue && !($order_type === 'Dine-in' && $table_id !== null)) {
         $conn->rollBack();
         ob_end_clean();
         echo json_encode([
