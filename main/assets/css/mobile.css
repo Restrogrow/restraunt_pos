@@ -5,6 +5,26 @@
    (adds data-label to each cell; opt out with data-no-cards on a parent).
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* ── every page, every screen size: a box in a grid or flex row is never pushed wider than its column by
+   long content (a big number, a long name, a dropdown); the content wraps or shrinks inside instead of being cut
+   off at the right edge. :where() keeps this at zero specificity, so a page's own min-width still wins. ── */
+.page :where(div, section, article, aside, header, footer, form, fieldset, li, label, figure) { min-width: 0; }
+.page :where(select, input, textarea) { max-width: 100%; }
+/* …except a tab bar (what sits directly in a <nav>) and a group made only of buttons: those keep their natural
+   width, so tabs scroll sideways and "Held · Clear cart" never gets cut */
+.page nav > :where(div, li, label) { min-width: auto; }
+.page :where(div, span):has(> :is(button, .btn)):not(:has(> :not(button, .btn, a))) { min-width: auto; }
+/* a row of buttons wraps instead of pushing the last one (Delete) out of its card */
+.page .item-actions { flex-wrap: wrap; }
+.page .item-actions button { white-space: nowrap; }
+/* Website look's save bar: in the narrow settings column (laptops ~1024px) the buttons keep their words and wrap
+   as a whole instead of being cut to "Reset to Def…" */
+#websiteThemePage .form-actions.wt-savebar { flex-wrap: wrap !important; }
+#websiteThemePage .form-actions.wt-savebar .btn { flex: 1 0 auto !important; white-space: nowrap; }
+#websiteThemePage .form-actions.wt-savebar .btn-save { flex: 0 0 auto !important; }
+/* a long web address in a pill wraps inside it */
+.page .seo-site { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
 /* ── "Turn on order alerts" bar ── */
 @media (max-width: 640px) {
   .rg-alert-chip {
@@ -47,6 +67,15 @@
   .page, .page > * { max-width: 100%; }
   .page img, .page video, .page canvas { max-width: 100%; height: auto; }
   .page pre, .page code { white-space: pre-wrap; word-break: break-word; }
+
+  /* ── rows of fixed-width boxes (counts, KPIs) wrap onto a second line ── */
+  .page .ls-kpis { flex-wrap: wrap; }
+  .page .ls-kpis div { flex: 1 1 80px; min-width: 80px; }
+  /* ── Bestsellers: the per-size offer fields start under the dish, not 100px in ── */
+  .page .bs-offer-sizes { padding-left: 0; margin-left: 0; }
+  .page .bs-offer-mode, .page .bs-offer-mode select { width: 100%; }
+  /* ── status pills (e.g. "Busy 18h 17m · ₹345") wrap inside a narrow card ── */
+  .page .tb-st .sx-pill { white-space: normal; max-width: 100%; }
 
   /* ── Policy pages: list above the editor instead of side by side ── */
   .pol-layout, .pol-wrap, .pol-grid, [class^="pol-"][class$="-grid"] { display: block !important; }

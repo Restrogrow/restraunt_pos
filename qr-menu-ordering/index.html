@@ -300,7 +300,7 @@ h3{font-weight:700;letter-spacing:-.015em}
 
 .show{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .show img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:16px}
-@media (max-width:1000px){.show{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}.show::-webkit-scrollbar{display:none}.show img{flex:0 0 70%;scroll-snap-align:start}}
+@media (max-width:1000px){.show{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}.show::-webkit-scrollbar{display:none}.show img{flex:0 0 70%;scroll-snap-align:start}}
 .logos{margin-top:28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .logos>span{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .logos>div{display:flex;gap:14px;flex-wrap:wrap}
@@ -379,7 +379,7 @@ h3{font-weight:700;letter-spacing:-.015em}
 .upis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .upis button{border:1px solid #e5e5e5;background:#fff;border-radius:10px;padding:12px 6px;font-weight:700;font-size:12.5px}
 .upis button:hover{border-color:#b3171d}
-.demo{margin:10px 0 0;text-align:center;color:#999;font-size:10.5px}
+.demo-note{margin:10px 0 0;text-align:center;color:#999;font-size:10.5px}
 .proc{display:flex;align-items:center;gap:10px;justify-content:center;font-weight:600}
 .proc .spin{width:18px;height:18px;border-width:2.5px}
 .paid{display:inline-block!important;margin-top:8px!important;background:#e8f6ed;color:#14833b!important;border-radius:999px;padding:3px 10px;font-weight:700}
@@ -444,6 +444,7 @@ h3{font-weight:700;letter-spacing:-.015em}
 .pkc .btn{margin-top:auto}
 .adds{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px;font-size:14px}
 .adds span{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px}
+.adds span:first-child{background:none;border:0;padding:8px 0;flex-basis:100%;text-align:center;font-weight:600;color:var(--ink-2)}
 
 /* ===== proof ===== */
 .proof{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:980px;margin:0 auto}
@@ -580,17 +581,23 @@ footer img{height:21px;width:auto}
   .cosum{display:none;padding:4px 16px 18px}
   .cosum.on{display:block}
 }
+/* the five links + logo + WhatsApp only fit from 900px; the photos stay beside the buy box down to 761px */
+@media (max-width:900px){.top nav{display:none}}
+@media (min-width:761px) and (max-width:1000px){
+  .pdp{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding-top:24px}
+  .gal{position:sticky;top:20px}
+}
+@media (max-width:760px) and (min-width:641px){.gal{max-width:540px;width:100%;margin-inline:auto}}
 @media (max-width:640px){
-  .top nav{display:none}
   .bar{font-size:12.5px}
   .sw{grid-template-columns:repeat(5,minmax(0,1fr))}
   .strip .wrap{grid-template-columns:1fr 1fr;padding:0}
   .strip div:nth-child(3){border-left:0}
   .strip div:nth-child(n+3){border-top:1px solid var(--line)}
-  .steps{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 6px;gap:12px;scrollbar-width:none}
+  .steps{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;margin:0 -16px;padding:0 16px 6px;gap:12px;scrollbar-width:none}
   .steps::-webkit-scrollbar{display:none}
   .st{flex:0 0 80%;scroll-snap-align:start}
-  .tlist{display:flex;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+  .tlist{display:flex;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none;scroll-padding-inline:16px}
   .tlist::-webkit-scrollbar{display:none}
   .tlist button{flex:0 0 auto;padding:10px 14px}
   .tlist span{display:none}
@@ -606,6 +613,7 @@ footer img{height:21px;width:auto}
   .r3 .f:first-child{grid-column:1/-1}
   .co__main{padding-top:20px}
 }
+@media (max-width:360px){.btn{font-size:15px;padding:0 14px}.stq{padding:12px 10px}.gvid .lang button{padding:7px 10px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important;animation:none!important}}
 </style>
 </head>
@@ -952,7 +960,7 @@ $('pk').innerHTML = Object.entries(PKG).map(([k,p],ci) => `
     <h3>${p.name}</h3><div class="for">${p.for}</div>
     <div class="p">${inr(p.price)}<small>one-time setup</small></div>
     <div class="bk">₹500 now · ${inr(p.price-ADVANCE)} on delivery</div>
-    <ul>${FEAT.map(f => f[1]===null ? `<li class="grp">${f[0]}</li>` : (f[ci+1]===true ? `<li>${tick}${f[0]}</li>` : f[ci+1]===false ? `<li class="no">${cross}${f[0]}</li>` : `<li>${tick}${f[0]}: <b>${f[ci+1]}</b></li>`)).join('')}</ul>
+    <ul>${FEAT.map(f => f[1]===null ? `<li class="grp">${f[0]}</li>` : (f[ci+1]===true ? `<li>${tick}${f[0]}</li>` : f[ci+1]===false ? `<li class="no">${cross}${f[0]}</li>` : `<li>${tick}<span>${f[0]}: <b>${f[ci+1]}</b></span></li>`)).join('')}</ul>
     <button class="btn ${k==='smart'?'btn--o':'btn--k'} btn--full" type="button" data-checkout="${k}">Book ${p.name} · ₹500</button>
   </div>`).join('');
 
@@ -1031,7 +1039,7 @@ function mountMenu(app, DATA, OPT){ OPT = OPT || {};
   function startPay(o){
     const box = app.querySelector('[data-s="pay"] .scr2');
     box.innerHTML = `<div class="card2 paycard"><small>Paying to</small><b>${RN}</b><div class="amt">₹${o.total}.00</div><small>Order #${o.no}</small></div>
-      <div class="card2"><h5>${o.pay==='NetBanking'?'Choose your bank':'Pay with UPI app'}</h5><div class="upis">${(o.pay==='NetBanking'?['SBI','HDFC','ICICI','Axis']:['GPay','PhonePe','Paytm','BHIM']).map(u=>`<button type="button" data-x="paynow">${u}</button>`).join('')}</div><p class="demo">Demo: no money is charged.</p></div>`;
+      <div class="card2"><h5>${o.pay==='NetBanking'?'Choose your bank':'Pay with UPI app'}</h5><div class="upis">${(o.pay==='NetBanking'?['SBI','HDFC','ICICI','Axis']:['GPay','PhonePe','Paytm','BHIM']).map(u=>`<button type="button" data-x="paynow">${u}</button>`).join('')}</div><p class="demo-note">Demo: no money is charged.</p></div>`;
     show('pay', true);
   }
   function placeOrder(){

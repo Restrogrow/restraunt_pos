@@ -90,6 +90,16 @@ page only has to include `header.php` like the others.
   Esc closes the popup on top through its close button. Give new popups a close button with `aria-label="Close"`.
 - **Words:** information in grey, errors in red; nothing in Title Case; no "in a moment" text that can go stale.
 
+## Owner dashboard: phones, tablets, laptops (every page, new ones too)
+
+- `main/assets/css/mobile.css` is loaded last on `views/dashboard.php` and holds the fixes for all pages. Put a layout fix
+  there (or in the page's own CSS), not as a one-off inline style.
+- Every box inside `.page` gets `min-width: 0` (zero specificity), so a long number, name or dropdown can't push a grid
+  or flex column past the screen. Give a tab bar a `<nav>` parent (its items keep their width and the bar scrolls
+  sideways) or `flex: none` on the items; let rows of buttons `flex-wrap: wrap`.
+- Check a new page at 360, 390, 768, 1024 and 1366 px wide: nothing cut off at the right edge, no text spilling out of
+  a button or pill, no tabs drawn on top of each other.
+
 ## Private sign-up links
 
 - Super Admin › Sign-up links (`main/superadmin/signup_links.php`, engine `main/config/signup_invites.php`) makes
