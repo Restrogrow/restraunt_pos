@@ -911,6 +911,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       
       if (pageId === "roomsPage" && window.RGRooms) window.RGRooms.load();   // assets/js/rooms-studio.js
+      if (pageId === "cashbookPage" && window.RGCashbook) window.RGCashbook.load();      // assets/js/cashbook-studio.js
+      if (pageId === "creditPage" && window.RGCredit) window.RGCredit.load();            // assets/js/credit-studio.js
+      if (pageId === "attendancePage" && window.RGAttendance) window.RGAttendance.load('attendance');  // assets/js/attendance-studio.js
+      if (pageId === "payrollPage" && window.RGAttendance) window.RGAttendance.load('payroll');
+      if (pageId === "discountsPage" && window.RGDiscounts) window.RGDiscounts.load();   // assets/js/discount-studio.js
       // Load reservations if it's the reservations page
       if (pageId === "reservationsPage") {
         loadReservations();
@@ -8454,6 +8459,8 @@ document.addEventListener("DOMContentLoaded", () => {
       manualType: manual ? manual.type : 'amount',
       manualValue: manual ? manual.value : 0,
       manualLabel: manual ? manual.label : '',
+      manualReason: manual ? (manual.reason || '') : '',
+      manualNote: manual ? (manual.note || '') : '',
       taxable, tax, total, serviceCharge, inclusive
     };
   };
@@ -9309,10 +9316,17 @@ document.addEventListener("DOMContentLoaded", () => {
       formData.append('manualDiscount', T.manualAmount.toFixed(2));
       formData.append('manualDiscountType', T.manualType);
       formData.append('manualDiscountValue', String(T.manualValue));
+      // why it was given, for bill_discounts and the Discounts given page (config/staff_discount.php)
+      formData.append('discountReason', T.manualReason || '');
+      formData.append('discountNote', T.manualNote || '');
     }
     formData.append('paymentMethod', payResult.paymentMethod);
     formData.append('paymentStatus', payResult.paymentStatus || 'Paid');
     formData.append('paidAmount', Math.max(0, total - (parseFloat(payResult.dueAmount) || 0)).toFixed(2));
+    // Split bills (Cash + Card + UPI) also send how much went to each method, so the server can save one
+    // payment row per method instead of a single "Cash+Card+UPI" row. Without it the cash part of a split
+    // bill can't be told apart, and the cash drawer can never be reconciled (config/cash_session.php).
+    formData.append('paySplit', JSON.stringify(payResult.amounts || {}));
     // Built from whichever payment methods were actually used (built-in or
     // custom) instead of a hardcoded Cash/UPI/Card list, so a custom method
     // like "Wallet" shows up correctly in the KOT/bill notes too.

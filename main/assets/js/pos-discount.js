@@ -24,8 +24,15 @@
   var sym = function () { return window.globalCurrencySymbol || '₹'; };
   var money = function (v) { return typeof window.formatCurrency === 'function' ? window.formatCurrency(v) : sym() + (+v || 0).toFixed(2); };
 
-  var disc = null;                 // { type: 'percent' | 'amount', value: Number }  — null = no discount
+  var disc = null;                 // { type: 'percent' | 'amount', value: Number, reason: String, note: String }  — null = no discount
   var lastSub = 0, lastTaken = 0;  // the last subtotal / already-taken discount (coupon + points)
+
+  // Why the discount was given. Sent with the bill and kept in bill_discounts
+  // (config/staff_discount.php), which is what the Discounts given page reports on. Kept as a list here
+  // rather than fetched, because the POS has to work offline and a cashier has no access to the
+  // discount settings API anyway. Mirrors SD_REASONS in config/staff_discount.php — change both together.
+  var REASONS = ['Staff meal', 'Owner / family', 'Regular customer', 'Complaint / remake', 'Loyalty goodwill',
+                 'Bulk order', 'Festival offer', 'Spoiled or delayed', 'Other'];
 
   // The amount this discount actually takes off: applied to the subtotal, then
   // trimmed so it never dips into what the coupon + points already took.
@@ -101,6 +108,9 @@
       + '.pd-in input{flex:1;border:0;outline:0;padding:12px 0;font-size:18px;font-weight:700;color:#111827;background:transparent;min-width:0;}'
       + '.pd-hint{margin:10px 2px 0;font-size:12px;color:#6b7280;min-height:16px;}'
       + '.pd-hint.bad{color:#dc2626;}'
+      + '.pd-lab{display:block;margin:10px 2px 4px;font:600 12px/1 inherit;color:#374151;}'
+      + '.pd-sel{width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;font:600 14px/1.2 inherit;color:#111827;background:#fff;margin-bottom:8px;}'
+      + '.pd-sel:focus{outline:0;border-color:#e11d48;}'
       + '.pd-ft{display:flex;gap:8px;padding:0 16px 16px;}'
       + '.pd-ft button{flex:1;border-radius:10px;padding:11px;font:700 13px/1 inherit;cursor:pointer;}'
       + '.pd-cancel{border:1px solid #e5e7eb;background:#fff;color:#374151;}'
@@ -126,6 +136,11 @@
           '</div>' +
           '<div class="pd-in"><span data-prefix></span><input type="number" inputmode="decimal" min="0" step="0.01" data-in value="' + (val === '' ? '' : esc(val)) + '" placeholder="0"><span data-suffix></span></div>' +
           '<p class="pd-hint" data-hint></p>' +
+          '<label class="pd-lab" for="pdReason">Why</label>' +
+          '<select class="pd-sel" id="pdReason" data-reason><option value="">Not given</option>' +
+            REASONS.map(function (r) { return '<option' + (disc && disc.reason === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') +
+          '</select>' +
+          '<input class="pd-sel" type="text" maxlength="255" data-note placeholder="Note (optional)" value="' + (disc && disc.note ? esc(disc.note) : '') + '">' +
         '</div>' +
         '<div class="pd-ft"><button type="button" class="pd-cancel" data-pd-x>Cancel</button><button type="button" class="pd-apply" data-apply>Apply discount</button></div>' +
       '</div>';
@@ -165,7 +180,10 @@
       var num = parseFloat(input.value) || 0;
       if (!(num > 0) || sub <= 0) return;
       if (type === 'percent' && num > 100) return;
-      disc = { type: type, value: Math.round(num * 100) / 100 };
+      var rsel = ov.querySelector('[data-reason]');
+      var rnote = ov.querySelector('[data-note]');
+      disc = { type: type, value: Math.round(num * 100) / 100,
+               reason: rsel ? rsel.value : '', note: rnote ? rnote.value : '' };
       teardown();
       refresh();
     }
@@ -196,8 +214,10 @@
     // the effective amount to take off (after coupon + points), or null when there is none
     pricing: function (sub, taken) {
       var amt = effective(sub, taken);
-      return amt > 0 ? { amount: amt, type: disc.type, value: disc.value, label: label() } : null;
+      return amt > 0 ? { amount: amt, type: disc.type, value: disc.value, label: label(),
+                         reason: disc.reason || '', note: disc.note || '' } : null;
     },
+    reasons: function () { return REASONS.slice(); },
     // paint the summary row (called by script.js and the waiter dashboard)
     paintSummary: function (sub, taken) { paint(sub, taken); },
     reset: function () { disc = null; },

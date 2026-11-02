@@ -54,6 +54,19 @@ function accessModules(): array {
             'paymentsPage' => ['Payments', ['payments_overview.php']],
             'gatewayPage'  => ['Payment gateway', []],
         ]],
+        'cashbook' => ['Cash book', 'account_balance_wallet', 'Drawer shifts: opening balance, cash in / out, counted closing balance', [
+            'cashbookPage' => ['Cash book', ['cashbook.php']],
+        ]],
+        'credit' => ['Credit (udhaar)', 'receipt_long', 'Customer credit accounts, what is outstanding and payments against it', [
+            'creditPage' => ['Credit', ['credit_admin.php']],
+        ]],
+        'staffhr' => ['Attendance & payroll', 'badge', 'Staff attendance, salaries and the payroll report', [
+            'attendancePage' => ['Attendance', ['attendance_admin.php']],
+            'payrollPage'    => ['Payroll', []],
+        ]],
+        'discounts' => ['Discounts given', 'percent', 'Who gave which discount, and what it cost', [
+            'discountsPage' => ['Discounts given', ['discount_admin.php']],
+        ]],
         'reports' => ['Reports & analytics', 'monitoring', 'Sales reports and Analytics Studio', [
             'reportsPage'   => ['Reports', []],
             'analyticsPage' => ['Analytics', ['analytics_studio.php']],
@@ -116,7 +129,7 @@ function accessModules(): array {
 function accessPresets(): array {
     return [
         'all'     => ['Everything', null],
-        'pos'     => ['POS only', ['pos', 'kitchen', 'tables', 'customers', 'staff', 'payments', 'reports']],
+        'pos'     => ['POS only', ['pos', 'kitchen', 'tables', 'customers', 'staff', 'payments', 'reports', 'cashbook', 'credit', 'staffhr', 'discounts']],
         'online'  => ['Online ordering', ['online', 'kitchen', 'customers', 'payments', 'reports', 'offers', 'delivery', 'feedback', 'website', 'google']],
         'loyalty' => ['Loyalty & Growth only', ['loyalty', 'customers', 'reports', 'offers', 'feedback']],
     ];

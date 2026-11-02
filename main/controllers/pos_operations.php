@@ -414,6 +414,11 @@ function posEnsureBillColumns($conn): void {
         ['orders', 'discount_amount', 'DECIMAL(10,2) DEFAULT 0.00'],
         ['orders', 'wallet_paid', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00'],
         ['orders', 'deleted_at', 'DATETIME DEFAULT NULL'],
+        // which drawer shift took the money / rang up the bill (config/cash_session.php). Added here as
+        // well as in csEnsure() because the POS needs them before its transaction starts, and a
+        // CREATE / ALTER inside a transaction silently commits it.
+        ['payments', 'cash_session_id', 'INT DEFAULT NULL'],
+        ['orders', 'cash_session_id', 'INT DEFAULT NULL'],
     ];
     foreach ($cols as [$table, $col, $def]) {
         try {
@@ -423,6 +428,42 @@ function posEnsureBillColumns($conn): void {
             }
         } catch (Throwable $e) { error_log("posEnsureBillColumns $table.$col: " . $e->getMessage()); }
     }
+}
+
+/**
+ * A split bill's per-method amounts, checked against the amount the server itself worked out.
+ *
+ * The cashier's split screen (assets/js/script.js) sends {"Cash": 300, "UPI": 200}. It is only used to
+ * divide $received between methods — never to decide how much was charged — so it is accepted only when
+ * the parts add up to $received (a paisa of rounding allowed) and there is more than one of them. A
+ * single method, a mismatched total or anything malformed returns null and the caller saves the bill the
+ * way it always did: one row with the joined method name.
+ *
+ * Returns ['Cash' => 300.00, 'UPI' => 200.00] or null.
+ */
+function posPaymentSplit($raw, float $received): ?array {
+    if (!is_string($raw) || $raw === '' || $received <= 0) return null;
+    $parts = json_decode($raw, true);
+    if (!is_array($parts)) return null;
+    $out = [];
+    $sum = 0.0;
+    foreach ($parts as $method => $amount) {
+        if (!is_string($method) || !is_numeric($amount)) continue;
+        $name = mb_substr(trim(strip_tags($method)), 0, 100);
+        $value = round((float)$amount, 2);
+        if ($name === '' || $value <= 0) continue;
+        $out[$name] = round(($out[$name] ?? 0) + $value, 2);
+        $sum = round($sum + $value, 2);
+    }
+    if (count($out) < 2 || abs($sum - $received) > 0.05) return null;
+    // give any rounding paisa to the biggest part, so the rows always add up to what was taken
+    $diff = round($received - $sum, 2);
+    if ($diff !== 0.0) {
+        $biggest = array_keys($out, max($out))[0];
+        $out[$biggest] = round($out[$biggest] + $diff, 2);
+        if ($out[$biggest] <= 0) return null;
+    }
+    return $out;
 }
 
 /**
@@ -617,6 +658,32 @@ function handleCreateKOT($conn, $restaurant_id) {
     $manualDiscount = min($manualDiscount, max(0, round($subtotal - $discountAmount - $loyaltyDiscount, 2)));
     $taxableAmount = max(0, round($subtotal - $discountAmount - $loyaltyDiscount - $manualDiscount, 2));
 
+    // Who is giving the discount, and may they give this much? The ceiling per role is the owner's
+    // setting (config/staff_discount.php); with none set nothing is refused, exactly as before. Checked
+    // here on the server: the POS screen can ask nicely, but the limit has to hold even if it doesn't.
+    require_once __DIR__ . '/../config/staff_discount.php';
+    $discountBy = [
+        'id'   => (int)($_SESSION['staff_id'] ?? 0),
+        'name' => (string)($_SESSION['username'] ?? $_SESSION['staff_name'] ?? $_SESSION['user_name'] ?? 'Owner'),
+        'role' => (string)($_SESSION['role'] ?? (($_SESSION['user_type'] ?? '') === 'staff' ? 'Staff' : 'Owner')),
+    ];
+    $discountReason = mb_substr(trim(strip_tags((string)($_POST['discountReason'] ?? ''))), 0, 120);
+    $discountNote = mb_substr(trim(strip_tags((string)($_POST['discountNote'] ?? ''))), 0, 255);
+    $discountOverCap = false;
+    if ($manualDiscount > 0) {
+        $gate = sdCheck($conn, (string)$restaurant_id, $discountBy['role'], round($subtotal - $discountAmount - $loyaltyDiscount, 2),
+                        $manualDiscount, hasPermission(PERMISSION_APPROVE_DISCOUNT));
+        if (!$gate['ok']) {
+            echo json_encode(['success' => false, 'message' => $gate['message'], 'discount_blocked' => true], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $discountOverCap = $gate['over_cap'];
+        if ($discountReason === '' && sdSettings($conn, (string)$restaurant_id)['require_reason']) {
+            echo json_encode(['success' => false, 'message' => 'Choose a reason for the discount.', 'discount_needs_reason' => true], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+    }
+
     // Server-side tax validation: the restaurant's bill rule (tax on top or inside the price, service charge),
     // the same one the POS screen uses (config/bill_rules.php)
     require_once __DIR__ . '/../config/bill_rules.php';
@@ -702,6 +769,14 @@ function handleCreateKOT($conn, $restaurant_id) {
     if ($addonsToKitchen) posEnsureKotAddonLines($conn);
     posEnsureBillColumns($conn);
     if ($sendBot) stationEnsureSchema($conn);
+    // the cash book and the credit ledger, set up out here: a bill settled on the account or taken into
+    // the drawer runs inside the transaction below, where a CREATE TABLE would silently commit it
+    require_once __DIR__ . '/../config/cash_session.php';
+    require_once __DIR__ . '/../config/credit_ledger.php';
+    require_once __DIR__ . '/../config/staff_discount.php';
+    csEnsure($conn);
+    clEnsure($conn);
+    sdEnsure($conn);
 
     // Generate unique KOT / BOT numbers with collision check
     $kotNumber = $sendKot ? generateKOTNumber($conn, $restaurant_id) : null;
@@ -862,7 +937,16 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
             if ($walletPaid > 0) $payStmt->execute([$restaurant_id, $orderId, $walletPaid, 'Wallet']);
             $restPaid = round($received - $walletPaid, 2);
-            if ($restPaid > 0 || $walletPaid <= 0) $payStmt->execute([$restaurant_id, $orderId, max(0, $restPaid), $cashMethod]);
+            // A split bill ("Cash+Card+UPI") gets one payment row per method, so the cash part is its own
+            // row and the drawer can be reconciled (config/cash_session.php). The client's split only
+            // divides the amount already worked out here; if it doesn't add up to that, it is ignored and
+            // the bill is saved the old way — the client can never change what was charged.
+            $split = posPaymentSplit($_POST['paySplit'] ?? null, $restPaid);
+            if ($split) {
+                foreach ($split as $method => $part) $payStmt->execute([$restaurant_id, $orderId, $part, $method]);
+            } elseif ($restPaid > 0 || $walletPaid <= 0) {
+                $payStmt->execute([$restaurant_id, $orderId, max(0, $restPaid), $cashMethod]);
+            }
 
             // coupon + the cashier's manual discount both land in discount_amount (the
             // order's discount); coupon_code stays just the coupon so it can still be shown
@@ -877,6 +961,28 @@ function handleCreateKOT($conn, $restaurant_id) {
                 $conn->prepare('UPDATE customers SET total_visits = total_visits + 1, total_spent = total_spent + ?, last_visit_date = CURDATE() WHERE id = ?')
                      ->execute([$total, $customerId]);
             }
+        }
+
+        // The drawer shift that took this money (nothing happens when no shift is open: billing never
+        // waits on the cash book). config/cash_session.php
+        require_once __DIR__ . '/../config/cash_session.php';
+        csStamp($conn, (string)$restaurant_id, (int)$orderId);
+
+        // Who took money off this bill and why (config/staff_discount.php). Written in this same
+        // transaction, so orders.discount_amount and its record can never drift apart.
+        if ($manualDiscount > 0) {
+            sdRecord($conn, (string)$restaurant_id, (int)$orderId, [
+                'amount' => $manualDiscount, 'kind' => $manualDiscountType, 'value' => $manualDiscountValue,
+                'bill_total' => $total, 'reason' => $discountReason, 'note' => $discountNote, 'over_cap' => $discountOverCap,
+            ], $discountBy);
+        }
+
+        // A bill settled "on the account" becomes a charge on the customer's credit account
+        // (config/credit_ledger.php). No phone on the bill = nothing happens and it stays due.
+        if ($isPaidUpFront && clIsCreditMethod($billMethod)) {
+            require_once __DIR__ . '/../config/credit_ledger.php';
+            clOnPosBill($conn, (string)$restaurant_id, (int)$orderId, (string)$billMethod, (float)$total,
+                        (string)$customerName, (string)$customerPhone, $discountBy);
         }
 
         // Link the tickets (KOT and BOT) to their order
