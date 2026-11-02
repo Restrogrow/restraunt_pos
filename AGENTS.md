@@ -205,6 +205,70 @@ page only has to include `header.php` like the others.
   Super Admin › QR kit orders › Dashboard logins). Its session keys are only `qrkit_user_id` / `qrkit_at`, which no other
   part of RestroGrow accepts (`isSessionValid()` ignores them): keep it that way. Order changes go through `qkUpdateOrder()`.
 
+## Cash book (the drawer: opening and closing balance)
+
+- `main/config/cash_session.php` (tables `cash_sessions`, `cash_movements`, columns `payments.cash_session_id`
+  and `orders.cash_session_id`), API `main/api/cashbook.php`, page `assets/js/cashbook-studio.js` (#cashbookPage).
+- One shift open at a time per restaurant. `csOpen()` takes the cash already in the drawer, `csMove()` records
+  cash that isn't a bill (petty cash, a bank drop), `csClose()` asks for the counted cash and freezes
+  `expected_cash`, `counted_cash`, `difference` and the whole report into `cash_sessions.summary`. A closed shift
+  is never recalculated: `csSummary()` / `csOne()` return the frozen copy, so a report printed months later reads
+  the same.
+- `expected = opening + cash taken − cash refunded + movements in − movements out`. Only real cash counts
+  (`csIsCashMethod()`, `CS_CASH_METHODS`); card, UPI, wallet and credit are reported but never in the expected
+  figure.
+- The money is stamped on the **payment**, not the order (`csStamp()`, called by `pos_operations.php`): an open
+  bill settled on the night shift belongs to the night shift. `orders.cash_session_id` only answers "which shift
+  rang this up".
+- **Billing never waits on the cash book.** No open shift = bills go through with no session id, and `csStamp()`
+  swallows its own errors. Keep it that way.
+- A split bill writes **one `payments` row per method** (`posPaymentSplit()` in `pos_operations.php`, fed by
+  `paySplit` from the POS screen). Before that a split bill was a single "Cash+Card+UPI" row and its cash part
+  could not be told apart. The client's split only divides the amount the server worked out; if the parts don't
+  add up to it, it is ignored and the bill is saved the old way.
+
+## Credit (udhaar)
+
+- `main/config/credit_ledger.php` (tables `credit_accounts`, `credit_entries`), API `main/api/credit_admin.php`,
+  page `assets/js/credit-studio.js` (#creditPage).
+- The balance is only ever changed through `clCharge()` / `clPay()` / `clAdjust()`, which write the entry and the
+  new balance in one transaction. Never `UPDATE credit_accounts.balance` by hand — the entries are the truth and
+  the column is their running total.
+- A POS bill settled with a method that means credit (`clIsCreditMethod()`: Credit, Udhaar, Khata, On account)
+  becomes a charge on the account found from the phone on the bill (`clOnPosBill()`). The unique key on
+  (restaurant_id, order_id, type) makes a re-synced offline bill safe. No phone = nothing happens and it stays due.
+- **A payment back is not a sale.** The sale was counted when the bill was rung up, so `clPay()` with cash writes
+  a cash movement **in** on the open shift instead of new takings — which is what makes the drawer tally without
+  double counting the revenue.
+
+## Discounts off a bill
+
+- `main/config/staff_discount.php` (tables `bill_discounts`, `discount_settings`), API `main/api/discount_admin.php`,
+  page `assets/js/discount-studio.js` (#discountsPage).
+- `sdRecord()` is called inside the bill's transaction from `pos_operations.php`, so `orders.discount_amount` and
+  its record can never drift apart. One row per bill (unique key on order_id).
+- `sdCheck()` enforces the ceiling per role, **on the server**: over it, only `PERMISSION_APPROVE_DISCOUNT` can put
+  the bill through, and the row is marked `over_cap`. Caps start empty = no limit, so billing is unchanged until an
+  owner switches them on. Settings are one JSON row per restaurant, read through `sdSettings()` and written through
+  `sdSettingsSave()` — add a new setting there, not as a column.
+- A free or cheap staff meal is just a reason here ("Staff meal"), so it shows up next to every other reason.
+
+## Attendance and payroll
+
+- `main/config/attendance.php` (tables `attendance`, `payroll_entries`, `payroll_runs`, columns `staff.salary_type`,
+  `staff.salary_amount`, `staff.joined_on`), API `main/api/attendance_admin.php`, page
+  `assets/js/attendance-studio.js` (#attendancePage and #payrollPage — one script, told which by `load(page)`).
+- One row per (restaurant, staff, date). `atMark()` corrects a day instead of adding a second one, and refuses a
+  day that hasn't happened yet. `atPunch()` is the one-tap clock in / clock out.
+- Day values: present 1 · half 0.5 · absent 0 · paid_leave 1 · week_off and holiday 1 on a monthly salary, 0 on a
+  daily wage. **A day nobody marked is not an absence** — a blank means "not marked", so only a day actually marked
+  absent costs money (`plFor()`).
+- `plMarkPaid()` freezes the month's figures into `payroll_runs` (with a snapshot of the basis and day counts), so a
+  payslip never changes because attendance was corrected later. A frozen month refuses attendance and entry changes
+  (`atRefuseIfPaid()`) until `plReopen()`.
+- Payroll says what is **owed**; it never moves cash on its own. A salary paid out of the drawer is a cash-out the
+  cashier records in the Cash book — keeping them apart is what lets them be checked against each other.
+
 ## Payments
 
 - **PhonePe** is the only payment gateway integrated, and it takes Indian rupees: it is **India-only**. Check

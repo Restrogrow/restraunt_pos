@@ -47,6 +47,10 @@ define('PERMISSION_MANAGE_AREAS', 'manage_areas');
 define('PERMISSION_MANAGE_COUPONS', 'manage_coupons');
 define('PERMISSION_MANAGE_INVENTORY', 'manage_inventory');
 define('PERMISSION_MANAGE_LOYALTY', 'manage_loyalty');
+define('PERMISSION_MANAGE_CASH', 'manage_cash');             // the drawer: open a shift, move cash, count and close (config/cash_session.php)
+define('PERMISSION_MANAGE_CREDIT', 'manage_credit');         // credit (udhaar): put a bill on an account and take payments against it (config/credit_ledger.php)
+define('PERMISSION_APPROVE_DISCOUNT', 'approve_discount');   // a discount over the role's cap; also who may see the discount report (config/staff_discount.php)
+define('PERMISSION_MANAGE_ATTENDANCE', 'manage_attendance'); // mark attendance, set salaries, run the payroll report (config/attendance.php)
 
 /**
  * Role to permissions mapping
@@ -69,6 +73,10 @@ function getRolePermissions($role) {
             PERMISSION_MANAGE_COUPONS,
             PERMISSION_MANAGE_INVENTORY,
             PERMISSION_MANAGE_LOYALTY,
+            PERMISSION_MANAGE_CASH,
+            PERMISSION_MANAGE_CREDIT,
+            PERMISSION_APPROVE_DISCOUNT,
+            PERMISSION_MANAGE_ATTENDANCE,
         ],
         ROLE_MANAGER => [
             PERMISSION_VIEW_DASHBOARD,
@@ -83,6 +91,10 @@ function getRolePermissions($role) {
             PERMISSION_MANAGE_AREAS,
             PERMISSION_MANAGE_INVENTORY,
             PERMISSION_MANAGE_LOYALTY,
+            PERMISSION_MANAGE_CASH,
+            PERMISSION_MANAGE_CREDIT,
+            PERMISSION_APPROVE_DISCOUNT,
+            PERMISSION_MANAGE_ATTENDANCE,
         ],
         ROLE_WAITER => [
             PERMISSION_VIEW_DASHBOARD,
@@ -99,6 +111,10 @@ function getRolePermissions($role) {
             PERMISSION_MANAGE_CUSTOMERS,
             PERMISSION_MANAGE_TABLES,
             PERMISSION_VIEW_KOT,
+            // the counter runs the drawer and the credit accounts, but a discount over the cap still
+            // needs a manager (no PERMISSION_APPROVE_DISCOUNT), and attendance / salaries are not theirs
+            PERMISSION_MANAGE_CASH,
+            PERMISSION_MANAGE_CREDIT,
         ],
         ROLE_CHEF => [
             PERMISSION_VIEW_DASHBOARD,

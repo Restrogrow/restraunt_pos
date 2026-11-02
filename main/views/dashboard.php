@@ -1239,6 +1239,21 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
               </a>
               <span class="nav-tooltip">Gateway</span>
             </li>
+            <!-- the drawer and the credit accounts (config/cash_session.php, config/credit_ledger.php) -->
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="cashbookPage">
+                <span class="nav-icon material-symbols-rounded">account_balance_wallet</span>
+                <span class="nav-label">Cash book</span>
+              </a>
+              <span class="nav-tooltip">Cash book</span>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="creditPage">
+                <span class="nav-icon material-symbols-rounded">handshake</span>
+                <span class="nav-label">Credit</span>
+              </a>
+              <span class="nav-tooltip">Credit (udhaar)</span>
+            </li>
           </ul>
         </li>
         <li class="nav-item">
@@ -1247,6 +1262,38 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
             <span class="nav-label">Reports</span>
           </a>
           <span class="nav-tooltip">Reports</span>
+        </li>
+        <!-- staff attendance, salaries and the payroll report (config/attendance.php) -->
+        <li class="nav-item has-submenu">
+          <a href="#" class="nav-link submenu-toggle">
+            <span class="nav-icon material-symbols-rounded">how_to_reg</span>
+            <span class="nav-label">Attendance</span>
+            <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
+          </a>
+          <span class="nav-tooltip">Attendance &amp; payroll</span>
+          <ul class="submenu">
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="attendancePage">
+                <span class="nav-icon material-symbols-rounded">how_to_reg</span>
+                <span class="nav-label">Attendance</span>
+              </a>
+              <span class="nav-tooltip">Attendance</span>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="payrollPage">
+                <span class="nav-icon material-symbols-rounded">payments</span>
+                <span class="nav-label">Payroll</span>
+              </a>
+              <span class="nav-tooltip">Salary and payroll report</span>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="discountsPage">
+            <span class="nav-icon material-symbols-rounded">percent</span>
+            <span class="nav-label">Discounts given</span>
+          </a>
+          <span class="nav-tooltip">Who gave which discount</span>
         </li>
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="analyticsPage">
@@ -3393,6 +3440,62 @@ function toggleGatewayMode() {
           </div>
         </section>
       </div>
+    </div>
+
+    <!-- Cash book: drawer shifts (assets/js/cashbook-studio.js, api/cashbook.php, config/cash_session.php; styles cb-* inside the script) -->
+    <div id="cashbookPage" class="page sx lg">
+      <div class="page-header">
+        <div>
+          <h1>Cash book</h1>
+          <p>The drawer, shift by shift: opening balance, cash in and out, counted closing balance</p>
+        </div>
+      </div>
+      <div class="page-content"><div id="cashbookRoot"><div class="loading">Loading…</div></div></div>
+    </div>
+
+    <!-- Credit (udhaar): customer accounts and what is outstanding (assets/js/credit-studio.js, api/credit_admin.php, config/credit_ledger.php) -->
+    <div id="creditPage" class="page sx lg">
+      <div class="page-header">
+        <div>
+          <h1>Credit</h1>
+          <p>Who owes money, what they have paid back, and the bills behind it</p>
+        </div>
+        <div class="lg-head-acts">
+          <button type="button" class="btn btn-primary" id="crAddBtn"><span class="material-symbols-rounded">add</span>New account</button>
+        </div>
+      </div>
+      <div class="page-content"><div id="creditRoot"><div class="loading">Loading…</div></div></div>
+    </div>
+
+    <!-- Attendance and payroll (assets/js/attendance-studio.js, api/attendance_admin.php, config/attendance.php) -->
+    <div id="attendancePage" class="page sx lg">
+      <div class="page-header">
+        <div>
+          <h1>Attendance</h1>
+          <p>Who worked which day, and for how long</p>
+        </div>
+      </div>
+      <div class="page-content"><div id="attendanceRoot"><div class="loading">Loading…</div></div></div>
+    </div>
+    <div id="payrollPage" class="page sx lg">
+      <div class="page-header">
+        <div>
+          <h1>Payroll</h1>
+          <p>Salary per person worked out from attendance, with advances and deductions</p>
+        </div>
+      </div>
+      <div class="page-content"><div id="payrollRoot"><div class="loading">Loading…</div></div></div>
+    </div>
+
+    <!-- Discounts given (assets/js/discount-studio.js, api/discount_admin.php, config/staff_discount.php) -->
+    <div id="discountsPage" class="page sx lg">
+      <div class="page-header">
+        <div>
+          <h1>Discounts given</h1>
+          <p>Every discount off a bill: who gave it, why, and who approved it</p>
+        </div>
+      </div>
+      <div class="page-content"><div id="discountsRoot"><div class="loading">Loading…</div></div></div>
     </div>
 
     <!-- Reports Page -->
@@ -7654,6 +7757,10 @@ function toggleGatewayMode() {
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
   <script src="../assets/js/reservations-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/reservations-studio.js'); ?>" defer></script>
   <script src="../assets/js/rooms-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rooms-studio.js'); ?>" defer></script>
+  <script src="../assets/js/cashbook-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/cashbook-studio.js'); ?>" defer></script>
+  <script src="../assets/js/credit-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/credit-studio.js'); ?>" defer></script>
+  <script src="../assets/js/attendance-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/attendance-studio.js'); ?>" defer></script>
+  <script src="../assets/js/discount-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/discount-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-customer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-customer.js'); ?>" defer></script>
   <script src="../assets/js/pos-discount.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-discount.js'); ?>" defer></script>
