@@ -494,9 +494,15 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
                 const rawName = item.item_name_translated || item.item_name_en || item.item_name || '';
                 const jsArg = s => JSON.stringify(String(s)).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
                 const itemName = String(rawName).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                // out of stock in Menu items: still shown, but not sellable (same as the owner POS)
+                const out = Number(item.is_available) === 0;
+                const tap = out
+                    ? `showNotification(${jsArg(rawName)} + ' is out of stock.', 'error')`
+                    : `addToWaiterPOSCart(${item.id}, ${jsArg(rawName)}, ${parseFloat(item.base_price || item.price) || 0}, ${jsArg(item.item_image || '')})`;
                 return `
-                    <div class="pos-menu-item" onclick="addToWaiterPOSCart(${item.id}, ${jsArg(rawName)}, ${parseFloat(item.base_price || item.price) || 0}, ${jsArg(item.item_image || '')})" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;">
-                        <div class="item-image" style="width: 100%; height: 120px; background: #f9fafb; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden;">
+                    <div class="pos-menu-item${out ? ' pos-out' : ''}" onclick="${tap}" style="background: white; border: 1px solid ${out ? '#fecaca' : '#e5e7eb'}; border-radius: 12px; padding: 16px; cursor: ${out ? 'not-allowed' : 'pointer'}; transition: all 0.2s; text-align: center;">
+                        <div class="item-image" style="position: relative; width: 100%; height: 120px; background: #f9fafb; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden;">
+                            ${out ? '<span class="pos-out-tag">Out of stock</span>' : ''}
                             ${(() => {
                                 if (!item.item_image) return '<span class="material-symbols-rounded" style="font-size: 3rem; color: #9ca3af;">restaurant</span>';
                                 let imageUrl;

@@ -18,7 +18,11 @@ function rgIconFontUrl(): string
     $names = @file_get_contents(__DIR__ . '/icon_names.txt');
     $list = $names ? array_values(array_unique(array_filter(array_map('trim', explode(',', $names))))) : [];
     sort($list, SORT_STRING);
+    // display=block, not swap: an icon here is the word inside the span ("space_dashboard"), so
+    // swap paints that word in the page font until the icon font lands — nav items read like
+    // variable names for as long as the download takes. block keeps the space empty instead.
+    // (main/assets/fonts/google/material-symbols-rounded.css, the customer site's copy, does the same.)
     $url = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0'
-        . ($list ? '&icon_names=' . implode(',', $list) : '') . '&display=swap';
+        . ($list ? '&icon_names=' . implode(',', $list) : '') . '&display=block';
     return $url;
 }

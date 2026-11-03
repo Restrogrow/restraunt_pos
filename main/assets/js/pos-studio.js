@@ -74,7 +74,8 @@
             e.preventDefault();
             setTimeout(function () {
               var tiles = grid.querySelectorAll('.pos-menu-item');
-              if (tiles.length === 1) { tiles[0].click(); clearSearch(); }
+              // out of stock: the tap says so instead of adding it, so leave the search alone
+              if (tiles.length === 1) { tiles[0].click(); if (tiles[0].getAttribute('data-out') !== '1') clearSearch(); }
               else if (tiles.length) tiles[0].focus();
             }, 300);
           }
@@ -110,9 +111,11 @@
     var name = t.getAttribute('data-item-name') || '', img = t.querySelector('.item-image');
     if (img && !img.querySelector('img')) {   // no photo: a coloured letter instead of a grey fork
       var c = tint(name);
+      var tag = img.querySelector('.pos-out-tag');   // the Out-of-stock tag lives in here too
       img.classList.add('ps-noimg');
       img.style.background = c[0]; img.style.color = c[1];
       img.innerHTML = '<b>' + esc((name.trim().charAt(0) || '?').toUpperCase()) + '</b>';
+      if (tag) img.appendChild(tag);
     }
     var type = t.getAttribute('data-type');
     if (img && type && /^(veg|non veg|egg|drink)$/i.test(type)) img.insertAdjacentHTML('beforeend', '<i class="ps-veg ' + type.toLowerCase().replace(' ', '-') + '" title="' + esc(type) + '"></i>');

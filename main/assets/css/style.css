@@ -3323,7 +3323,41 @@ select:focus {
   transform: translateY(-2px);
 }
 
+/* A dish switched out of stock in Menu items. It stays on the POS — staff go looking for it and
+   have to see why it isn't coming — but it can't be billed: the tap says so instead of adding it
+   (script.js renderPOSMenuGrid / updateMobileItemsList). pos_operations.php refuses it as well. */
+.pos-menu-item.pos-out {
+  border-color: #fecaca;
+  background: #fffbfb;
+  cursor: not-allowed;
+}
+.pos-menu-item.pos-out:hover {
+  border-color: #fca5a5;
+  box-shadow: none;
+  transform: none;
+}
+.pos-menu-item.pos-out .item-image img,
+.pos-menu-item.pos-out .item-name,
+.pos-menu-item.pos-out .item-price {
+  opacity: 0.5;
+}
+.pos-menu-item .pos-out-tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #b91c1c;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px -4px rgba(185, 28, 28, 0.8);
+}
+
 .pos-menu-item .item-image {
+  position: relative;   /* the Out of stock tag sits on the photo */
   width: 100%;
   height: 80px;
   border-radius: 6px;

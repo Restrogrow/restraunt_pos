@@ -1367,7 +1367,14 @@ html:has(.page.mk.active), body:has(.page.mk.active), .main-content:has(.page.mk
 .ms-count.none { background: #f3f4f6; color: var(--sx-muted); }
 .page.lg #menuList .menu-actions-card { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto; padding: 12px 14px 14px; }
 .page.lg #menuList .menu-actions-card button { min-width: 0; width: 100%; }
-.page.lg #menuList .menu-actions-card .mh-btn { grid-column: 1 / -1; }   /* Hours: its own row, Edit | Delete under it */
+.page.lg #menuList .menu-actions-card .mh-btn,
+.page.lg #menuList .menu-actions-card .ms-vis { grid-column: 1 / -1; }   /* Hours, Kitchen and Hide: a row each, Edit | Delete under them */
+/* a category the owner took off the website: still here, still billable in the POS */
+.menu-actions-card .ms-vis { background: #F9FAFB; color: #374151; border: 1px solid var(--sx-line); }
+.menu-actions-card .ms-vis:hover { background: #F3F4F6; }
+.page.lg #menuList .menu-card.ms-hidden { background: #FAFAFA; }
+.page.lg #menuList .menu-card.ms-hidden .menu-image,
+.page.lg #menuList .menu-card.ms-hidden h3 { opacity: .55; }
 .page.lg #menuList .sort-handle { position: absolute; top: 8px; right: 8px; z-index: 2; display: flex; gap: 4px; }
 .page.lg #menuList .sort-handle button { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--sx-line); border-radius: 10px; background: #fff; cursor: pointer; }
 .page.lg #menuList .sort-handle button:disabled { opacity: .4; cursor: default; }
@@ -2910,6 +2917,13 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps .pos-menu-item .item-image .ps-count-badge { position: absolute; top: 8px; right: 8px; min-width: 30px; height: 26px; padding: 0 8px; display: grid; place-items: center; border-radius: 999px; background: #16a34a; color: #fff; font-size: .8rem; font-weight: 800; box-shadow: 0 4px 10px -4px rgba(22,163,74,.8); }
 .ps .ps-list .pos-menu-item .item-image .ps-count-badge { top: 2px; right: 2px; min-width: 22px; height: 18px; padding: 0 5px; font-size: .68rem; }
 .ps .pos-menu-item.ps-in { border-color: #16a34a; background: #fff; box-shadow: 0 0 0 3px rgba(22,163,74,.14); }
+/* Out of stock (base look in style.css, which the waiter and manager screens load too): here only
+   what the tile view adds — no + to tap, so the only thing left is the reason (script.js) */
+.ps .pos-menu-item.pos-out { border-color: #FECACA; background: #FFFBFB; }
+.ps .pos-menu-item.pos-out:hover { border-color: #FCA5A5; box-shadow: none; }
+.ps .pos-menu-item.pos-out:active { transform: none; }
+.ps .pos-menu-item.pos-out .ps-act { display: none; }
+.ps .ps-list .pos-menu-item .pos-out-tag { font-size: .55rem; padding: 2px 5px; }
 .ps .pos-menu-items:not(.ps-list) .ps-act em { display: none; }
 .ps-row .ps-types { flex: 0 0 auto; overflow: visible; }
 .ps-row .ps-search { flex: 1 1 160px !important; }

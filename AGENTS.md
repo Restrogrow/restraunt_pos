@@ -60,6 +60,13 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
 - `startSecureSession()` must be called before any session usage.
 - Roles: Admin, Manager, Waiter, Chef, Cashier, Delivery rider — stored in `$_SESSION['role']` (`main/config/staff_roles.php`). Call `resetLoginIdentity()` before every login so one session never mixes two people.
 - Session files stored in `main/sessions/`.
+- **The WhatsApp code at customer sign-up** (`website/otp.php`, purpose `customer_signup`, checked by
+  `customer_auth.php`'s `handleCustomerSignup()`) can be switched off per restaurant in Settings › Ordering:
+  `users.customer_otp_enabled`, on by default, read only through `customerOtpRequired()`
+  (`main/config/customer_otp.php`). Off, the form alone makes the account — on the page
+  (`window.customerOtpRequired` in `website/login.php`) and on the server, so a stale page gains nothing.
+  The new-device login code is already off everywhere (`config/device_trust_helpers.php`); the WhatsApp
+  password reset keeps its code.
 
 ## Key conventions
 
@@ -67,6 +74,20 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
 - `display_errors = 0` everywhere — errors go to logs, never HTML output.
 - PDO with `ERRMODE_EXCEPTION`, non-persistent connections, prepared statements.
 - PHP files use `<?php` open tags, no short tags.
+
+## What's on the menu, and where
+
+Three separate switches, often confused:
+- **A dish out of stock** — `menu_items.is_available = 0` (Menu items › Out of stock). Off the website; the POS
+  still lists it, greyed with an "Out of stock" tag and no + to tap (`.pos-out` in `script.js` /
+  `waiter_dashboard.php`), and `pos_operations.php` names it if a bill reaches the server with it on.
+- **A dish hidden** — `menu_items.is_hidden = 1` (Menu items › Hide; also where a deleted dish that was already
+  ordered ends up, `config/menu_delete.php`). Gone everywhere: website, POS, apps, upsell widgets.
+  `api/get_menu_items.php` hands hidden dishes back only to a real menu-manager session asking `include_hidden=1`.
+- **A category hidden** — `menu.is_active = 0` (Categories › Hide from website; `set_active` in
+  `controllers/menu_operations.php`). Off the website (`website/api.php`) and out of the page's schema.org menu
+  (`config/seo_helpers.php`); the POS keeps it, because a counter still has to bill what it sells in person.
+  The "Removed dishes" section (`MENU_ARCHIVE_SECTION`) is always off and has no button.
 
 ## Customer website: speed and bad connections (every page, new ones too)
 

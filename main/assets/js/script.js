@@ -2761,12 +2761,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const isBarMenu = menu.prep_station === 'bar';
       const stationData = escapeHtml(JSON.stringify({ id: menu.id, menu_name: menu.menu_name })).replace(/"/g, '&quot;');
       const stationChip = isBarMenu ? `<div class="mh-chip ms-bar"><span class="material-symbols-rounded">local_bar</span>Made at the bar · BOT</div>` : '';
+      // Hidden: off the customer website and app (menu.is_active), still billable in the POS.
+      // "Removed dishes" (MENU_ARCHIVE_SECTION in config/menu_delete.php) holds dishes that were
+      // deleted after being ordered — it stays hidden, so it gets no button (the server refuses too).
+      const isOn = Number(menu.is_active) !== 0;
+      const isArchive = menu.menu_name === 'Removed dishes';
+      const hiddenChip = isOn ? '' : `<div class="mh-chip off"><span class="material-symbols-rounded">visibility_off</span>Hidden from your website</div>`;
       return `
-      <div class="menu-card" data-menu-id="${menu.id}">
+      <div class="menu-card${isOn ? '' : ' ms-hidden'}" data-menu-id="${menu.id}">
         ${imageHtml}
         <h3>${escapeHtml(menu.menu_name)}</h3>
         <div class="menu-date">Created: ${formatDate(menu.created_at)}</div>
-        ${hoursChip}${stationChip}
+        ${hiddenChip}${hoursChip}${stationChip}
         <div class="menu-actions-card">
           <button class="btn-edit mh-btn" type="button" data-menu-hours="${hoursData}" title="When this category is served">
             <span class="material-symbols-rounded">schedule</span>
@@ -2776,6 +2782,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="material-symbols-rounded">${isBarMenu ? 'local_bar' : 'soup_kitchen'}</span>
             ${isBarMenu ? 'Bar' : 'Kitchen'}
           </button>
+          ${isArchive ? '' : `<button class="btn-edit ms-vis" type="button" onclick="toggleMenuActive(${menu.id}, ${isOn ? 'false' : 'true'})" title="${isOn ? 'Take this category off your website. You can still bill it in the POS.' : 'Show this category on your website again.'}">
+            <span class="material-symbols-rounded">${isOn ? 'visibility_off' : 'visibility'}</span>
+            ${isOn ? 'Hide from website' : 'Show on website'}
+          </button>`}
           <button class="btn-edit" onclick="editMenu(${menu.id}, ${jsArg(menu.menu_name)}, '${menuImageUrl || ''}')">
             <span class="material-symbols-rounded">edit</span>
             Edit
@@ -2844,6 +2854,28 @@ document.addEventListener("DOMContentLoaded", () => {
     const list = document.getElementById('menuList');
     if (list) list.classList.remove('sort-mode');
   }
+
+  // Show / hide a category on the customer website (menu.is_active). The POS is not touched:
+  // the counter still has to be able to bill a category the restaurant only sells in person.
+  window.toggleMenuActive = async function(menuId, on) {
+    const card = document.querySelector('.menu-card[data-menu-id="' + menuId + '"]');
+    const btns = card ? card.querySelectorAll('.menu-actions-card button') : [];
+    btns.forEach(b => { b.disabled = true; });
+    try {
+      const fd = new FormData();
+      fd.append('action', 'set_active');
+      fd.append('menuId', menuId);
+      fd.append('active', on ? '1' : '0');
+      const res = await fetch('../controllers/menu_operations.php', { method: 'POST', body: fd });
+      const result = await res.json();
+      if (!result.success) { showNotification(result.message || 'Could not save', 'error'); btns.forEach(b => { b.disabled = false; }); return; }
+      showNotification(result.message, 'success');
+      loadMenus();
+    } catch (err) {
+      btns.forEach(b => { b.disabled = false; });
+      showNotification('Network error. Please try again.', 'error');
+    }
+  };
 
   // Delete menu function
   window.deleteMenu = function(menuId, menuName) {
@@ -3176,13 +3208,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!menuFilter || !subcategoryFilter) return;
     
     const menuId = menuFilter.value;
-    
+    // The subcategories belong to the menu that was picked, so the old pick never applies to the
+    // new one. Clearing it matters most when the select is hidden below: a subcategory left in it
+    // keeps filtering out of sight, and the list comes back empty with nothing to explain why.
+    // Cleared here, synchronously, because the same change also runs loadMenuItems() right after.
+    subcategoryFilter.value = '';
+
     if (!menuId) {
       subcategoryFilter.style.display = "none";
       subcategoryFilter.innerHTML = '<option value="">All Subcategories</option>';
       return;
     }
-    
+
     // Fetch menus with subcategories
     fetch("../api/get_menus.php")
       .then(r => r.json())
@@ -3190,12 +3227,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result.success) {
           const menu = result.data.find(m => m.id == menuId);
           const subcategories = menu ? (menu.subcategories || []) : [];
-          
+
           if (subcategories.length === 0) {
             subcategoryFilter.style.display = "none";
+            subcategoryFilter.innerHTML = '<option value="">All Subcategories</option>';
             return;
           }
-          
+
           subcategoryFilter.style.display = "inline-block";
           subcategoryFilter.innerHTML = '<option value="">All Subcategories</option>';
           subcategories.forEach(sub => {
@@ -4006,14 +4044,19 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (result.success) {
         const menuFilter = document.getElementById("menuFilter");
+        if (!menuFilter) return;
+        // This runs alongside loadMenuItems(), which has already read the select: keep whatever
+        // is picked, so the list and the dropdown can't end up saying different things.
+        const chosen = menuFilter.value;
         menuFilter.innerHTML = '<option value="">All Menus</option>';
-        
+
         result.data.forEach(menu => {
           const option = document.createElement('option');
           option.value = menu.id;
           option.textContent = menu.menu_name;
           menuFilter.appendChild(option);
         });
+        if (chosen && [].some.call(menuFilter.options, o => o.value === chosen)) menuFilter.value = chosen;
       }
     } catch (error) {
       console.error("Error loading menus for filter:", error);
@@ -4134,6 +4177,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="prep-time">${item.preparation_time} min</span>
             <span class="availability ${Number(item.is_available) === 1 ? 'available' : 'unavailable'}">${Number(item.is_available) === 1 ? 'In Stock' : 'Out of Stock'}</span>
             ${isHidden ? '<span class="availability unavailable">Hidden from POS/Website</span>' : ''}
+            ${!isHidden && Number(item.menu_active) === 0 ? '<span class="availability unavailable">Its category is hidden from the website</span>' : ''}
           </div>
         </div>
         <div class="item-actions">
@@ -4265,14 +4309,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateCategoryFilter(categories) {
     const categoryFilter = document.getElementById("categoryFilter");
+    if (!categoryFilter) return;
+    // loadMenuItems() calls this after every load, so the list is rebuilt while a category is
+    // picked: keep the pick, or the dropdown snaps back to "All Categories" (and the next change
+    // to any other filter then loses it for real).
+    const chosen = categoryFilter.value;
     categoryFilter.innerHTML = '<option value="">All Categories</option>';
-    
+
     categories.forEach(category => {
       const option = document.createElement('option');
       option.value = category;
       option.textContent = category;
       categoryFilter.appendChild(option);
     });
+    if (chosen && [].some.call(categoryFilter.options, o => o.value === chosen)) categoryFilter.value = chosen;
   }
 
   // Delete menu item function
@@ -7897,25 +7947,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     posMenuItemsContainer.innerHTML = items.map(item => {
       const hasVariations = item.has_variations && item.variations && item.variations.length > 0;
-      const priceDisplay = hasVariations ? 
+      const priceDisplay = hasVariations ?
         (item.variations.length > 0 ? `${formatCurrency(item.variations[0].price)} - ${formatCurrency(item.variations[item.variations.length - 1].price)}` : formatCurrency(item.base_price)) :
         formatCurrency(item.base_price);
-      
+
       // Escape variations JSON for data attribute
       const variationsJson = hasVariations ? encodeURIComponent(JSON.stringify(item.variations || [])) : '';
-      
+      // Switched out of stock in Menu items: the dish stays on screen (staff look for it and have
+      // to see why it isn't coming) but it can't be billed. pos_operations.php refuses it anyway,
+      // so without this the till only found out after the whole order was rung up.
+      const out = Number(item.is_available) === 0;
+
       return `
-      <div class="pos-menu-item" 
+      <div class="pos-menu-item${out ? ' pos-out' : ''}"
            data-item-id="${item.id}"
            data-item-name="${escapeHtml(item.item_name_translated || item.item_name_en)}"
            data-item-price="${item.base_price}"
            data-item-image="${escapeHtml(item.item_image || '')}"
            data-has-variations="${hasVariations ? '1' : '0'}"
            data-variations="${variationsJson}"
+           data-out="${out ? '1' : '0'}"
            data-menu="${item.menu_id || ''}" data-menu-name="${escapeHtml(item.menu_name || '')}" data-type="${escapeHtml(item.item_type || '')}"
-           style="cursor:pointer;">
+           style="cursor:${out ? 'not-allowed' : 'pointer'};">
         <div class="item-image">
           ${item.item_image ? `<img src="../api/image.php?path=${encodeURIComponent(item.item_image)}" alt="${escapeHtml(item.item_name_translated || item.item_name_en)}" loading="lazy">` : '<span class="material-symbols-rounded">restaurant</span>'}
+          ${out ? '<span class="pos-out-tag">Out of stock</span>' : ''}
         </div>
         <div class="item-name">${escapeHtml(item.item_name_translated || item.item_name_en)}</div>
         <div class="item-category">${escapeHtml(item.item_category || '')}</div>
@@ -7923,10 +7979,14 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `;
     }).join('');
-    
+
     // Add click event listeners to POS menu items
     posMenuItemsContainer.querySelectorAll('.pos-menu-item').forEach(itemEl => {
       itemEl.addEventListener('click', function() {
+        if (this.dataset.out === '1') {
+          showNotification(this.dataset.itemName + ' is out of stock. Put it back in stock in Menu items to sell it.', 'error');
+          return;
+        }
         const itemId = parseInt(this.dataset.itemId);
         const itemName = this.dataset.itemName;
         const basePrice = parseFloat(this.dataset.itemPrice);
@@ -7989,21 +8049,23 @@ document.addEventListener("DOMContentLoaded", () => {
       
       // Escape variations JSON for data attribute
       const variationsJson = hasVariations ? encodeURIComponent(JSON.stringify(item.variations || [])) : '';
-      
+      const out = Number(item.is_available) === 0;   // same as the desktop grid: shown, not sellable
+
       return `
-      <div class="mobile-item-card" 
+      <div class="mobile-item-card"
            data-item-id="${item.id}"
            data-item-name="${escapeHtml(item.item_name_translated || item.item_name_en)}"
            data-item-price="${item.base_price}"
            data-item-image="${escapeHtml(item.item_image || '')}"
            data-has-variations="${hasVariations ? '1' : '0'}"
            data-variations="${variationsJson}"
-           style="background:white;border:2px solid #e5e7eb;border-radius:6px;padding:0.5rem;cursor:pointer;transition:all 0.2s;">
+           data-out="${out ? '1' : '0'}"
+           style="background:white;border:2px solid ${out ? '#fecaca' : '#e5e7eb'};border-radius:6px;padding:0.5rem;cursor:${out ? 'not-allowed' : 'pointer'};transition:all 0.2s;${out ? 'opacity:.6;' : ''}">
         <div style="width:100%;height:60px;border-radius:4px;overflow:hidden;margin-bottom:0.4rem;background:#f5f5f5;display:flex;align-items:center;justify-content:center;">
           ${item.item_image ? `<img src="../api/image.php?path=${encodeURIComponent(item.item_image)}" alt="${escapeHtml(item.item_name_translated || item.item_name_en)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<span class="material-symbols-rounded" style="font-size:1.5rem;color:#9ca3af;">restaurant</span>'}
         </div>
         <div style="font-weight:600;color:#111827;font-size:0.75rem;margin-bottom:0.2rem;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(item.item_name_translated || item.item_name_en)}</div>
-        <div style="font-size:0.65rem;color:#6b7280;margin-bottom:0.3rem;line-height:1.2;">${escapeHtml(item.item_category || '')}</div>
+        <div style="font-size:0.65rem;color:#6b7280;margin-bottom:0.3rem;line-height:1.2;">${out ? '<b style="color:#b91c1c">Out of stock</b>' : escapeHtml(item.item_category || '')}</div>
         <div style="font-weight:700;color:#f70000;font-size:0.8rem;line-height:1.2;">
           ${priceDisplay}${hasVariations ? ' <span style="font-size:0.6rem;color:#6b7280;">(Var)</span>' : ''}
       </div>
@@ -8014,6 +8076,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Add click event listeners to mobile item cards
     mobileItemsList.querySelectorAll('.mobile-item-card').forEach(itemEl => {
       itemEl.addEventListener('click', function(event) {
+        if (this.dataset.out === '1') {
+          showNotification(this.dataset.itemName + ' is out of stock. Put it back in stock in Menu items to sell it.', 'error');
+          return;
+        }
         const itemId = parseInt(this.dataset.itemId);
         const itemName = this.dataset.itemName;
         const basePrice = parseFloat(this.dataset.itemPrice);
@@ -8247,10 +8313,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
       
       if (result.success && posMenuFilter) {
-        posMenuFilter.innerHTML = '<option value="">All Menus</option>' + 
-          result.data.map(menu => 
+        // keep the category that's picked: loadPOSMenuItems() has already read it, and the
+        // category chips (pos-studio.js) take their highlight from this select
+        const chosen = posMenuFilter.value;
+        posMenuFilter.innerHTML = '<option value="">All Menus</option>' +
+          result.data.map(menu =>
             `<option value="${menu.id}" data-hours="${escapeHtml(menu.hours_label || '')}" data-served="${menu.served_now === false ? '0' : '1'}">${escapeHtml(menu.menu_name)}</option>`
           ).join('');
+        if (chosen && [].some.call(posMenuFilter.options, o => o.value === chosen)) posMenuFilter.value = chosen;
       }
     } catch (error) {
       console.error("Error loading menus for POS filters:", error);
@@ -8287,10 +8357,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
       
       if (result.success && posCategoryFilter && result.categories) {
-        posCategoryFilter.innerHTML = '<option value="">All Categories</option>' + 
-          result.categories.map(category => 
+        const chosen = posCategoryFilter.value;
+        posCategoryFilter.innerHTML = '<option value="">All Categories</option>' +
+          result.categories.map(category =>
             `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`
           ).join('');
+        if (chosen && [].some.call(posCategoryFilter.options, o => o.value === chosen)) posCategoryFilter.value = chosen;
       }
     } catch (error) {
       console.error("Error loading categories for POS filters:", error);

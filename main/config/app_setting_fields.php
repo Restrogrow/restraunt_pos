@@ -19,6 +19,7 @@ const APP_SETTING_FIELDS = [
     'instagram_link' => 'url', 'facebook_link' => 'url', 'twitter_link' => 'url',
     'youtube_link' => 'url', 'linkedin_link' => 'url',
     'call_waiter_enabled' => 'bool',
+    'customer_otp_enabled' => 'bool',
 ];
 
 function appSettingValue(string $field, string $type, $raw) {

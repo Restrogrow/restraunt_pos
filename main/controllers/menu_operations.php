@@ -176,6 +176,34 @@ try {
                 'has_bar' => stationHasBar($conn, (string)$restaurant_id)], JSON_UNESCAPED_UNICODE);
             break;
 
+        // Hide a category from the customer website and app (menu.is_active, which
+        // website/api.php already filters on). The POS keeps it: the counter still has to be
+        // able to bill a category the restaurant only sells in person.
+        case 'set_active':
+            require_once __DIR__ . '/../config/menu_delete.php';
+            if ($menuId <= 0) throw new Exception('Invalid menu ID');
+            $on = in_array((string)($_POST['active'] ?? ''), ['1', 'true', 'on'], true) ? 1 : 0;
+            $cat = $conn->prepare('SELECT menu_name FROM menu WHERE id = ? AND restaurant_id = ?');
+            $cat->execute([$menuId, $restaurant_id]);
+            $name = $cat->fetchColumn();
+            if ($name === false) throw new Exception('Menu not found');
+            // "Removed dishes" (config/menu_delete.php) is the archive of dishes with sales history:
+            // it is off on purpose and showing it would put deleted dishes back on the website.
+            // Said here rather than thrown: the catch at the end of this file replaces every
+            // exception message with "An error occurred", which would tell the owner nothing.
+            if ($name === MENU_ARCHIVE_SECTION) {
+                echo json_encode(['success' => false, 'is_active' => 0,
+                    'message' => '“' . MENU_ARCHIVE_SECTION . '” holds dishes you deleted that were already ordered. It stays hidden.'], JSON_UNESCAPED_UNICODE);
+                break;
+            }
+            $conn->prepare('UPDATE menu SET is_active = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?')
+                 ->execute([$on, $menuId, $restaurant_id]);
+            require_once __DIR__ . '/../config/activity_log.php';
+            logActivity($conn, $restaurant_id, 'menu.visibility', $name . ' is ' . ($on ? 'shown on' : 'hidden from') . ' the website', [], 'menu', $menuId);
+            echo json_encode(['success' => true, 'is_active' => $on,
+                'message' => $on ? '“' . $name . '” is back on your website.' : '“' . $name . '” is hidden from your website. You can still bill it in the POS.'], JSON_UNESCAPED_UNICODE);
+            break;
+
         case 'add_subcategory':
         case 'update_subcategory':
         case 'delete_subcategory':

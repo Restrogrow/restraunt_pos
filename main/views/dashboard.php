@@ -299,6 +299,9 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
 // Rooms (hotel / lodge, config/rooms.php): the sidebar item shows while the owner has it switched on
 require_once __DIR__ . '/../config/rooms.php';
 $roomsOn = roomsSwitchOn(getConnection(), (string)$_SESSION['restaurant_id']);
+// The WhatsApp code a new customer is asked for on the website (config/customer_otp.php)
+require_once __DIR__ . '/../config/customer_otp.php';
+$customerOtpOn = customerOtpRequired(getConnection(), (string)$_SESSION['restaurant_id']);
 // An outlet of a brand: its website is at the brand's address (config/brand.php); '' for other restaurants
 require_once __DIR__ . '/../config/brand.php';
 try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_SESSION['restaurant_id']) ?? ''); } catch (Throwable $e) { $rgBrandSiteUrl = ''; }
@@ -5431,6 +5434,12 @@ function toggleGatewayMode() {
                 <span class="st-switch"><input type="checkbox" id="enableReservationsToggle"><i></i></span>
               </label>
             </div>
+            <div class="st-card">
+              <label class="st-toggle">
+                <span><b>WhatsApp code when a customer signs up</b><small>A new customer gets a 6-digit code on WhatsApp and types it in before their account is made, so the number on it is really theirs. Switch it off and the sign-up form is all there is — faster, but anyone who knows a guest's number can claim that guest's past orders and points. Saves straight away.</small></span>
+                <span class="st-switch"><input type="checkbox" id="customerOtpToggle"<?php echo $customerOtpOn ? ' checked' : ''; ?>><i></i></span>
+              </label>
+            </div>
             <div class="st-card" data-st-form="restaurant">
               <div class="st-field st-narrow">
                 <label for="minimumOrderValue">Minimum order value (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
@@ -8457,6 +8466,25 @@ document.getElementById('countrySelect').addEventListener('change', function() {
     customInput.style.display = '';
     customInput.value = currency;
   }
+});
+
+// Settings › Ordering: the WhatsApp code a new customer is asked for (config/customer_otp.php).
+// Its own switch with no Save, like Rooms above it, so the one field it changes can't be caught up
+// in the whole-form save that blanks anything left out.
+document.addEventListener('change', function (e) {
+  if (!e.target || e.target.id !== 'customerOtpToggle') return;
+  var tg = e.target, on = tg.checked;
+  tg.disabled = true;
+  var fd = new FormData();
+  fd.append('customer_otp_enabled', on ? '1' : '0');
+  fetch('../api/app_settings.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      tg.disabled = false;
+      if (!d || !d.success) { tg.checked = !on; showNotification((d && d.message) || 'Could not save, please try again.', 'error'); return; }
+      showNotification(on ? 'New customers will be asked for the WhatsApp code.' : 'The WhatsApp code is off. New customers sign up with the form alone.', 'success');
+    })
+    .catch(function () { tg.disabled = false; tg.checked = !on; showNotification('Network error. Please try again.', 'error'); });
 });
 
 // System settings form submit handler
