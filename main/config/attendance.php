@@ -30,6 +30,12 @@ if (!function_exists('atEnsure')) {
     define('AT_STATUS_LABELS', ['present' => 'Present', 'half' => 'Half day', 'absent' => 'Absent',
                                 'paid_leave' => 'Paid leave', 'week_off' => 'Week off', 'holiday' => 'Holiday']);
     define('AT_SALARY_TYPES', ['monthly', 'daily', 'hourly']);
+    // How those two are written for a person to read. The statuses above have had labels from the
+    // start; a salary type and a payroll entry type never did, so the stored word went on the screen
+    // as it is — Payroll read "Waiter · monthly ₹18,000", the Salaries dropdown listed
+    // monthly / daily / hourly, and an advance showed as "· advance". The keys are unchanged.
+    define('AT_SALARY_TYPE_LABELS', ['monthly' => 'Monthly salary', 'daily' => 'Per day', 'hourly' => 'Per hour']);
+    define('PL_ENTRY_TYPE_LABELS', ['advance' => 'Advance', 'deduction' => 'Deduction', 'bonus' => 'Bonus']);
 
     function atEnsure(PDO $conn): void
     {
