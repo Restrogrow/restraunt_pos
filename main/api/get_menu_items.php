@@ -187,7 +187,7 @@ try {
             $sql = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
                            mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available,
                            mi.base_price, mi.has_variations, mi.item_image,
-                           mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $translationsCol . $isHiddenCol;
+                           mi.sort_order, mi.created_at, mi.updated_at, m.menu_name, m.is_active AS menu_active" . $translationsCol . $isHiddenCol;
 
     // Include subcategory info if column exists
     if ($hasSubcategoryColumn && $hasSubcategoriesTable) {
@@ -273,7 +273,7 @@ try {
             $sql = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
                    mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available,
                    mi.base_price, mi.has_variations, mi.item_image,
-                   mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $translationsCol . $isHiddenCol;
+                   mi.sort_order, mi.created_at, mi.updated_at, m.menu_name, m.is_active AS menu_active" . $translationsCol . $isHiddenCol;
 
             if ($hasSubcategoryColumn && $hasSubcategoriesTable) {
                 $sql .= ", mi.subcategory_id, sc.subcategory_name";

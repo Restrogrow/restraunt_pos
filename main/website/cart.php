@@ -53,13 +53,6 @@ body {
 }
 @media (min-width: 768px) {
   .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; }
-<?php if ($host === 'triposhsymmetry.in'): ?>
-  /* TEMPORARY (added 2026-08-18, for PhonePe merchant approval — remove
-     this block in ~2 days): full-width desktop layout for this restaurant
-     only, so the checkout/payment screen isn't a narrow phone card on a
-     PC. Mobile view (no media query) is untouched. */
-  .phone-frame { max-width: 100%; margin: 0; border-radius: 0; }
-<?php endif; ?>
 }
 
 .bg-wrapper {
@@ -220,9 +213,6 @@ body .total-row { font-size: 16px; font-weight: 800; color: #111827; }
 /* Floating checkout bar, same as the menu's View Cart bar */
 body .checkout-bar { bottom: 12px; width: calc(100% - 24px); max-width: 401px; border-radius: 16px; padding: 10px 10px 10px 18px; box-shadow: 0 12px 28px color-mix(in srgb, var(--checkout-color, #e17055) 35%, transparent), 0 4px 10px rgba(0,0,0,0.12); }
 @media (min-width: 768px) { body .checkout-bar { bottom: 32px; border-radius: 16px; } }
-<?php if ($host === 'triposhsymmetry.in'): ?>
-body .checkout-bar { max-width: calc(100% - 24px); }
-<?php endif; ?>
 body .checkout-bar .total-label { font-size: 14.5px; white-space: nowrap; }
 body .checkout-bar .checkout-btn { background: #fff; color: var(--checkout-color, #e17055); font-weight: 800; font-size: 14px; border-radius: 11px; padding: 10px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transition: transform 0.15s ease; }
 body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
@@ -983,11 +973,6 @@ body .pac-container { z-index: 10100 !important; }   /* Google's suggestions abo
 }
 @media (min-width: 768px) {
   .checkout-bar { border-radius: 0 0 28px 28px; }
-<?php if ($host === 'triposhsymmetry.in'): ?>
-  /* TEMPORARY (see .phone-frame note above, remove together): keep the
-     sticky checkout bar full-width to match the desktop layout. */
-  .checkout-bar { max-width: 100%; }
-<?php endif; ?>
 }
 .checkout-bar .total-label { color: #fff; font-weight: 700; font-size: 15px; }
 .checkout-bar .checkout-btn {

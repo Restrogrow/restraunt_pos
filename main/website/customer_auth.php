@@ -93,12 +93,16 @@ function handleCustomerSignup($pdo) {
     // (otp.php, action=verify, purpose=customer_signup) before the account
     // is created — same gate as the restaurant-owner signup, but scoped
     // under the real restaurant_id since customers already have one.
+    // Unless the owner switched the code off for their restaurant (config/customer_otp.php):
+    // then the account is made from the form alone, with no code anywhere in the way.
     // Came through "Continue with Google" with this same email: Google stands in for the WhatsApp
     // code, unless this phone already has orders or an account here. Points, wallet and order
     // history belong to the phone, so taking over an existing number still needs the code.
+    require_once __DIR__ . '/../config/customer_otp.php';
+    $otpRequired = customerOtpRequired($pdo, $restaurantId);
     $gp = $_SESSION['google_pending'] ?? null;
     $viaGoogle = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && ($gp['rid'] ?? '') === $restaurantId && strtolower($email) === ($gp['email'] ?? '');
-    if (!isPhoneVerifiedRecently($pdo, $restaurantId, $phone, 'customer_signup')) {
+    if ($otpRequired && !isPhoneVerifiedRecently($pdo, $restaurantId, $phone, 'customer_signup')) {
         require_once __DIR__ . '/../config/order_abuse_guard.php';
         $known = $pdo->prepare('SELECT 1 FROM customers WHERE restaurant_id = ? AND phone IN (?, ?) LIMIT 1');
         $known->execute([$restaurantId, $phone, orderAbuseNormalizePhone($phone) ?? $phone]);

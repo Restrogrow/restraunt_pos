@@ -64,8 +64,7 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
-    <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="<?php echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+    <?php require_once __DIR__ . '/../config/icon_font.php'; echo rgIconFontTags(); ?>
     <link rel="stylesheet" href="../assets/css/staff-ui.css?v=<?php echo $v('css/staff-ui.css'); ?>">
 
     <script>

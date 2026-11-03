@@ -13,7 +13,8 @@ const WS_POLICIES = ['privacy', 'terms', 'refund', 'shipping', 'cookie'];
 // public profile fields the API may change (payment and tax settings are left out on purpose)
 const WS_PROFILE_FIELDS = ['restaurant_name', 'description', 'phone', 'email', 'address', 'google_maps_link', 'opening_hours',
     'enable_delivery', 'enable_takeaway', 'enable_dinein', 'enable_reservations', 'minimum_order_value', 'packaging_charge',
-    'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link', 'call_waiter_enabled'];
+    'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link', 'call_waiter_enabled',
+    'customer_otp_enabled'];
 const WS_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 function websiteTools(): array
@@ -39,6 +40,7 @@ function websiteTools(): array
              'opening_hours' => ['type' => 'object', 'properties' => array_fill_keys(WS_DAYS, $day)],
              'enable_delivery' => ['type' => 'boolean'], 'enable_takeaway' => ['type' => 'boolean'], 'enable_dinein' => ['type' => 'boolean'], 'enable_reservations' => ['type' => 'boolean'],
              'minimum_order_value' => ['type' => 'number', 'minimum' => 0], 'packaging_charge' => ['type' => 'number', 'minimum' => 0], 'call_waiter_enabled' => ['type' => 'boolean'],
+             'customer_otp_enabled' => ['type' => 'boolean', 'description' => 'Ask a new customer for a WhatsApp code before their account is made. Off: the sign-up form alone.'],
              'instagram_link' => ['type' => 'string'], 'facebook_link' => ['type' => 'string'], 'twitter_link' => ['type' => 'string'], 'youtube_link' => ['type' => 'string'], 'linkedin_link' => ['type' => 'string']],
             [], 'write', 'Saving the profile…', 'Profile saved'), 'website:write', null, ['POST', 'website/profile']),
         $t(mcpDef('set_logo', 'Change the logo', 'Set the restaurant logo (JPEG, PNG, GIF or WebP, at most 2 MB). A square picture works best.',
@@ -156,6 +158,8 @@ function websiteRun(PDO $conn, array $ctx, string $name, array $a): array
             require_once __DIR__ . '/../../config/app_setting_fields.php';
             require_once __DIR__ . '/../../config/waiter_call.php';
             waiterCallEnsureSchema($conn);
+            require_once __DIR__ . '/../../config/customer_otp.php';
+            customerOtpEnsureSchema($conn);
             $have = array_flip($conn->query('SHOW COLUMNS FROM users')->fetchAll(PDO::FETCH_COLUMN));
             $in = array_intersect_key($a, array_flip(WS_PROFILE_FIELDS));
             if ($isDemo()) unset($in['restaurant_name']);

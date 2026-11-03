@@ -54,6 +54,8 @@ try {
 
     require_once __DIR__ . '/../config/waiter_call.php';
     waiterCallEnsureSchema($conn);
+    require_once __DIR__ . '/../config/customer_otp.php';
+    customerOtpEnsureSchema($conn);
     // only columns this database actually has (older databases miss some of the newer ones)
     $have = array_flip($conn->query('SHOW COLUMNS FROM users')->fetchAll(PDO::FETCH_COLUMN));
     $fields = array_filter(APP_SETTING_FIELDS, fn($f) => isset($have[$f]), ARRAY_FILTER_USE_KEY);

@@ -101,8 +101,7 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
     <!-- style.css draws the POS (same as the owner dashboard); staff-ui.css draws everything around it -->
     <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo $v('css/style.css'); ?>">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
-    <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="<?php echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+    <?php require_once __DIR__ . '/../config/icon_font.php'; echo rgIconFontTags(); ?>
     <link rel="stylesheet" href="../assets/css/staff-ui.css?v=<?php echo $v('css/staff-ui.css'); ?>">
 
     <script>
@@ -277,10 +276,10 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
                         <div class="pos-menu-section">
                             <div class="pos-filters">
                                 <select id="posMenuFilter" class="filter-select">
-                                    <option value="">All Menus</option>
+                                    <option value="">All categories</option>
                                 </select>
                                 <select id="posCategoryFilter" class="filter-select">
-                                    <option value="">All Categories</option>
+                                    <option value="">All courses</option>
                                 </select>
                                 <select id="posTypeFilter" class="filter-select">
                                     <option value="">All Types</option>

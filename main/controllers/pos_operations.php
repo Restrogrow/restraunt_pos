@@ -248,7 +248,7 @@ function verifyPosCartItemPrices($conn, $restaurant_id, array $cartItems): ?stri
     }
 
     $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
-    $menuStmt = $conn->prepare("SELECT id, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
+    $menuStmt = $conn->prepare("SELECT id, item_name_en, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
     $menuStmt->execute(array_merge($menuItemIds, [$restaurant_id]));
     $menuItemsById = [];
     foreach ($menuStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -265,8 +265,12 @@ function verifyPosCartItemPrices($conn, $restaurant_id, array $cartItems): ?stri
     foreach ($cartItems as $ci) {
         $mid = (int)($ci['id'] ?? 0);
         $menuRow = $menuItemsById[$mid] ?? null;
-        if (!$menuRow || !$menuRow['is_available']) {
-            return 'One or more items are no longer available';
+        // Name the dish: "one or more items" left the till hunting through the bill for it
+        if (!$menuRow) {
+            return 'A dish on this bill is no longer on the menu — please refresh the menu and try again';
+        }
+        if (!$menuRow['is_available']) {
+            return $menuRow['item_name_en'] . ' is out of stock. Take it off the bill, or put it back in stock in Menu items.';
         }
 
         $expectedPrice = (float)$menuRow['base_price'];

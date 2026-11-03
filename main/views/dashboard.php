@@ -299,6 +299,9 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
 // Rooms (hotel / lodge, config/rooms.php): the sidebar item shows while the owner has it switched on
 require_once __DIR__ . '/../config/rooms.php';
 $roomsOn = roomsSwitchOn(getConnection(), (string)$_SESSION['restaurant_id']);
+// The WhatsApp code a new customer is asked for on the website (config/customer_otp.php)
+require_once __DIR__ . '/../config/customer_otp.php';
+$customerOtpOn = customerOtpRequired(getConnection(), (string)$_SESSION['restaurant_id']);
 // An outlet of a brand: its website is at the brand's address (config/brand.php); '' for other restaurants
 require_once __DIR__ . '/../config/brand.php';
 try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_SESSION['restaurant_id']) ?? ''); } catch (Throwable $e) { $rgBrandSiteUrl = ''; }
@@ -400,8 +403,7 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
   <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
   
   <!-- Optimized Font Loading -->
-  <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+  <?php require_once __DIR__ . '/../config/icon_font.php'; echo rgIconFontTags(); ?>
 
   <!-- Poster generator fonts (Marketing page) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Playfair+Display:wght@700;800&family=Bebas+Neue&display=swap">
@@ -2992,10 +2994,10 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
           
           <div class="filters">
             <select id="menuFilter" class="filter-select">
-              <option value="">All Menus</option>
+              <option value="">All categories</option>
             </select>
             <select id="categoryFilter" class="filter-select">
-              <option value="">All Categories</option>
+              <option value="">All courses</option>
             </select>
             <select id="subcategoryFilter" class="filter-select" style="display: none;">
               <option value="">All Subcategories</option>
@@ -5431,6 +5433,12 @@ function toggleGatewayMode() {
                 <span class="st-switch"><input type="checkbox" id="enableReservationsToggle"><i></i></span>
               </label>
             </div>
+            <div class="st-card">
+              <label class="st-toggle">
+                <span><b>WhatsApp code when a customer signs up</b><small>A new customer gets a 6-digit code on WhatsApp and types it in before their account is made, so the number on it is really theirs. Switch it off and the sign-up form is all there is — faster, but anyone who knows a guest's number can claim that guest's past orders and points. Saves straight away.</small></span>
+                <span class="st-switch"><input type="checkbox" id="customerOtpToggle"<?php echo $customerOtpOn ? ' checked' : ''; ?>><i></i></span>
+              </label>
+            </div>
             <div class="st-card" data-st-form="restaurant">
               <div class="st-field st-narrow">
                 <label for="minimumOrderValue">Minimum order value (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
@@ -6417,10 +6425,10 @@ function toggleGatewayMode() {
             <div class="pos-filters">
               <input type="text" id="posSearchInput" class="filter-select" placeholder="Search items...">
               <select id="posMenuFilter" class="filter-select">
-                <option value="">All Menus</option>
+                <option value="">All categories</option>
               </select>
               <select id="posCategoryFilter" class="filter-select">
-                <option value="">All Categories</option>
+                <option value="">All courses</option>
               </select>
               <select id="posTypeFilter" class="filter-select">
                 <option value="">All Types</option>
@@ -6943,7 +6951,20 @@ function toggleGatewayMode() {
               </select>
             </div>
           </div>
-          
+
+          <!-- Course (menu_items.item_category): the part of the meal, which cuts across the menu a
+               dish sits in — a Main Course can be under Biryani or under Chinese. The controllers and
+               the Menu items / POS "Course" filters have always read it; this box went missing, so
+               every dish saved from here since then stored nothing and the filter stayed empty.
+               Free text with the restaurant's own values suggested (filled by fillCourseList). -->
+          <div class="form-group">
+            <label for="itemCategory">Course <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+            <input type="text" id="itemCategory" name="itemCategory" list="itemCourseList" autocomplete="off" maxlength="100" placeholder="e.g., Main Course">
+            <datalist id="itemCourseList"></datalist>
+            <small style="display:block;margin-top:4px;color:#9ca3af;">Starter, Main Course, Dessert, Beverages… Used by the Course filter on Menu items and the POS.</small>
+          </div>
+
+
           <div class="form-group">
             <label>Item Type:</label>
             <div class="type-buttons">
@@ -8457,6 +8478,25 @@ document.getElementById('countrySelect').addEventListener('change', function() {
     customInput.style.display = '';
     customInput.value = currency;
   }
+});
+
+// Settings › Ordering: the WhatsApp code a new customer is asked for (config/customer_otp.php).
+// Its own switch with no Save, like Rooms above it, so the one field it changes can't be caught up
+// in the whole-form save that blanks anything left out.
+document.addEventListener('change', function (e) {
+  if (!e.target || e.target.id !== 'customerOtpToggle') return;
+  var tg = e.target, on = tg.checked;
+  tg.disabled = true;
+  var fd = new FormData();
+  fd.append('customer_otp_enabled', on ? '1' : '0');
+  fetch('../api/app_settings.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      tg.disabled = false;
+      if (!d || !d.success) { tg.checked = !on; showNotification((d && d.message) || 'Could not save, please try again.', 'error'); return; }
+      showNotification(on ? 'New customers will be asked for the WhatsApp code.' : 'The WhatsApp code is off. New customers sign up with the form alone.', 'success');
+    })
+    .catch(function () { tg.disabled = false; tg.checked = !on; showNotification('Network error. Please try again.', 'error'); });
 });
 
 // System settings form submit handler

@@ -1,7 +1,10 @@
 <?php require_once __DIR__ . '/header.php'; require_once __DIR__ . '/../config/google_login.php'; $googleReady = googleLoginReady();
 // came back from Google with no account here yet (google_finish.php): sign-up without the WhatsApp code
 $gp = $_SESSION['google_pending'] ?? null;
-$googleSignup = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && ($gp['rid'] ?? '') === (string)($restaurant_id ?? '') ? ['email' => $gp['email'], 'name' => $gp['name']] : null; ?>
+$googleSignup = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && ($gp['rid'] ?? '') === (string)($restaurant_id ?? '') ? ['email' => $gp['email'], 'name' => $gp['name']] : null;
+// the WhatsApp code for a new account, which the owner can switch off (config/customer_otp.php)
+require_once __DIR__ . '/../config/customer_otp.php';
+$customerSignupOtpOn = empty($restaurant_id) || customerOtpRequired($conn ?? getConnection(), (string)$restaurant_id); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,10 +34,6 @@ body {
 }
 @media (min-width: 768px) {
   .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; }
-<?php if ($host === 'triposhsymmetry.in'): ?>
-  /* TEMPORARY (PhonePe approval, added 2026-08-18 — remove in ~2 days) */
-  .phone-frame { max-width: 100%; margin: 0; border-radius: 0; }
-<?php endif; ?>
 }
 .auth-header {
   display: flex;
@@ -425,6 +424,10 @@ function continueWithGoogle() {
 }
 window.googleSignup = <?php echo json_encode($googleSignup, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.googleNeedsOtp = false;
+// Does this restaurant ask a new customer for the WhatsApp code? (Settings › Ordering,
+// config/customer_otp.php). Off: the sign-up form creates the account in one step — the server
+// skips the same check, so a stale page can't talk its way past it either.
+window.customerOtpRequired = <?php echo $customerSignupOtpOn ? 'true' : 'false'; ?>;
 (function () {
   var q = new URLSearchParams(location.search);
   if (q.get('google_error')) setTimeout(function () { showAuthError(q.get('google_error')); }, 0);
@@ -753,6 +756,35 @@ function sendSignupOtp(phoneDigits) {
   return fetch('otp.php', { method: 'POST', body: fd }).then(function(r) { return r.json(); });
 }
 
+// Create the account: used by step 2 below, once the code checks out, and — when the owner
+// switched the code off (window.customerOtpRequired) — straight from the form.
+function createCustomerAccount(d, btn, backLabel) {
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating account...';
+  var fd = new FormData();
+  fd.append('action', 'signup');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('name', d.name);
+  fd.append('phone', d.phone);
+  fd.append('email', d.email);
+  fd.append('password', d.password);
+  fd.append('confirmPassword', d.confirmPassword);
+  fd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
+  fd.append('birthday', (document.getElementById('signupBirthday') || {}).value || '');
+  if ((document.getElementById('signupOptin') || {}).checked) fd.append('whatsapp_optin', '1');
+  if (window.referralCode) fd.append('ref', window.referralCode);
+  var back = function (msg) { showAuthError(msg); btn.disabled = false; btn.innerHTML = backLabel; };
+  return fetch('customer_auth.php', { method: 'POST', body: fd })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (!res.success) { back(res.message || 'Sign up failed'); return; }
+      try { localStorage.setItem('customerDetails', JSON.stringify(res.customer)); } catch (e) {}
+      showToast(res.message, 'success');
+      setTimeout(function () { window.location.href = window.redirectUrl; }, 500);
+    })
+    .catch(function () { back('Network error. Please try again.'); });
+}
+
 document.getElementById('signupOtpResend').addEventListener('click', function() {
   var phoneDigits = document.getElementById('signupPhone').value.replace(/\D/g, '');
   sendSignupOtp(phoneDigits).then(function(res) {
@@ -826,6 +858,13 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
     return;
   }
 
+  // This restaurant doesn't ask for the WhatsApp code: the form is all there is.
+  if (!window.customerOtpRequired) {
+    createCustomerAccount({ name: name, phone: phone, email: email, password: password, confirmPassword: confirmPassword },
+      btn, 'Create account <i class="fa fa-arrow-right"></i>');
+    return;
+  }
+
   // Step 1: form is valid but no code sent yet — send the OTP and stop
   // here. Fields are locked so the code that's about to be verified
   // matches what gets submitted.
@@ -883,39 +922,8 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
         return;
       }
 
-      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating account...';
-
-      var fd = new FormData();
-      fd.append('action', 'signup');
-      fd.append('restaurant_id', window.restaurantId);
-      fd.append('name', name);
-      fd.append('phone', phone);
-      fd.append('email', email);
-      fd.append('password', password);
-      fd.append('confirmPassword', confirmPassword);
-      fd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
-      fd.append('birthday', (document.getElementById('signupBirthday') || {}).value || '');
-      if ((document.getElementById('signupOptin') || {}).checked) fd.append('whatsapp_optin', '1');
-      if (window.referralCode) fd.append('ref', window.referralCode);
-
-      fetch('customer_auth.php', { method: 'POST', body: fd })
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-          if (res.success) {
-            try { localStorage.setItem('customerDetails', JSON.stringify(res.customer)); } catch(e) {}
-            showToast(res.message, 'success');
-            setTimeout(function() { window.location.href = window.redirectUrl; }, 500);
-          } else {
-            showAuthError(res.message || 'Sign up failed');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
-          }
-        })
-        .catch(function() {
-          showAuthError('Network error. Please try again.');
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
-        });
+      createCustomerAccount({ name: name, phone: phone, email: email, password: password, confirmPassword: confirmPassword },
+        btn, '<i class="fa fa-shield-halved"></i> Verify & Create Account');
     })
     .catch(function() {
       showAuthError('Network error. Please try again.');

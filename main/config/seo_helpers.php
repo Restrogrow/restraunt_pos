@@ -251,8 +251,10 @@ function seoHeadTags(string $page): string
     // the menu with prices on the menu page
     if ($page === 'menu' && $c['conn']) {
         try {
+            // c.is_active: a category the owner hid is off the menu page, so it must not be handed
+            // to Google here either — this block is that same menu, written for a search engine
             $mq = $c['conn']->prepare("SELECT c.menu_name, m.item_name_en, m.item_description_en, m.base_price FROM menu_items m JOIN menu c ON c.id = m.menu_id
-                WHERE m.restaurant_id = ? AND m.is_available = 1 AND COALESCE(m.is_hidden, 0) = 0 ORDER BY c.sort_order, c.id, m.sort_order, m.id LIMIT 300");
+                WHERE m.restaurant_id = ? AND m.is_available = 1 AND COALESCE(m.is_hidden, 0) = 0 AND COALESCE(c.is_active, 1) = 1 ORDER BY c.sort_order, c.id, m.sort_order, m.id LIMIT 300");
             $mq->execute([$r['id']]);
             $sections = [];
             foreach ($mq->fetchAll(PDO::FETCH_ASSOC) as $it) {

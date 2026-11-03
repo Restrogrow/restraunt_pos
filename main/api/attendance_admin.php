@@ -55,7 +55,8 @@ try {
         $view = (string)($_GET['view'] ?? 'month');
         $period = atPeriod($conn, $rid, $_GET['period'] ?? '');
         $base = ['success' => true, 'can_edit' => $canEdit, 'currency' => $currency, 'today' => atToday($conn, $rid),
-                 'period' => $period, 'statuses' => $labels, 'salary_types' => AT_SALARY_TYPES];
+                 'period' => $period, 'statuses' => $labels, 'salary_types' => AT_SALARY_TYPES,
+                 'salary_type_labels' => AT_SALARY_TYPE_LABELS, 'entry_type_labels' => PL_ENTRY_TYPE_LABELS];
         if ($view === 'staff') atOut($base + ['staff' => atStaff($conn, $rid, false)]);
         if ($view === 'payroll') atOut($base + ['payroll' => plPayroll($conn, $rid, $period)]);
         atOut($base + ['month' => atMonth($conn, $rid, $period)]);

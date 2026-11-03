@@ -27,7 +27,7 @@ $loyaltyFromQr = isset($_GET['src']) && $_GET['src'] === 'qr';
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Poppins', sans-serif; background: #e9e7f1; color: var(--ink); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.08); overflow: hidden; }
-@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 100%; margin: 0; border-radius: 0; }<?php endif; ?> }
+@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; } }
 button { font-family: inherit; }
 .hidden { display: none !important; }
 
@@ -291,7 +291,7 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) { .lx-coin, .lx-codebox { animation: none; } .lx-sec { opacity: 1; transform: none; transition: none; } .lx-prog-bar i { transition: none; } }
 
 /* bottom nav (shared include) */
-.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: <?php echo ($host === 'triposhsymmetry.in') ? '100%' : '425px'; ?>; background: #fff; border-top: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 10px; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 425px; background: #fff; border-top: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 10px; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
 .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; position: relative; border: none; background: none; font-family: 'Poppins', sans-serif; }
 .nav-item img { width: 30px; height: 30px; }
 .nav-item span { font-size: 11px; color: #555; }

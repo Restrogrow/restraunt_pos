@@ -123,6 +123,10 @@
     var found = (S.data.statuses || []).filter(function (s) { return s.key === k; })[0];
     return found ? found.label : k;
   }
+  // The stored word for a salary type ("monthly") or a payroll entry ("advance") is a key, not
+  // something to put in front of someone — config/attendance.php holds the reading for each.
+  function salaryLabel(k) { return ((S.data || {}).salary_type_labels || {})[k] || k; }
+  function entryLabel(k) { return ((S.data || {}).entry_type_labels || {})[k] || k; }
 
   function grid(m) {
     var days = m.days_in_month;
@@ -167,7 +171,7 @@
       var s = r.staff;
       var noSalary = s.salary <= 0;
       return '<tr class="' + (r.paid ? 'paid' : '') + '"><td><b>' + esc(s.name) + '</b><br><small style="color:#9ca3af">' +
-          esc(s.role || '') + ' · ' + esc(s.salary_type) + (noSalary ? ' · no salary set' : ' ' + money(s.salary)) + '</small></td>' +
+          esc(s.role || '') + ' · ' + esc(salaryLabel(s.salary_type)) + (noSalary ? ' · no salary set' : ' ' + money(s.salary)) + '</small></td>' +
         '<td><small>' + esc(r.basis || '—') + '</small></td>' +
         '<td class="r">' + money(r.gross) + '</td>' +
         '<td class="r">' + (r.bonus ? '+ ' + money(r.bonus) : '—') + '</td>' +
@@ -194,7 +198,7 @@
       '</table></div></div>' +
       (p.entries.length ? '<div class="at-card"><h3>Advances, bonuses and deductions</h3><div class="at-ent">' +
         p.entries.map(function (e) {
-          return '<div><span><b>' + esc(e.staff) + '</b> · ' + e.type + (e.note ? ' · ' + esc(e.note) : '') +
+          return '<div><span><b>' + esc(e.staff) + '</b> · ' + esc(entryLabel(e.type)) + (e.note ? ' · ' + esc(e.note) : '') +
             ' <small style="color:#9ca3af">' + esc(e.by) + '</small></span><span>' + money(e.amount) +
             (S.data.can_edit ? ' <button class="at-b off" style="padding:3px 8px;font-size:12px" data-at-del="' + e.id + '">Remove</button>' : '') +
             '</span></div>';
@@ -287,12 +291,12 @@
             '<label>' + esc(s.name) + ' <small style="font-weight:500;color:#9ca3af">' + esc(s.role || '') + (s.active ? '' : ' · off') + '</small></label>' +
             '<div class="g" style="margin-bottom:0">' +
               '<select data-at-sal-type="' + s.id + '">' + (d.salary_types || []).map(function (t) {
-                return '<option value="' + t + '"' + (s.salary_type === t ? ' selected' : '') + '>' + t + '</option>';
+                return '<option value="' + esc(t) + '"' + (s.salary_type === t ? ' selected' : '') + '>' + esc(salaryLabel(t)) + '</option>';
               }).join('') + '</select>' +
               '<input type="number" min="0" step="0.01" data-at-sal-amt="' + s.id + '" value="' + s.salary + '">' +
             '</div></div>';
         }).join('') +
-        '<div class="at-hint">monthly = a fixed salary, an absent day costs one day of it · daily = a day’s wage per day worked · hourly = a rate per hour from the clock in / out</div>' +
+        '<div class="at-hint">Monthly salary = a fixed salary, an absent day costs one day of it · Per day = a day’s wage per day worked · Per hour = a rate per hour from the clock in / out</div>' +
         '<div class="ft"><button class="at-b plain" data-at="shut">Close</button><button class="at-b primary" data-at="go">Save all</button></div>');
       ov.querySelector('[data-at="go"]').addEventListener('click', function (e) {
         var btn = e.target.closest('button');

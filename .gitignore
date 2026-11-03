@@ -117,3 +117,16 @@ main/uploads/rooms/
 
 # Local Android build output of the order-watch module
 app/modules/order-watch/android/build/
+
+# Built Partner app (~88 MB each): it goes to the Play Console, not into git
+*.apk
+
+# One-off PHP written during a dev session and run against the live database —
+# probes, data fixes, migrations. Nothing in the app calls them, and the db-*
+# ones hold production credentials. Same reason as migrate_*_cli.php above; the
+# test_*.php rule there misses these because they are spelled with hyphens.
+app/db-*.php
+app/fake-orders-*.php
+app/inject-*.php
+app/run-*-migration.php
+app/test-*.php

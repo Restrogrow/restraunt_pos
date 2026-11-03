@@ -49,8 +49,7 @@ require_once __DIR__ . '/../config/countries.php';
   <!-- Optimized Font Loading -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"></noscript>
-  <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+  <?php require_once __DIR__ . '/../config/icon_font.php'; echo rgIconFontTags(); ?>
   
   <!-- Scripts - Defer non-critical -->
   <script src="../assets/js/sweetalert2.all.min.js" defer></script>
