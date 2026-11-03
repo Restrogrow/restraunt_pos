@@ -403,8 +403,7 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
   <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
   
   <!-- Optimized Font Loading -->
-  <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+  <?php require_once __DIR__ . '/../config/icon_font.php'; echo rgIconFontTags(); ?>
 
   <!-- Poster generator fonts (Marketing page) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Playfair+Display:wght@700;800&family=Bebas+Neue&display=swap">
@@ -2995,10 +2994,10 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
           
           <div class="filters">
             <select id="menuFilter" class="filter-select">
-              <option value="">All Menus</option>
+              <option value="">All categories</option>
             </select>
             <select id="categoryFilter" class="filter-select">
-              <option value="">All Categories</option>
+              <option value="">All courses</option>
             </select>
             <select id="subcategoryFilter" class="filter-select" style="display: none;">
               <option value="">All Subcategories</option>
@@ -6426,10 +6425,10 @@ function toggleGatewayMode() {
             <div class="pos-filters">
               <input type="text" id="posSearchInput" class="filter-select" placeholder="Search items...">
               <select id="posMenuFilter" class="filter-select">
-                <option value="">All Menus</option>
+                <option value="">All categories</option>
               </select>
               <select id="posCategoryFilter" class="filter-select">
-                <option value="">All Categories</option>
+                <option value="">All courses</option>
               </select>
               <select id="posTypeFilter" class="filter-select">
                 <option value="">All Types</option>
@@ -6952,7 +6951,20 @@ function toggleGatewayMode() {
               </select>
             </div>
           </div>
-          
+
+          <!-- Course (menu_items.item_category): the part of the meal, which cuts across the menu a
+               dish sits in — a Main Course can be under Biryani or under Chinese. The controllers and
+               the Menu items / POS "Course" filters have always read it; this box went missing, so
+               every dish saved from here since then stored nothing and the filter stayed empty.
+               Free text with the restaurant's own values suggested (filled by fillCourseList). -->
+          <div class="form-group">
+            <label for="itemCategory">Course <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+            <input type="text" id="itemCategory" name="itemCategory" list="itemCourseList" autocomplete="off" maxlength="100" placeholder="e.g., Main Course">
+            <datalist id="itemCourseList"></datalist>
+            <small style="display:block;margin-top:4px;color:#9ca3af;">Starter, Main Course, Dessert, Beverages… Used by the Course filter on Menu items and the POS.</small>
+          </div>
+
+
           <div class="form-group">
             <label>Item Type:</label>
             <div class="type-buttons">

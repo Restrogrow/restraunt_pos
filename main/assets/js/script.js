@@ -3464,6 +3464,8 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Menu select value after setting:", menuSelect.value);
     
     document.getElementById("itemDescriptionEn").value = data.item_description_en || '';
+    var courseInput = document.getElementById("itemCategory");
+    if (courseInput) courseInput.value = data.item_category || '';
     // Set description format toggle
     var descFmt = data.description_format || 'paragraph';
     if (descFormatInput) descFormatInput.value = descFmt;
@@ -4048,7 +4050,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // This runs alongside loadMenuItems(), which has already read the select: keep whatever
         // is picked, so the list and the dropdown can't end up saying different things.
         const chosen = menuFilter.value;
-        menuFilter.innerHTML = '<option value="">All Menus</option>';
+        menuFilter.innerHTML = '<option value="">All categories</option>';
 
         result.data.forEach(menu => {
           const option = document.createElement('option');
@@ -4144,7 +4146,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3>${escapeHtml(item.item_name_translated || item.item_name_en)}</h3>
             <p class="item-description">${item.description_format === 'br' ? escapeHtml(item.item_description_translated || item.item_description_en || 'No description').replace(/\n/g, '<br>') : escapeHtml(item.item_description_translated || item.item_description_en || 'No description')}</p>
             <div class="item-meta">
-              <span class="item-category">${escapeHtml(item.item_category || 'Uncategorized')}</span>
+              ${item.item_category ? `<span class="item-category">${escapeHtml(item.item_category)}</span>` : ''}
               <span class="item-type ${item.item_type.toLowerCase().replace(' ', '-')}">${item.item_type}</span>
               <span class="item-price">${formatCurrency(item.base_price)}</span>
             </div>
@@ -4168,7 +4170,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <h3>${escapeHtml(item.item_name_translated || item.item_name_en)}</h3>
           <p class="item-description">${item.description_format === 'br' ? escapeHtml(item.item_description_translated || item.item_description_en || 'No description').replace(/\n/g, '<br>') : escapeHtml(item.item_description_translated || item.item_description_en || 'No description')}</p>
           <div class="item-meta">
-            <span class="item-category">${escapeHtml(item.item_category || 'Uncategorized')}</span>
+            ${item.item_category ? `<span class="item-category">${escapeHtml(item.item_category)}</span>` : ''}
             <span class="item-type ${item.item_type.toLowerCase().replace(' ', '-')}">${item.item_type}</span>
             <span class="item-price">${formatCurrency(item.base_price)}</span>
           </div>
@@ -4307,16 +4309,27 @@ document.addEventListener("DOMContentLoaded", () => {
     if (list) list.classList.remove('sort-mode');
   }
 
+  // The courses (menu_items.item_category) this restaurant actually uses: they fill the Course
+  // filter and suggest values in the dish form. A restaurant that has never set one gets no
+  // dropdown at all rather than an "All courses" box with nothing behind it.
+  function fillCourseList(categories) {
+    const list = document.getElementById("itemCourseList");
+    if (!list) return;
+    list.innerHTML = (categories || []).map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+  }
+
   function updateCategoryFilter(categories) {
     const categoryFilter = document.getElementById("categoryFilter");
     if (!categoryFilter) return;
-    // loadMenuItems() calls this after every load, so the list is rebuilt while a category is
-    // picked: keep the pick, or the dropdown snaps back to "All Categories" (and the next change
+    fillCourseList(categories);
+    categoryFilter.style.display = (categories && categories.length) ? '' : 'none';
+    // loadMenuItems() calls this after every load, so the list is rebuilt while a course is
+    // picked: keep the pick, or the dropdown snaps back to "All courses" (and the next change
     // to any other filter then loses it for real).
     const chosen = categoryFilter.value;
-    categoryFilter.innerHTML = '<option value="">All Categories</option>';
+    categoryFilter.innerHTML = '<option value="">All courses</option>';
 
-    categories.forEach(category => {
+    (categories || []).forEach(category => {
       const option = document.createElement('option');
       option.value = category;
       option.textContent = category;
@@ -8316,7 +8329,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // keep the category that's picked: loadPOSMenuItems() has already read it, and the
         // category chips (pos-studio.js) take their highlight from this select
         const chosen = posMenuFilter.value;
-        posMenuFilter.innerHTML = '<option value="">All Menus</option>' +
+        posMenuFilter.innerHTML = '<option value="">All categories</option>' +
           result.data.map(menu =>
             `<option value="${menu.id}" data-hours="${escapeHtml(menu.hours_label || '')}" data-served="${menu.served_now === false ? '0' : '1'}">${escapeHtml(menu.menu_name)}</option>`
           ).join('');
@@ -8358,7 +8371,9 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (result.success && posCategoryFilter && result.categories) {
         const chosen = posCategoryFilter.value;
-        posCategoryFilter.innerHTML = '<option value="">All Categories</option>' +
+        // no courses set up: no dropdown, rather than one with nothing behind it
+        posCategoryFilter.style.display = result.categories.length ? '' : 'none';
+        posCategoryFilter.innerHTML = '<option value="">All courses</option>' +
           result.categories.map(category =>
             `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`
           ).join('');

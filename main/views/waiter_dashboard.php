@@ -103,8 +103,7 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
     <!-- style.css draws the POS (same as the owner dashboard); staff-ui.css draws everything around it -->
     <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/style.css'); ?>">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
-    <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="<?php echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+    <?php require_once __DIR__ . '/../config/icon_font.php'; echo rgIconFontTags(); ?>
     <link rel="stylesheet" href="../assets/css/staff-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/staff-ui.css'); ?>">
 
     <script>
@@ -218,10 +217,10 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
                         <div class="pos-menu-section">
                             <div class="pos-filters">
                                 <select id="posMenuFilter" class="filter-select">
-                                    <option value="">All Menus</option>
+                                    <option value="">All categories</option>
                                 </select>
                                 <select id="posCategoryFilter" class="filter-select">
-                                    <option value="">All Categories</option>
+                                    <option value="">All courses</option>
                                 </select>
                                 <select id="posTypeFilter" class="filter-select">
                                     <option value="">All Types</option>
@@ -584,7 +583,7 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
                 
                 const select = document.getElementById('posMenuFilter');
                 if (select && result.success && result.data && result.data.length > 0) {
-                    select.innerHTML = '<option value="">All Menus</option>' + 
+                    select.innerHTML = '<option value="">All categories</option>' + 
                         result.data.map(menu => 
                             `<option value="${menu.id}">${menu.menu_name}</option>`
                         ).join('');
@@ -601,7 +600,7 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
                 
                 const select = document.getElementById('posCategoryFilter');
                 if (select && result.success && result.categories && result.categories.length > 0) {
-                    select.innerHTML = '<option value="">All Categories</option>' + 
+                    select.innerHTML = '<option value="">All courses</option>' + 
                         result.categories.map(category => 
                             `<option value="${category}">${category}</option>`
                         ).join('');
