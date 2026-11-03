@@ -28,7 +28,7 @@ if (!mealSubscriptionsFeatureEnabled($conn, $restaurant_id)) {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--site-font); background: #e8ecf2; color: var(--ink); min-height: 100vh; overflow-x: hidden; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.08); padding-bottom: 24px; }
-@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 100%; margin: 0; border-radius: 0; }<?php endif; ?> }
+@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } }
 
 /* header */
 .pl-head { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,.94); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }

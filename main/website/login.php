@@ -34,10 +34,6 @@ body {
 }
 @media (min-width: 768px) {
   .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; }
-<?php if ($host === 'triposhsymmetry.in'): ?>
-  /* TEMPORARY (PhonePe approval, added 2026-08-18 — remove in ~2 days) */
-  .phone-frame { max-width: 100%; margin: 0; border-radius: 0; }
-<?php endif; ?>
 }
 .auth-header {
   display: flex;
