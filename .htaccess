@@ -37,6 +37,13 @@ RewriteRule ^join/([a-z0-9]{6,16})/?$ /main/admin/login.php?tab=signup&invite=$1
 # Allow direct access to admin/api scripts (main/ directory)
 RewriteRule ^main/ - [L]
 
+# restrogrow.com's own sitemap is built from the database (main/config/site_sitemap.php), so a blog
+# post is in it the moment it is published. It was a hand-written file, which listed /blog/ and none
+# of the articles under it.
+RewriteCond %{HTTP_HOST} ^(restrogrow\.com|www\.restrogrow\.com|localhost(:\d+)?|127\.0\.0\.1(:\d+)?)$ [NC,OR]
+RewriteCond %{HTTP_HOST} hstgr\.io$ [NC]
+RewriteRule ^sitemap\.xml$ main/website/site_sitemap.php [L]
+
 # Restaurant own-domain robots.txt / sitemap.xml (these exist as files for restrogrow.com itself)
 RewriteCond %{HTTP_HOST} !^localhost(:\d+)?$ [NC]
 RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:\d+)?$ [NC]
