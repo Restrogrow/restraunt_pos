@@ -44,6 +44,8 @@ const API_PERMS = [
     'delivery:write'    => ['Change delivery zones', 'Add, edit, switch or delete delivery zones', 'Delivery'],
     'catering:read'     => ['Read catering', 'Catering requests and price tiers', 'Catering'],
     'catering:write'    => ['Change catering', 'Confirm, quote or decline requests; price tiers', 'Catering'],
+    'rooms:read'        => ['Read rooms', 'Room types with price a night, guests, how many rooms and their photos', 'Rooms'],
+    'rooms:write'       => ['Change rooms', 'Add photos to a room type', 'Rooms'],
 ];
 
 /** The permission each MCP tool needs when it is called with an API key (mcp/tools.php). */

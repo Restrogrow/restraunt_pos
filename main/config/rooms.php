@@ -214,15 +214,28 @@ function roomsFree(PDO $conn, string $rid, string $in, string $out, int $skipBoo
 function roomPhotoSave(array $file, string $rid): string
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) throw new InvalidArgumentException('The photo could not be uploaded. Please try again.');
-    if (filesize($file['tmp_name']) > 6 * 1024 * 1024) throw new InvalidArgumentException('Photos can be up to 6 MB.');
-    $info = @getimagesize($file['tmp_name']);
+    return roomPhotoStore((string)file_get_contents($file['tmp_name']), $rid);
+}
+
+/**
+ * Writes room photo bytes to uploads/rooms and returns the path the rest of the feature expects.
+ *
+ * Shared by the Rooms page upload above and the API's add_room_photo (mcp/tools/rooms.php), so a
+ * photo is checked and shrunk the same way whichever door it came through. The name it builds is
+ * the only shape roomPhotoValid() accepts — save_type drops anything else — so nothing but this
+ * function should ever be writing a value into room_types.photos.
+ */
+function roomPhotoStore(string $bytes, string $rid): string
+{
+    if (strlen($bytes) > 6 * 1024 * 1024) throw new InvalidArgumentException('Photos can be up to 6 MB.');
+    $info = @getimagesizefromstring($bytes);
     $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$info[2] ?? 0] ?? null;
     if (!$ext) throw new InvalidArgumentException('Photos must be JPG, PNG or WebP.');
     $dir = __DIR__ . '/../uploads/rooms';
     if (!is_dir($dir)) @mkdir($dir, 0755, true);
     $name = 'room_' . preg_replace('/[^A-Za-z0-9]/', '', $rid) . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
     // a big phone photo is shrunk to 1600 px wide (the page never shows it bigger)
-    $src = $info[0] > 1600 && function_exists('imagecreatefromstring') ? @imagecreatefromstring((string)file_get_contents($file['tmp_name'])) : null;
+    $src = ($info[0] > 1600 && function_exists('imagecreatefromstring')) ? @imagecreatefromstring($bytes) : null;
     if ($src) {
         $w = 1600; $h = (int)round($info[1] * $w / $info[0]);
         $dst = imagecreatetruecolor($w, $h);
@@ -231,7 +244,7 @@ function roomPhotoSave(array $file, string $rid): string
         $ok = imagejpeg($dst, $dir . '/' . $name, 84);
         imagedestroy($src); imagedestroy($dst);
         if (!$ok) throw new RuntimeException('Could not save the photo');
-    } elseif (!move_uploaded_file($file['tmp_name'], $dir . '/' . $name)) {
+    } elseif (file_put_contents($dir . '/' . $name, $bytes) === false) {
         throw new RuntimeException('Could not save the photo');
     }
     return 'uploads/rooms/' . $name;

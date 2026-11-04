@@ -24,7 +24,7 @@ class McpToolError extends Exception {}
  * defines <key>Tools(): a list of ['def' => mcpDef(...), 'perm' => API permission, 'page' => access page id or null,
  * 'route' => [METHOD, 'rest/path/{param}'] or null], and <key>Run(PDO, array $ctx, string $name, array $args): [text, data].
  */
-const MCP_MODULES = ['menuExtras' => 'menu_extras.php', 'offers' => 'offers.php', 'website' => 'website.php', 'loyalty' => 'loyalty.php', 'ops' => 'operations.php'];
+const MCP_MODULES = ['menuExtras' => 'menu_extras.php', 'offers' => 'offers.php', 'website' => 'website.php', 'loyalty' => 'loyalty.php', 'ops' => 'operations.php', 'rooms' => 'rooms.php'];
 
 /** One tool definition. $kind: read, write (safe to repeat), create (adds something) or delete (removes / can't undo). */
 function mcpDef(string $name, string $title, string $desc, array $props, array $req, string $kind, string $busy, string $done): array
