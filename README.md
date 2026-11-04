@@ -234,6 +234,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
 - **Live order tracking** with rider location and a **scratch card** reward
 - Customer accounts (OTP), profile page (10 designs), order history, favourites, phone **wallet card**
 - **Rewards page** from the counter QR; table QR ordering, call waiter, reservations, catering, meal plans
+- **Ordering as a guest** is the owner's choice (Settings › Ordering): leave the "Continue as guest" button on, or ask every customer for an account so their history, points and wallet stay on one number. A table's QR code, room service and WhatsApp orders never ask anyone to log in either way
 - **Rooms** (hotels / lodges): see rooms with photos and prices, book dates, read the house rules; **room service** from the QR code in the room, added to the room bill
 - Policy pages in the restaurant's own look; install as an app
 
@@ -246,6 +247,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
 - **Rooms**: room types, booking requests, check-in / check-out, calendar of every room, room bills (GST, extras, advance, A4 / 80 mm / WhatsApp link), room service QR codes, occupancy / ADR / RevPAR reports, policies and house rules
 - **POS** and **KOT** (kitchen tickets), with network or browser printing; customers on the bill with points, rewards and wallet, and an Account QR for website login
 - **Orders**: online orders (accept / reject / status / route), all orders, blocked customers, customers, staff, waiter requests
+- **Table calls**: a waiter taps "I'm going" and their name appears on that call for every other waiter, so two don't walk to the same table; boards filter by All / Nobody going / Mine, and Waiter Requests shows who looked after which table. Nobody is assigned a table — every waiter still sees every call
 - **Payments**: transactions, PhonePe gateway*, sales reports with CSV, analytics
 - **Marketing**: brand kit; posters and promo videos in Square, Story and Wide with a real coupon and a QR code that applies it; captions in English, Hinglish and Hindi; campaigns; campaign calendar (festivals, national days and food days with offer ideas); My campaigns with the visits, orders and sales each post brought in
 - **Offers**: All offers overview, coupons and milestone offers, offer filters, Combos & New, bestsellers, Today's Special, Complete your meal, scratch card, wallet, catering

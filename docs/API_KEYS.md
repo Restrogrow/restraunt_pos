@@ -42,7 +42,7 @@ Besides the first tools (restaurant, menu, orders, reports in mcp/tools.php) eve
 `menu_extras.php` (photos, delete/hide dishes, sizes, sections, add-ons), `offers.php` (coupons, combos, today's special,
 scratch card, wallet settings), `website.php` (theme, profile, logo, banners, offer banners, policy pages, SEO),
 `loyalty.php` (programme, rewards, tiers; no customer data), `operations.php` (tables, areas, waiter calls,
-reservations, staff, stock, delivery zones, catering). Each entry gives its MCP definition (`mcpDef`), permission,
+reservations, staff, stock, delivery zones, catering), `rooms.php` (room types and their photos). Each entry gives its MCP definition (`mcpDef`), permission,
 access page (refused while Super Admin has that section off) and REST route; the router, OpenAPI document, MCP
 tools/list and the docs page's "All endpoints" (rendered from openapi.json) all pick it up. Left out on purpose:
 payments and customer details.
@@ -57,7 +57,7 @@ returned or changed; policy pages lose scripts; images from links are fetched on
 ## Permissions
 
 `restaurant:read`, `menu:*`, `orders:*`, `reports:read`, `website:*`, `offers:*`, `loyalty:*`, `tables:*`, `reservations:*`,
-`staff:*`, `stock:*`, `delivery:*`, `catering:*` (read / write; `API_PERMS`, column `perms` widened to 1000 chars by itself).
+`staff:*`, `stock:*`, `delivery:*`, `catering:*`, `rooms:*` (read / write; `API_PERMS`, column `perms` widened to 1000 chars by itself).
 On /mcp a key lists only the tools its permissions allow (`tools/list` is filtered) and the call is checked again.
 
 ## Limits and answers

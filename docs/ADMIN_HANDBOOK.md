@@ -283,8 +283,18 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
   should confirm the rate with their CA; they can pick "My own rate" or "No tax on rooms" instead.
 - **Bill numbers:** prefix + 1, 2, 3 per restaurant, given the first time a bill is opened. A paid bill can't be
   changed; "Mark unpaid" first.
+- **"How many rooms" is not decoration.** `room_count` caps bookings for those nights on the website *and* in the
+  dashboard — `add_booking` refuses with "Only N room(s) of this type are free for those nights". An owner who has
+  four of a room but left it at 1 will lose the other three, and so will the staff taking a walk-in. Check it first
+  when someone reports "it won't let me book".
+- **"Only N left" on the website** shows only when the type has more than one room (5 Nov 2026). A guest house whose
+  room type is one room reads "Available", not "Only 1 left" every day of its life.
+- **Photos when the owner can't reach the dashboard:** an API key with Read rooms / Change rooms can add them —
+  `GET /api/v1/rooms`, then `POST /api/v1/rooms/{room_id}/photos` with a data URL or https link. The photo is written
+  by the same code the Rooms page uses, so it survives later edits; nothing else may write `room_types.photos`.
 - **Code:** `main/config/rooms.php`, `main/api/rooms_admin.php`, `main/api/rooms_public.php`,
-  `main/assets/js/rooms-studio.js`, `main/website/rooms.php`, `main/website/room_bill.php`. Rules in `AGENTS.md`.
+  `main/assets/js/rooms-studio.js`, `main/website/rooms.php`, `main/website/room_bill.php`,
+  `main/mcp/tools/rooms.php`. Rules in `AGENTS.md`.
 
 ## 8. What the product does: status
 

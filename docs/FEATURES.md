@@ -1,6 +1,6 @@
 # RestroGrow feature list
 
-Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from the code itself (not from memory), updated 17 Oct 2026, so if it is in this list, it exists.
+Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from the code itself (not from memory), updated 5 Nov 2026, so if it is in this list, it exists.
 
 ## How to use this list
 
@@ -13,10 +13,10 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Category | Features |
 |---|---|
 | Orders & POS | 18 |
-| Kitchen & staff | 14 |
-| Tables & dine-in | 10 |
+| Kitchen & staff | 16 |
+| Tables & dine-in | 11 |
 | Menu | 12 |
-| Customer website & online ordering | 28 |
+| Customer website & online ordering | 29 |
 | Delivery | 10 |
 | Customers, loyalty & rewards | 20 |
 | Offers | 13 |
@@ -31,7 +31,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Apps | 18 |
 | Super Admin (platform) | 33 |
 | Demo & sales tools | 10 |
-| **Total built** | **282** |
+| **Total built** | **287** |
 | Planned, not built | 19 |
 
 ## Orders & POS
@@ -67,7 +67,9 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Manager screen | Overview, orders, kitchen, table calls, tables, POS, customers, payments and today's report. | Staff login (manager) | staff (manager) | Manager account |
 | Staff accounts | Add managers, waiters and chefs, see last login and recent actions, pause access, CSV export. | Dashboard › Staff | owner | — |
 | Activity log | Who cancelled, deleted, discounted or changed what, with filters and search. | Dashboard › Staff › Activity log button | owner | — |
-| Waiter Requests | Live list of guests who tapped "Call waiter", oldest first, coloured by wait time, mark attended. | Dashboard › Waiter Requests | owner, staff | — |
+| Waiter Requests | Live list of guests who tapped "Call waiter", oldest first, coloured by wait time, who is going, mark attended. | Dashboard › Waiter Requests | owner, staff | — |
+| "I'm going" on a table call | A waiter puts their name on a call so two don't walk to the same table. The call stays on everyone's board and anyone can still finish it; whoever took it keeps the credit. "Not me" puts it back. | Waiter / manager screen › table calls | staff | — |
+| Table call filters | All / Nobody going / Mine, shown once at least one call has been taken. | Waiter / manager screen › table calls | staff | — |
 | Call waiter button | Guests tap "Call waiter" on the website (bill, water, order, cutlery…); the table comes from the QR. | Customer website (floating button) | customer | On by default; needs dine-in and tables |
 | Staff alerts (web push) | Staff phones ring for new orders and table calls. | Staff screens › Turn on alerts | staff | Browser allows notifications |
 | Staff sign-in by role | Staff log in at the same login page and land on their own screen (manager / waiter / chef). | restrogrow.com/main/admin/login.php | staff | — |
@@ -89,6 +91,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Online table booking | Guests book a table from the website. | `/{restaurant}/reservations` | customer | Switch on in Dashboard › Settings › Ordering › Table reservations |
 | Reservation availability check | Stops double booking of the same table and time. | Automatic when booking | customer | — |
 | Rooms (hotel / lodge) | Room types with price, photos, amenities and room numbers; booking requests to confirm; check in (pick the room) and check out; today's arrivals, departures and rooms taken. | Dashboard › Rooms | owner, staff | Switch on in Dashboard › Settings › Ordering › Rooms; Super Admin › Access › Rooms |
+| Rooms over the API | Read the room types and add a photo to one through an API key or a connected AI app, for when the photos are on a phone and nobody is near the dashboard. | `GET /api/v1/rooms`, `POST /api/v1/rooms/{room_id}/photos` | owner (API key) | Key with Read rooms / Change rooms |
 | Online room booking | Guests pick dates and guests, see free rooms and prices, ask for an extra bed, and send a request (pay at the hotel). | `/{restaurant}/rooms` | customer | Rooms switched on |
 | Room calendar | Every room by night for two weeks; stays without a room yet; tap a free night to book; one stay per room a night. | Dashboard › Rooms › Calendar | owner, staff | Room numbers on the room type |
 | Room policies and house rules | Check-in / check-out times, cancellation policy (ready or own words), house rules to tick plus own lines, extra bed price; shown to guests before they book. | Dashboard › Rooms › Settings | owner | — |
@@ -138,6 +141,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Customer login | Sign up / log in with phone and password, forgot password by email. | `/{restaurant}/login` | customer | SMTP email for password reset |
 | WhatsApp OTP | One-time code on WhatsApp at sign-up and on a new device. | `/{restaurant}/login` | customer | RepeatGrow keys + approved OTP template |
 | Continue with Google (customers) | Guests log in with Google. | `/{restaurant}/login` | customer | Google login keys |
+| Ordering as a guest, on or off | Keep the "Continue as guest" button, or make an account the only way to order so a customer's history, points and wallet stay on one number. Off, the button goes and the order API refuses a website order with no account. A table's QR code, room service and WhatsApp orders never ask anyone to log in either way. | Dashboard › Settings › Ordering › Let customers order as a guest | owner | On by default |
 | Profile and order history | Saved address, past orders with reorder, favourites, rate an order. | `/{restaurant}/profile` | customer | — |
 | Rate your order | Guests rate orders; results go to Dashboard › Feedback. | Website › Profile › order | customer | — |
 | Ask for a Google review | Every 3rd completed order the guest is asked to rate you on Google. | Website › Profile | customer | Google Places key + your Google place |
@@ -211,7 +215,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 
 | Feature | What it does | Where | Who | Needs setup? |
 |---|---|---|---|---|
-| AI manager (morning report) | Every morning on WhatsApp: yesterday's sales and what changed, top and falling dishes, low stock, plus one-tap fixes ("reply 1 to switch Amritsari Fish back on"). Ask it anything on WhatsApp or in the page's chat: sales with the change vs the period before, compare weeks, top / least sold dishes, one dish ("how many Paneer Tikka this week"), busiest hours and day, cash vs UPI vs card, channels, new vs returning customers, cancellations, and tips from your own numbers. Answers in the language you ask in (English, Hindi, Hinglish); numbers always from your data, in your restaurant's time zone. The page shows today / yesterday / week / month with % change, a setup checklist, and on phones three tabs (Today · Ask · Settings). **Voice:** the chat's mic types what you say. **Voice mode:** tap the circle, speak, check or edit what it heard, press Send; the answer shows and is spoken in Gemini's natural voice (female or male; the phone's own voice if that fails), as 1–3 natural sentences with the real numbers. Nothing is sent or heard again until you tap. Hindi/Hinglish or English; listening uses the browser's speech (best in Chrome on Android). | Dashboard › Growth › AI manager | owner | Cron every 15 min (cron/owner_brief.php); WhatsApp template for messages outside 24h; GEMINI_API_KEY |
+| AI manager (morning report) | Every morning on WhatsApp: yesterday's sales and what changed, top and falling dishes, low stock, plus one-tap fixes ("reply 1 to switch Amritsari Fish back on"). Ask it anything on WhatsApp or in the page's chat: sales with the change vs the period before, compare weeks, top / least sold dishes, one dish ("how many Paneer Tikka this week"), busiest hours and day, cash vs UPI vs card, channels, new vs returning customers, cancellations, and tips from your own numbers. Answers in the language you ask in (English, Hindi, Hinglish); numbers always from your data, in your restaurant's time zone. The page shows today / yesterday / week / month with % change, a setup checklist, and on phones three tabs (Today · Ask · Settings). **Voice:** the chat's mic types what you say. **Voice mode:** tap the circle, speak, check or edit what it heard, press Send; the answer shows and is spoken in Gemini's natural voice (female or male; the phone's own voice if that fails), as 1–3 natural sentences with the real numbers. Nothing is sent or heard again until you tap. Hindi/Hinglish or English; listening uses the browser's speech (best in Chrome on Android). Opens from the sidebar, or from the button in the bottom-right corner of every dashboard page. | Dashboard › Growth › AI manager, or the button on any page | owner | Cron every 15 min (cron/owner_brief.php); WhatsApp template for messages outside 24h; GEMINI_API_KEY |
 | WhatsApp ordering (AI) | Customers order in a WhatsApp chat in English, Hindi or Hinglish; they get the bill, reply 1 to confirm, and the order lands in Orders with a KOT. They get "accepted / being made / ready" messages. Includes a test chat, table QR codes and a reply box for chats that need a person. | Dashboard › Growth › WhatsApp ordering | owner, customer | RepeatGrow must allow webhooks + contacts, then REPEATGROW_CONNECT_ORDERING=1; GEMINI_API_KEY for AI understanding |
 | Brand kit | Save logo, colours, font, phone, tagline and hashtags once; every design uses them. | Dashboard › Marketing (Brand kit) | owner | — |
 | Posters | 12 ready poster designs with coupon and QR in Square, Story and Wide sizes. | Dashboard › Marketing › Posters | owner | — |

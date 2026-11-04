@@ -158,6 +158,30 @@ page only has to include `header.php` like the others.
   the order already placed. With a client_ref, the old same-phone-same-total 10-minute dedupe no longer merges two real
   rounds of the same dishes.
 
+## Table calls: who is going
+
+- A call (`waiter_requests`) is never **assigned**. Every waiter sees every call and any of them can finish any of
+  them — that is the whole model and changing it would be a different product. `taken_by` / `taken_by_name` /
+  `taken_at` only record who said "I'm going", so two waiters don't walk to the same table.
+- `handleTakeRequest()` (`controllers/waiter_request_operations.php`): first tap wins through
+  `WHERE … AND taken_by_name IS NULL`, so a second waiter is told who got there first rather than overwriting them;
+  only the one who took a call may release it. `mark_attended` stamps the finisher with `COALESCE`, so whoever took
+  it keeps the credit and an untaken call still gets a name.
+- Boards: `assets/js/staff-calls.js` (waiter and manager) draws the name, the All / Nobody going / Mine chips (hidden
+  until something is taken) and the actions; `StaffUI.isMine()` matches on staff id, falling back to the name for an
+  owner with no staff row — so the pages must pass `staffId` / `staffName` in `window.STAFF`.
+- Columns are added by `waiterCallEnsureSchema()` (`config/waiter_call.php`), which also owns
+  `users.call_waiter_enabled`; call it anywhere that reads or writes them.
+
+## Rooms over the API
+
+- `main/mcp/tools/rooms.php` (`MCP_MODULES` key `rooms`): `list_rooms` and `add_room_photo`, under `rooms:read` /
+  `rooms:write` and the `roomsPage` access switch. REST: `GET /api/v1/rooms`, `POST /api/v1/rooms/{room_id}/photos`.
+- A room photo is a **file** under `main/uploads/rooms` (that path is gitignored), never a database value. Write one
+  only through `roomPhotoStore()` (`config/rooms.php`), shared with the Rooms page's own upload: `save_type` in
+  `api/rooms_admin.php` filters `room_types.photos` through `roomPhotoValid()` on every save, so a photo written any
+  other way looks fine until the owner next edits that room and then silently disappears.
+
 ## Printing bills
 
 - Printer settings live in the browser (`localStorage.printerSettings`, per device and per address), so localhost and
