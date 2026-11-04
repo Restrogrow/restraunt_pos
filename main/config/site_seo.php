@@ -210,15 +210,16 @@ function seoSitemaps(PDO $c): array
 
 function seoOwnUrls(PDO $c): array
 {
-    // the same list the sitemap itself is built from, so what Google is told about and what this
-    // dashboard checks the index status of can never drift apart
     $urls = [];
+    $xml = @file_get_contents(dirname(__DIR__, 2) . '/sitemap.xml');
+    if ($xml && preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#', $xml, $m)) $urls = $m[1];
     try {
-        require_once __DIR__ . '/site_sitemap.php';
-        foreach (siteSitemapUrls($c) as [$loc]) $urls[] = $loc;
-    } catch (Throwable $e) {
-        error_log('seoOwnUrls: ' . $e->getMessage());
-    }
+        require_once __DIR__ . '/blog_engine.php';
+        blogEnsure($c);
+        foreach ($c->query("SELECT slug FROM blog_posts WHERE status = 'published' AND published_at <= NOW() AND noindex = 0 ORDER BY published_at DESC")->fetchAll(PDO::FETCH_COLUMN) as $slug) {
+            $urls[] = 'https://restrogrow.com/blog/' . $slug;
+        }
+    } catch (Throwable $e) { /* blog tables missing: just the sitemap */ }
     return array_values(array_unique($urls));
 }
 
