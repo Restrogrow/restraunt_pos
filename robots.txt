@@ -20,6 +20,10 @@ Disallow: /*/login$
 Disallow: /*/reset-password$
 Disallow: /main/views/
 Disallow: /main/docs/
+# The visit counter, not a page. "Disallow: /*.php$" below does not cover it: $ means the URL ends
+# there, and this one always carries a query string. Google was crawling it, and every crawl landed
+# on the restaurant's Analytics as a visitor.
+Disallow: /main/website/track_visit.php
 Disallow: /*.php$
 Allow: /index.html
 Allow: /style.css

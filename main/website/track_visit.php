@@ -15,6 +15,14 @@ if (empty($restaurant_id)) {
     exit;
 }
 
+// A crawler is not a customer. Google found this endpoint and crawled it like a page, and every
+// crawl was counted as someone looking at the restaurant's menu (config/visit_tracking.php).
+require_once __DIR__ . '/../config/visit_tracking.php';
+if (visitIsBot($user_agent)) {
+    http_response_code(204);
+    exit;
+}
+
 try {
     // Minimal bootstrap - just need DB connection
     require_once __DIR__ . '/db_config.php';
