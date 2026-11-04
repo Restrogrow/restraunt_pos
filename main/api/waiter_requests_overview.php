@@ -26,7 +26,10 @@ function wrOut(array $d, int $code = 200) { http_response_code($code); echo json
 try {
     $conn = getConnection();
     $q = function (string $sql, array $a = []) use ($conn) { $st = $conn->prepare($sql); $st->execute($a); return $st; };
-    $cols = "wr.id, wr.request_type, wr.notes, wr.created_at, wr.attended_at, t.table_number, a.area_name";
+    // taken_by_name: the waiter who said they were going, or who ended up attending (config/waiter_call.php)
+    require_once __DIR__ . '/../config/waiter_call.php';
+    waiterCallEnsureSchema($conn);
+    $cols = "wr.id, wr.request_type, wr.notes, wr.created_at, wr.attended_at, wr.taken_by, wr.taken_by_name, wr.taken_at, t.table_number, a.area_name";
     $join = "FROM waiter_requests wr LEFT JOIN tables t ON t.id = wr.table_id LEFT JOIN areas a ON a.id = t.area_id";
 
     $waiting = $q("SELECT $cols, TIMESTAMPDIFF(SECOND, wr.created_at, NOW()) AS waited $join

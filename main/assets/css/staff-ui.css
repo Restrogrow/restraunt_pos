@@ -208,6 +208,26 @@ button.st-stat:hover { border-color: #cbd5e1; box-shadow: var(--st-shadow-lift);
 .st-call-why p { margin: 2px 0 0; color: var(--st-ink2); font-size: .9rem; line-height: 1.4; overflow-wrap: anywhere; }
 .st-call-sum { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
 
+/* ── a call somebody has said they are going to (waiter_requests.taken_by) ── */
+.st-call-taken { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--st-soft); color: var(--st-ink2); font-size: .88rem; font-weight: 700; }
+.st-call-taken .material-symbols-rounded { font-size: 19px; color: var(--st-muted); }
+.st-call-taken.me { background: var(--st-ok-soft); color: #15803d; }
+.st-call-taken.me .material-symbols-rounded { color: #15803d; }
+/* somebody else is on their way: still readable, but it stops competing for attention */
+.st-call.taken { border-color: var(--st-line); box-shadow: none; opacity: .72; }
+.st-call.taken:hover, .st-call.taken:focus-within { opacity: 1; }
+.st-call-acts { display: flex; gap: 8px; }
+.st-call-acts .st-btn { flex: 1; min-width: 0; }
+
+/* ── filter chips above a board (All / Nobody going / Mine) ── */
+.st-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.st-chips[hidden] { display: none; }
+.st-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--st-line); border-radius: 999px; background: #fff; color: var(--st-ink2); font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.st-chip:hover { border-color: var(--st-accent); color: var(--st-accent); }
+.st-chip.on { border-color: var(--st-accent); background: var(--st-accent-soft); color: var(--st-accent); }
+.st-chip em { font-style: normal; opacity: .65; font-weight: 800; }
+.st-chip:focus-visible { outline: 3px solid var(--st-accent-soft); outline-offset: 2px; }
+
 /* ── waiter: ready-to-serve order card ── */
 .st-ord { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--st-line); border-radius: var(--st-r-xl); background: #fff; box-shadow: var(--st-shadow); }
 .st-ord-top { display: flex; align-items: center; gap: 12px; }

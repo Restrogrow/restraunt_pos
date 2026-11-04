@@ -3655,6 +3655,9 @@ body:has(#posPage.page.active) #poBar { display: none; }   /* the POS shows the 
 .wrq-timer { display: inline-flex; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--h) 12%, #fff); color: var(--h); font-weight: 900; font-size: .82rem; font-variant-numeric: tabular-nums; transition: color .4s, background .4s; }
 .wrq-timer .material-symbols-rounded { font-size: 16px; }
 .wrq-note { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--sx-soft); color: #374151; font-size: .8rem; line-height: 1.45; }
+/* "Ramesh is going": a waiter has taken this call (waiter_requests.taken_by) */
+.wrq-taken { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 10px; border-radius: 10px; background: #f0fdf4; color: #15803d; font-size: .8rem; font-weight: 700; }
+.wrq-taken .material-symbols-rounded { font-size: 17px; }
 .wrq-acts { display: flex; gap: 6px; } .wrq-acts .btn { display: inline-flex; align-items: center; gap: 4px; } .wrq-go { flex: 1; justify-content: center; }
 .wrq-calm { text-align: center; padding: 34px 20px; border: 1px dashed #bbf7d0; border-radius: var(--sx-r-lg); background: #f0fdf4; }
 .wrq-calm-ic { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: #dcfce7; color: #16a34a; animation: cbxBob 3s ease-in-out infinite; } .wrq-calm-ic .material-symbols-rounded { font-size: 30px; }

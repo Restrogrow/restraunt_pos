@@ -114,7 +114,10 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
             role: <?php echo json_encode($roleLabel); ?>,
             restaurantId: <?php echo json_encode($restaurant_id); ?>,
             serverNow: <?php echo json_encode(date('Y-m-d H:i:s')); ?>,
-            currency: window.globalCurrencySymbol
+            currency: window.globalCurrencySymbol,
+            // who is on this screen, so the calls board can show "Mine" (assets/js/staff-calls.js)
+            staffId: <?php echo json_encode((int)($_SESSION['staff_id'] ?? 0)); ?>,
+            staffName: <?php echo json_encode((string)($_SESSION['staff_name'] ?? $_SESSION['username'] ?? ''), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE); ?>
         };
     </script>
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>

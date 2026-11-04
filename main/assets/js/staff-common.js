@@ -16,6 +16,14 @@
   var C = window.STAFF || {};
   S.cfg = C;
   S.rid = C.restaurantId ? encodeURIComponent(C.restaurantId) : '';
+  // who is on this screen: lets a board tell this person's rows from everyone else's
+  S.staffId = +(C.staffId || 0) || 0;
+  S.staffName = String(C.staffName || '');
+  /** Is this row one I took? Matches on staff id, falling back to the name for an owner with no staff id. */
+  S.isMine = function (takenBy, takenByName) {
+    if (S.staffId && +takenBy === S.staffId) return true;
+    return !S.staffId && !takenBy && !!takenByName && takenByName === S.staffName;
+  };
 
   /* ── text ── */
   S.esc = function (v) {

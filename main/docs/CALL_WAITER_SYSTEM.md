@@ -44,9 +44,30 @@
 3. Each request shows:
    - Table number badge (blue)
    - Time ago
-   - Waiter assigned
+   - Who said they are going, if anyone
    - Request notes
    - Action buttons
+
+## 🙋 Who is going (added 2026-11-05)
+
+No call is ever **assigned** to a waiter. The board stays the open list it always was: every
+waiter sees every call, and any of them can finish any of them. What was missing was simply
+knowing whether somebody had already set off, so two waiters stopped walking to the same table.
+
+- **I'm going** — stamps `waiter_requests.taken_by` / `taken_by_name` / `taken_at` and leaves the
+  call on everyone's board, now reading "Ramesh is going". First tap wins; anyone else tapping is
+  told who got there first, so nobody is quietly overwritten.
+- **Not me** — puts it back for anyone. Only the waiter who took it may do this.
+- **Attended** — anybody can still finish any call. Whoever *took* it keeps the credit
+  (`COALESCE`), and a call nobody took gets the finisher's name.
+- **Filters** on the waiter and manager boards: All / Nobody going / Mine. The chips only appear
+  once at least one call has been taken, so a quiet shift sees no extra furniture.
+
+"Mine" follows the person, not the device: `StaffUI.isMine()` matches on staff id, falling back to
+the name for an owner working the floor without a staff row.
+
+Columns are added on first use by `waiterCallEnsureSchema()` (`config/waiter_call.php`), which also
+owns `users.call_waiter_enabled`. Who is pressing the button comes from `waiterCallWhoAmI()`.
 
 ## 🎨 Design Features
 

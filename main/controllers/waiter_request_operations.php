@@ -55,6 +55,10 @@ try {
         case 'mark_attended':
             handleMarkAttended($conn, $restaurant_id);
             break;
+
+        case 'take':
+            handleTakeRequest($conn, $restaurant_id);
+            break;
             
         case 'delete':
             handleDeleteRequest($conn, $restaurant_id);
@@ -120,11 +124,76 @@ function handleMarkAttended($conn, $restaurant_id) {
         return;
     }
     
-    // Update request status
-    $stmt = $conn->prepare("UPDATE waiter_requests SET status = 'Attended', attended_at = NOW() WHERE id = ? AND restaurant_id = ?");
-    $stmt->execute([$requestId, $restaurant_id]);
-    
+    // Whoever finishes a call gets their name on it, even if they never said they were going:
+    // COALESCE keeps the name of the waiter who did say so, rather than the one who tapped last.
+    require_once __DIR__ . '/../config/waiter_call.php';
+    waiterCallEnsureSchema($conn);
+    $me = waiterCallWhoAmI();
+    $stmt = $conn->prepare("UPDATE waiter_requests SET status = 'Attended', attended_at = NOW(),
+        taken_by = COALESCE(taken_by, ?), taken_by_name = COALESCE(taken_by_name, ?), taken_at = COALESCE(taken_at, NOW())
+        WHERE id = ? AND restaurant_id = ?");
+    $stmt->execute([$me['id'], $me['name'], $requestId, $restaurant_id]);
+
     echo json_encode(['success' => true, 'message' => 'Request marked as attended'], JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * "I'm going" / "Never mind" on an open call. Nobody is assigned anything: the call stays on
+ * everyone's board and anyone can still finish it. This only puts a name on it so two waiters
+ * don't walk to the same table, and so the board can be filtered down to your own.
+ */
+function handleTakeRequest($conn, $restaurant_id) {
+    $requestId = (int)($_POST['requestId'] ?? 0);
+    $release = in_array((string)($_POST['release'] ?? ''), ['1', 'true', 'on'], true);
+    if (!$requestId) {
+        echo json_encode(['success' => false, 'message' => 'Request ID is required'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    require_once __DIR__ . '/../config/waiter_call.php';
+    waiterCallEnsureSchema($conn);
+    $me = waiterCallWhoAmI();
+
+    $check = $conn->prepare("SELECT id, status, taken_by, taken_by_name FROM waiter_requests WHERE id = ? AND restaurant_id = ?");
+    $check->execute([$requestId, $restaurant_id]);
+    $row = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        echo json_encode(['success' => false, 'message' => 'Request not found'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+    if ($row['status'] !== 'Pending') {
+        echo json_encode(['success' => false, 'message' => 'That call has already been attended.'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    if ($release) {
+        // only the one who took it puts it back, so nobody can quietly drop someone else's call
+        $sameStaff = $me['id'] !== null && (int)$row['taken_by'] === $me['id'];
+        $sameOwner = $me['id'] === null && $row['taken_by'] === null && (string)$row['taken_by_name'] === $me['name'];
+        if (!$sameStaff && !$sameOwner) {
+            echo json_encode(['success' => false, 'message' => ($row['taken_by_name'] ?: 'Someone else') . ' is going to this table.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $conn->prepare("UPDATE waiter_requests SET taken_by = NULL, taken_by_name = NULL, taken_at = NULL WHERE id = ? AND restaurant_id = ?")
+             ->execute([$requestId, $restaurant_id]);
+        echo json_encode(['success' => true, 'taken' => false, 'message' => 'Put back for anyone to take'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // first one to say it wins; the rest are told who got there first rather than overwriting them
+    $take = $conn->prepare("UPDATE waiter_requests SET taken_by = ?, taken_by_name = ?, taken_at = NOW()
+        WHERE id = ? AND restaurant_id = ? AND status = 'Pending' AND taken_by_name IS NULL");
+    $take->execute([$me['id'], $me['name'], $requestId, $restaurant_id]);
+    if (!$take->rowCount()) {
+        $check->execute([$requestId, $restaurant_id]);
+        $now = $check->fetch(PDO::FETCH_ASSOC) ?: [];
+        echo json_encode(['success' => false, 'taken' => true, 'taken_by_name' => $now['taken_by_name'] ?? null,
+            'message' => ($now['taken_by_name'] ?? 'Someone') . ' is already going to this table.'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    echo json_encode(['success' => true, 'taken' => true, 'taken_by_name' => $me['name'],
+        'message' => 'The table knows you are coming'], JSON_UNESCAPED_UNICODE);
 }
 
 function handleDeleteRequest($conn, $restaurant_id) {

@@ -75,7 +75,8 @@
       '<div class="wrq-done-h"><b>' + ic('history') + 'Attended today</b><small>' + D.attended.length + '</small></div>' +
       (D.attended.length ? '<div class="wrq-done">' + D.attended.map(function (r) {
         var k = kind(r);
-        return '<div class="wrq-drow"><span class="wrq-tbl sm">' + esc(r.table_number || '—') + '</span><span class="wrq-dk">' + ic(k[0]) + esc(k[1]) + '<small>' + esc(r.area_name || '') + '</small></span>' +
+        return '<div class="wrq-drow"><span class="wrq-tbl sm">' + esc(r.table_number || '—') + '</span><span class="wrq-dk">' + ic(k[0]) + esc(k[1]) +
+          '<small>' + esc(r.taken_by_name ? r.taken_by_name + (r.area_name ? ' · ' + r.area_name : '') : (r.area_name || '')) + '</small></span>' +
           '<span class="wrq-resp ' + (r.response == null ? '' : heat(r.response)) + '">' + ic('timer') + dur(r.response) + '</span><span class="wrq-at">' + new Date(String(r.attended_at).replace(' ', 'T')).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</span></div>';
       }).join('') + '</div>' : '<p class="sx-muted wrq-none">Nothing attended yet today.</p>');
   }
@@ -87,6 +88,8 @@
       '<div class="wrq-top"><span class="wrq-tbl">' + esc(r.table_number || '—') + '</span><div class="wrq-what"><b>' + ic(k[0]) + esc(k[1]) + '</b><small>' + esc(r.area_name || 'No area') + '</small></div>' +
         '<span class="wrq-timer" data-wrq-waited="' + r.waited + '">' + ic('timer') + dur(r.waited) + '</span></div>' +
       (k[2] === 'order' && items ? '<p class="wrq-note">' + esc(items.length > 140 ? items.slice(0, 140) + '…' : items) + '</p>' : (r.notes && k[2] !== 'order' ? '<p class="wrq-note">' + esc(r.notes) + '</p>' : '')) +
+      // a waiter has said they are going (waiter_requests.taken_by): worth knowing before chasing it
+      (r.taken_by_name ? '<p class="wrq-taken">' + ic('directions_walk') + esc(r.taken_by_name) + ' is going</p>' : '') +
       '<div class="wrq-acts"><button type="button" class="btn btn-primary btn-sm wrq-go" data-wrq-done="' + r.id + '">' + ic('check') + 'Attended</button>' +
         (k[2] === 'order' ? '<button type="button" class="btn btn-secondary btn-sm" data-wrq-order="' + r.id + '">' + ic('receipt_long') + 'See order</button>' : '') + '</div></article>';
   }

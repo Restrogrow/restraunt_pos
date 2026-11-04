@@ -52,6 +52,10 @@ try {
         throw new Exception('Restaurant ID is required');
     }
     
+    // wr.* below carries taken_by / taken_by_name once these exist (config/waiter_call.php)
+    require_once __DIR__ . '/../config/waiter_call.php';
+    waiterCallEnsureSchema($conn);
+
     // Get waiter requests with table and area info
     $status_filter = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'Pending'; // Allow filtering by status
     
