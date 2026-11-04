@@ -179,10 +179,14 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
         : '<div class="rm-nophoto"><i class="fa fa-bed"></i></div>';
       var fits = guests <= r.max_guests * rooms;
       var left = r.free == null ? null : r.free;
+      // "Only 2 left" is worth saying when a place has six of a room and four are taken. A guest
+      // house whose "Deluxe Double" is one room would read "Only 1 left" every day of its life,
+      // which says nothing and sounds like a sales trick, so it just says Available.
+      var scarce = left !== null && left <= 2 && r.room_count > 1;
       var state = left === 0 ? '<span class="rm-left none">Fully booked</span>'
-        : left !== null && left < rooms ? '<span class="rm-left low">Only ' + left + ' left</span>'
+        : left !== null && left < rooms ? '<span class="rm-left low">' + (r.room_count > 1 ? 'Only ' + left + ' left' : 'One room only') + '</span>'
         : !fits ? '<span class="rm-left low">Up to ' + r.max_guests + ' guest' + (r.max_guests === 1 ? '' : 's') + ' a room</span>'
-        : '<span class="rm-left' + (left !== null && left <= 2 ? ' low' : '') + '">' + (left !== null && left <= 2 ? 'Only ' + left + ' left' : 'Available') + '</span>';
+        : '<span class="rm-left' + (scarce ? ' low' : '') + '">' + (scarce ? 'Only ' + left + ' left' : 'Available') + '</span>';
       var can = left !== 0 && (left === null || left >= rooms) && fits;
       return '<div class="rm-card">' +
         '<div class="rm-photos">' + photos + '</div>' +
