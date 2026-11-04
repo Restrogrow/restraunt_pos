@@ -7728,6 +7728,66 @@ function toggleGatewayMode() {
     </div>
   </div>
 
+  <?php if (!in_array('ownerManagerPage', $accessOff, true)): ?>
+  <!-- Growth › AI manager, as a button that stays on screen: owners were not finding it buried in
+       the Growth menu. Opens the very same page the sidebar item does. Left out entirely when Super
+       Admin has switched the section off for this restaurant. -->
+  <style>
+    .rg-aim {
+      position: fixed; right: 20px; bottom: 20px; z-index: 900;
+      display: inline-flex; align-items: center; gap: 10px;
+      height: 56px; padding: 0 18px 0 16px;
+      border: 0; border-radius: 999px; cursor: pointer;
+      background: linear-gradient(135deg, #6d28d9, #4f46e5);
+      color: #fff; font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1;
+      box-shadow: 0 10px 26px -8px rgba(79, 70, 229, .65), 0 2px 6px rgba(0, 0, 0, .18);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .rg-aim:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -10px rgba(79, 70, 229, .7), 0 3px 8px rgba(0, 0, 0, .2); }
+    .rg-aim:active { transform: translateY(0); }
+    .rg-aim:focus-visible { outline: 3px solid #c7d2fe; outline-offset: 3px; }
+    .rg-aim .material-symbols-rounded { font-size: 24px; }
+    .rg-aim-hide { display: none !important; }
+    @media (max-width: 768px) { .rg-aim { right: 14px; bottom: 14px; height: 52px; padding: 0 16px 0 14px; font-size: 14px; } }
+    /* on a small phone the words cost more width than they earn: the icon alone */
+    @media (max-width: 420px) { .rg-aim { width: 52px; padding: 0; justify-content: center; } .rg-aim-text { display: none; } }
+    @media (prefers-reduced-motion: reduce) { .rg-aim { transition: none; } }
+  </style>
+  <button type="button" class="rg-aim" id="rgAiManagerFab"
+          title="AI manager — your daily report, and answers to any question about your restaurant"
+          aria-label="Open the AI manager">
+    <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+    <span class="rg-aim-text">AI manager</span>
+  </button>
+  <script>
+  (function () {
+    var fab = document.getElementById('rgAiManagerFab');
+    if (!fab) return;
+    var page = document.getElementById('ownerManagerPage');
+    var bars = [].slice.call(document.querySelectorAll('.sort-bar'));
+
+    fab.addEventListener('click', function () {
+      if (window.showPage) { window.showPage('ownerManagerPage'); return; }
+      // script.js is deferred; before it lands, the sidebar's own link still works
+      var link = document.querySelector('.sidebar [data-page="ownerManagerPage"]');
+      if (link) link.click();
+    });
+
+    // out of the way when the AI manager is already open, and when the menu's reorder bar is
+    // across the bottom — that bar is fixed too and lands in the same corner
+    function sync() {
+      var open = !!(page && page.classList.contains('active'));
+      var sorting = bars.some(function (b) { return getComputedStyle(b).display !== 'none'; });
+      fab.classList.toggle('rg-aim-hide', open || sorting);
+    }
+    var watch = new MutationObserver(sync);
+    if (page) watch.observe(page, { attributes: true, attributeFilter: ['class'] });
+    bars.forEach(function (b) { watch.observe(b, { attributes: true, attributeFilter: ['style', 'class'] }); });
+    sync();
+  })();
+  </script>
+  <?php endif; ?>
+
   <!-- Script -->
   <!-- Currency utils (extracted from script.js) -->
   <script src="../assets/js/utils/currency.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/utils/currency.js'); ?>"></script>
