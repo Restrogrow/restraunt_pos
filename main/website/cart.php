@@ -1267,6 +1267,11 @@ $cartLoginUrlBase = restaurantPageUrl('login');
 $cartLoginUrlSep = strpos($cartLoginUrlBase, '?') !== false ? '&' : '?';
 echo json_encode($cartLoginUrlBase . $cartLoginUrlSep . 'redirect=cart', JSON_HEX_TAG | JSON_HEX_AMP);
 ?>;
+<?php require_once __DIR__ . '/../config/guest_checkout.php'; ?>
+// Can a visitor order without an account? (Settings › Ordering, config/guest_checkout.php).
+// Off: the checkout gate below stops honouring a guest session, and the order API refuses
+// the same way, so a page left open from before the switch can't talk its way past it.
+window.guestCheckoutAllowed = <?php echo guestCheckoutAllowed($conn ?? getConnection(), (string)($restaurant_id ?? '')) ? 'true' : 'false'; ?>;
 
 // Google Maps API key loaded from .env (used for delivery address autocomplete + geocoding)
 window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -2940,6 +2945,12 @@ function proceedCheckout() {
   if (!window.loggedInCustomer && !rgQrDineIn()) {
     var guestSessionActive = false;
     try { guestSessionActive = sessionStorage.getItem('guestSessionActive') === '1'; } catch(e) {}
+    // Guest ordering switched off since this tab was opened: drop the stale flag, so the login
+    // page it is sent to comes up without the guest button instead of bouncing back here again.
+    if (window.guestCheckoutAllowed === false) {
+      guestSessionActive = false;
+      try { sessionStorage.removeItem('guestSessionActive'); } catch (e) {}
+    }
     if (!guestSessionActive) {
       // Preserve ?table=X (dine-in QR scan) across the login/signup/guest
       // detour, otherwise login.php would bounce a QR'd-in customer back to

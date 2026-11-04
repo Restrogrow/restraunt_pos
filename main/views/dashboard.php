@@ -302,6 +302,9 @@ $roomsOn = roomsSwitchOn(getConnection(), (string)$_SESSION['restaurant_id']);
 // The WhatsApp code a new customer is asked for on the website (config/customer_otp.php)
 require_once __DIR__ . '/../config/customer_otp.php';
 $customerOtpOn = customerOtpRequired(getConnection(), (string)$_SESSION['restaurant_id']);
+// "Continue as guest" on the website login screen (config/guest_checkout.php)
+require_once __DIR__ . '/../config/guest_checkout.php';
+$guestCheckoutOn = guestCheckoutAllowed(getConnection(), (string)$_SESSION['restaurant_id']);
 // An outlet of a brand: its website is at the brand's address (config/brand.php); '' for other restaurants
 require_once __DIR__ . '/../config/brand.php';
 try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_SESSION['restaurant_id']) ?? ''); } catch (Throwable $e) { $rgBrandSiteUrl = ''; }
@@ -5439,6 +5442,12 @@ function toggleGatewayMode() {
                 <span class="st-switch"><input type="checkbox" id="customerOtpToggle"<?php echo $customerOtpOn ? ' checked' : ''; ?>><i></i></span>
               </label>
             </div>
+            <div class="st-card">
+              <label class="st-toggle">
+                <span><b>Let customers order as a guest</b><small>Your website's login screen offers "Continue as guest", so a visitor can order without making an account. Switch it off and ordering needs an account, so a customer's order history, points and wallet all stay on one number — but some first-time visitors leave rather than sign up. A guest who scanned a table's QR code, a hotel guest ordering from their room, and WhatsApp orders are never asked to log in either way. Saves straight away.</small></span>
+                <span class="st-switch"><input type="checkbox" id="guestCheckoutToggle"<?php echo $guestCheckoutOn ? ' checked' : ''; ?>><i></i></span>
+              </label>
+            </div>
             <div class="st-card" data-st-form="restaurant">
               <div class="st-field st-narrow">
                 <label for="minimumOrderValue">Minimum order value (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
@@ -8495,6 +8504,25 @@ document.addEventListener('change', function (e) {
       tg.disabled = false;
       if (!d || !d.success) { tg.checked = !on; showNotification((d && d.message) || 'Could not save, please try again.', 'error'); return; }
       showNotification(on ? 'New customers will be asked for the WhatsApp code.' : 'The WhatsApp code is off. New customers sign up with the form alone.', 'success');
+    })
+    .catch(function () { tg.disabled = false; tg.checked = !on; showNotification('Network error. Please try again.', 'error'); });
+});
+
+// Settings › Ordering: "Continue as guest" on the website login screen (config/guest_checkout.php).
+// Its own switch with no Save, like the WhatsApp code above it, so the one field it changes can't be
+// caught up in the whole-form save that blanks anything left out.
+document.addEventListener('change', function (e) {
+  if (!e.target || e.target.id !== 'guestCheckoutToggle') return;
+  var tg = e.target, on = tg.checked;
+  tg.disabled = true;
+  var fd = new FormData();
+  fd.append('guest_checkout_enabled', on ? '1' : '0');
+  fetch('../api/app_settings.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      tg.disabled = false;
+      if (!d || !d.success) { tg.checked = !on; showNotification((d && d.message) || 'Could not save, please try again.', 'error'); return; }
+      showNotification(on ? 'Customers can order as a guest.' : 'Guest ordering is off. Customers need an account to order from your website.', 'success');
     })
     .catch(function () { tg.disabled = false; tg.checked = !on; showNotification('Network error. Please try again.', 'error'); });
 });

@@ -356,6 +356,28 @@ try {
         exit();
     }
 
+    // Ordering without an account, which the owner can switch off (Settings › Ordering,
+    // config/guest_checkout.php). The login screen drops its "Continue as guest" button and
+    // cart.php stops honouring a guest session, but neither is authoritative — a page left open
+    // from before the switch, or a direct call to this API, would otherwise still get an order in.
+    // Exempt: a guest at a table's QR code, a hotel guest ordering from their room, and the
+    // restaurant's own WhatsApp bot. None of those has a login screen to show (see the helper).
+    if (!$rgInternalOrder && !$rgTableOrder && !$roomService) {
+        require_once __DIR__ . '/../config/guest_checkout.php';
+        if (!guestCheckoutAllowed($conn, $restaurant_id)) {
+            require_once __DIR__ . '/../website/customer_session.php';
+            if (!getLoggedInCustomer($conn, $restaurant_id)) {
+                ob_end_clean();
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Please log in or create an account to place your order.'
+                ], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        }
+    }
+
     // Fetch packaging charge from DB (server-authoritative)
     $minRow = $restaurantRow;
     // Use DB packaging_charge instead of client-provided value to prevent price manipulation

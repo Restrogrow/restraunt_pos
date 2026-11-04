@@ -14,7 +14,7 @@ const WS_POLICIES = ['privacy', 'terms', 'refund', 'shipping', 'cookie'];
 const WS_PROFILE_FIELDS = ['restaurant_name', 'description', 'phone', 'email', 'address', 'google_maps_link', 'opening_hours',
     'enable_delivery', 'enable_takeaway', 'enable_dinein', 'enable_reservations', 'minimum_order_value', 'packaging_charge',
     'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link', 'call_waiter_enabled',
-    'customer_otp_enabled'];
+    'customer_otp_enabled', 'guest_checkout_enabled'];
 const WS_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 function websiteTools(): array
@@ -41,6 +41,7 @@ function websiteTools(): array
              'enable_delivery' => ['type' => 'boolean'], 'enable_takeaway' => ['type' => 'boolean'], 'enable_dinein' => ['type' => 'boolean'], 'enable_reservations' => ['type' => 'boolean'],
              'minimum_order_value' => ['type' => 'number', 'minimum' => 0], 'packaging_charge' => ['type' => 'number', 'minimum' => 0], 'call_waiter_enabled' => ['type' => 'boolean'],
              'customer_otp_enabled' => ['type' => 'boolean', 'description' => 'Ask a new customer for a WhatsApp code before their account is made. Off: the sign-up form alone.'],
+             'guest_checkout_enabled' => ['type' => 'boolean', 'description' => 'Offer "Continue as guest" on the website login screen. Off: ordering needs an account (a table\'s QR code, room service and WhatsApp orders are still never asked to log in).'],
              'instagram_link' => ['type' => 'string'], 'facebook_link' => ['type' => 'string'], 'twitter_link' => ['type' => 'string'], 'youtube_link' => ['type' => 'string'], 'linkedin_link' => ['type' => 'string']],
             [], 'write', 'Saving the profile…', 'Profile saved'), 'website:write', null, ['POST', 'website/profile']),
         $t(mcpDef('set_logo', 'Change the logo', 'Set the restaurant logo (JPEG, PNG, GIF or WebP, at most 2 MB). A square picture works best.',

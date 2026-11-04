@@ -1474,6 +1474,9 @@ $loginUrlBase = restaurantPageUrl('login');
 $loginUrlSep = strpos($loginUrlBase, '?') !== false ? '&' : '?';
 echo json_encode($loginUrlBase . $loginUrlSep . 'redirect=profile', JSON_HEX_TAG | JSON_HEX_AMP);
 ?>;
+<?php require_once __DIR__ . '/../config/guest_checkout.php'; ?>
+// Can a visitor use this page without an account? (Settings › Ordering, config/guest_checkout.php)
+window.guestCheckoutAllowed = <?php echo guestCheckoutAllowed($conn ?? getConnection(), (string)($restaurant_id ?? '')) ? 'true' : 'false'; ?>;
 </script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -2253,6 +2256,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!window.loggedInCustomer && !window.__pfDemo) {
     var guestSessionActive = false;
     try { guestSessionActive = sessionStorage.getItem('guestSessionActive') === '1'; } catch(e) {}
+    // Guest ordering switched off since this tab was opened: drop the stale flag, so the login
+    // page it is sent to comes up without the guest button instead of bouncing back here again.
+    if (window.guestCheckoutAllowed === false) {
+      guestSessionActive = false;
+      try { sessionStorage.removeItem('guestSessionActive'); } catch (e) {}
+    }
     if (!guestSessionActive) {
       window.location.href = window.loginUrl;
       return;

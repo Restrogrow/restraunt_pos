@@ -67,6 +67,15 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
   (`window.customerOtpRequired` in `website/login.php`) and on the server, so a stale page gains nothing.
   The new-device login code is already off everywhere (`config/device_trust_helpers.php`); the WhatsApp
   password reset keeps its code.
+- **"Continue as guest"** on the website login screen can be switched off the same way in Settings › Ordering:
+  `users.guest_checkout_enabled`, on by default, read only through `guestCheckoutAllowed()`
+  (`main/config/guest_checkout.php`). Off, ordering needs an account — the button goes
+  (`website/login.php`, which also drops the "or" divider when Google is unconfigured too), the checkout
+  and profile gates stop honouring `sessionStorage.guestSessionActive` and clear it (so a tab open from
+  before the switch bounces to login once instead of looping), and `api/process_website_order.php` refuses
+  a website order with no customer session. A guest at a table's QR code (`$rgTableOrder`), a hotel guest
+  ordering from their room (`room_qr`) and WhatsApp orders (`$rgInternalOrder`) are exempt everywhere:
+  none of them has a login screen to show, and someone in the restaurant is already being served.
 
 ## Key conventions
 

@@ -20,6 +20,7 @@ const APP_SETTING_FIELDS = [
     'youtube_link' => 'url', 'linkedin_link' => 'url',
     'call_waiter_enabled' => 'bool',
     'customer_otp_enabled' => 'bool',
+    'guest_checkout_enabled' => 'bool',
 ];
 
 function appSettingValue(string $field, string $type, $raw) {
