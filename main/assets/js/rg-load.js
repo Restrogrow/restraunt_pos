@@ -168,6 +168,23 @@
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
+  // A word-less spinner. The width test keeps a small inline spinner (one inside a button) as it is,
+  // but a section that is still closed measures zero, so the ones put there by a page that hasn't been
+  // opened yet can't be judged on the spot — they are kept and looked at again by the sweep below,
+  // once the section is on screen. Without that, opening such a page showed the three dots: the
+  // placeholder was already in the page, so nothing changed and nothing asked again.
+  var waiting = new Set();
+  function dot(d) {
+    if (d.hasAttribute('data-rg-skel') || d.closest(SKIP) || textOf(d)) { waiting.delete(d); return; }
+    var w = d.getBoundingClientRect().width;
+    if (w > 120) { waiting.delete(d); skeleton(d, 'Loading'); }
+    else if (w) waiting.delete(d);   // measured and too small: a spinner, not a section placeholder
+    else waiting.add(d);             // nothing to measure yet; ask again when it's on screen
+  }
+  function sweepDots() {
+    waiting.forEach(function (d) { if (!d.isConnected) waiting.delete(d); else dot(d); });
+  }
+
   function look(root) {
     if (!root || root.nodeType !== 1 && root.nodeType !== 3) return;
     var start = root.nodeType === 3 ? root.parentElement : root;
@@ -181,9 +198,7 @@
       seen.push(p);
     }
     var dots = start.matches(DOTS) ? [start] : [].slice.call(start.querySelectorAll(DOTS));
-    dots.forEach(function (d) {
-      if (!d.hasAttribute('data-rg-skel') && !d.closest(SKIP) && !textOf(d) && d.getBoundingClientRect().width > 120) skeleton(d, 'Loading');
-    });
+    dots.forEach(dot);
     seen.forEach(function (p) {
       var t = textOf(p);
       if (LOADING.test(t)) skeleton(placeholder(p, t), t);
@@ -224,6 +239,7 @@
       planned = false;
       var q = queue; queue = [];
       tidy();
+      sweepDots();
       q.forEach(look);
     });
   }
@@ -238,6 +254,10 @@
       });
       plan();
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    // Opening a section doesn't add or change a node, so the observer never hears about it; this is
+    // what notices a spinner that has just come on screen. It only runs while one is waiting.
+    setInterval(function () { if (waiting.size) sweepDots(); }, 400);
 
     // still loading after 20 s on screen while online: Try again. Only time on screen counts: a placeholder in a
     // closed section (the POS before it's opened) starts its 20 s when it shows.

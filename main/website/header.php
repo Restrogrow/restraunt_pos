@@ -825,7 +825,16 @@ $rgEarlyHtml = (string)ob_get_clean();
 // "You're offline" bar) goes first in <head>, so each page and any new one has it without adding anything.
 if (rgCurrentPageName() !== null) {
     require_once __DIR__ . '/rg_net.php';
-    $rgEarlyHtml = rgNetScript() . "\n" . $rgEarlyHtml;
+    // Loading skeletons, the same ones the owner's dashboard uses: "Loading cart items…",
+    // "Loading rooms…", "Loading tables…" and the rest are drawn as grey shimmering rows instead of
+    // the word, so a customer sees the shape of what is coming. A spinner inside a button (Sending…,
+    // Creating account…) is left alone — that one is telling them their own tap was heard.
+    // An absolute path, not a relative one: this goes in before the page's own <base> tag.
+    $rgLoadFile = dirname(__DIR__) . '/assets/js/rg-load.js';
+    $rgLoadSrc = rtrim(dirname(rtrim($website_base_href, '/\\')), '/\\') . '/assets/js/rg-load.js';
+    $rgEarlyHtml = rgNetScript() . "\n"
+        . '<script src="' . htmlspecialchars($rgLoadSrc, ENT_QUOTES) . '?v=' . (int)@filemtime($rgLoadFile) . '" defer></script>' . "\n"
+        . $rgEarlyHtml;
 }
 if (trim($rgEarlyHtml) !== '') {
     ob_start(function ($html) use ($rgEarlyHtml) {

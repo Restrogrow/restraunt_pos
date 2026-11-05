@@ -184,6 +184,9 @@ require_once __DIR__ . '/../config/countries.php';
   <script src="sa-platform.js?v=<?php echo @filemtime(__DIR__ . '/sa-platform.js'); ?>" defer></script>
   <link rel="stylesheet" href="sa-invoice-gen.css?v=<?php echo @filemtime(__DIR__ . '/sa-invoice-gen.css'); ?>">
   <script src="sa-invoice-gen.js?v=<?php echo @filemtime(__DIR__ . '/sa-invoice-gen.js'); ?>" defer></script>
+  <?php /* loading skeletons and Try again, the same as the owner dashboard: every "Loading…" block
+           on this page (.sp-loading) is drawn as grey shimmering rows instead of the word. */ ?>
+  <script src="../assets/js/rg-load.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-load.js'); ?>"></script>
 </head>
 <body>
 <?php require __DIR__ . '/../includes/rg_boot_loader.php'; // Bouncing G loading screen ?>
