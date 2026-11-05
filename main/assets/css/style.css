@@ -2853,6 +2853,13 @@ select:focus {
        heading rendered partly underneath that fixed bar. */
     padding: 15px 15px 15px 15px;
     padding-top: calc(56px + 15px);
+    /* The base rule is "width: calc(100% - 302px)", leaving room for the sidebar column. Only
+       margin-left was being undone here, so from 769 to 1024 px the sidebar was a top bar taking
+       no horizontal room at all while the page stayed 302 px narrower than the window — content
+       squashed against the left edge with a dead strip down the right. Phones never showed it
+       because the 768 px rules force width back to 100%, and laptops never showed it because
+       above 1024 px the sidebar really is a column. */
+    width: 100%;
   }
 
   .menu-items-list {

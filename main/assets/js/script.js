@@ -633,12 +633,24 @@ function updateToggleButton() {
   }
 }
 
+/**
+ * Is the sidebar currently the ☰ panel rather than the fixed column?
+ *
+ * Asked of the stylesheet itself. This used to be written three times as `window.innerWidth < 1024`
+ * while the CSS switches at `max-width: 1024px` — which is <= 1024, not < 1024. At exactly 1024 px
+ * the menu opened as a panel, was given a desktop height, and never closed itself after a tap,
+ * because the two disagreed by a single pixel. An iPad in landscape is exactly 1024 px wide, which
+ * is how this reached people on "a small PC".
+ *
+ * Keep this query identical to the breakpoint in assets/css/style.css and assets/css/mobile.css.
+ */
+const sidebarIsPanel = () => window.matchMedia("(max-width: 1024px)").matches;
+
 // Update sidebar height and menu toggle text
 const toggleMenu = (isMenuActive) => {
   if (!sidebar) return;
-  
-  // Check if we're on mobile
-  if (window.innerWidth < 1024) {
+
+  if (sidebarIsPanel()) {
     // On mobile, use a fixed large height for the menu to show all items
     sidebar.style.height = isMenuActive ? 'calc(100vh - 26px)' : collapsedSidebarHeight;
   } else {
@@ -678,20 +690,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
   
+  /** Put the ☰ panel away after the person has picked something. */
+  const closeSidebarPanel = () => {
+    if (!sidebar || !sidebarIsPanel() || !sidebar.classList.contains("menu-active")) return;
+    sidebar.classList.remove("menu-active");
+    sidebar.style.height = collapsedSidebarHeight;
+    if (menuToggler) {
+      const span = menuToggler.querySelector("span");
+      if (span) span.innerText = "menu";
+    }
+  };
+
   // Add auto-close for submenu links without data-page
   const submenuLinks = document.querySelectorAll(".submenu-link");
   submenuLinks.forEach(link => {
     link.addEventListener("click", (e) => {
-      // Auto-close sidebar on mobile after selecting an option
-      if (sidebar && window.innerWidth < 1024 && sidebar.classList.contains("menu-active")) {
-        sidebar.classList.remove("menu-active");
-        // Reset height to collapsed state
-        sidebar.style.height = collapsedSidebarHeight;
-        if (menuToggler) {
-          const span = menuToggler.querySelector("span");
-          if (span) span.innerText = "menu";
-        }
-      }
+      closeSidebarPanel();   // auto-close after selecting an option
     });
   });
 
@@ -710,16 +724,7 @@ document.addEventListener("DOMContentLoaded", () => {
         item.classList.remove("active");
       });
       
-      // Auto-close sidebar on mobile after selecting an option
-      if (sidebar && window.innerWidth < 1024 && sidebar.classList.contains("menu-active")) {
-        sidebar.classList.remove("menu-active");
-        // Reset height to collapsed state
-        sidebar.style.height = collapsedSidebarHeight;
-        if (menuToggler) {
-          const span = menuToggler.querySelector("span");
-          if (span) span.innerText = "menu";
-        }
-      }
+      closeSidebarPanel();   // auto-close after selecting an option
     });
   });
 
@@ -11779,7 +11784,7 @@ async function updateOrderStatus(orderId, status, btn) {
 // (Optional code): Adjust sidebar height on window resize
 window.addEventListener("resize", () => {
   if (!sidebar) return;
-  if (window.innerWidth >= 1024) {
+  if (!sidebarIsPanel()) {
     sidebar.style.height = fullSidebarHeight;
   } else {
     sidebar.classList.remove("collapsed");

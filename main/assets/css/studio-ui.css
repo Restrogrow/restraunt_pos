@@ -896,6 +896,16 @@
   .dh-col { display: contents; }
   .dh-att { order: -1; }
 }
+/* …except from 860 to 1024 px, where the sidebar is the ☰ top bar and the page has the whole
+   window — about 300 px more than the rule above was written for, back when main-content stayed
+   302 px narrow through this range (style.css). One column here left "Needs attention" as a narrow
+   card with a dead strip down the right of the screen. Must come after the block above: both are
+   plain media queries of the same weight, so the later one wins. */
+@media (min-width: 860px) and (max-width: 1024px) {
+  .dh-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); }
+  .dh-col { display: flex; }
+  .dh-att { order: 0; }
+}
 
 /* ── Marketing studio (mk-*): Posters, Videos, Captions, Calendar (assets/js/marketing-studio.js) ── */
 .mk-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
