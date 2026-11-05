@@ -1810,7 +1810,11 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps #processPaymentBtn:hover { background: #15803d; }
 .ps #holdOrderBtn { background: #fff; border: 1.5px solid var(--sx-line); color: #374151; }
 .ps #sendKotBtn { background: #111827; border-color: #111827; color: #fff; white-space: nowrap; }
-@media (max-width: 1100px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr) 330px; } }
+/* The bill column, narrower on anything that is not a wide desktop. On a tablet it used to take
+   330 px of an 820 px screen, and from 1025 to 1300 px it took 380 px on top of the sidebar's own
+   302 px column — which left the dishes about 400 px, so only two tiles fitted a row. 300 px still
+   holds a line, its quantity and its price. */
+@media (max-width: 1400px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr) 280px; } }
 @media (max-width: 768px) {
   .ps .pos-container { height: auto; }
   .ps-bar { border-radius: 18px 18px 0 0; padding: 10px; }
@@ -2928,10 +2932,48 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps-clearbtn .material-symbols-rounded { font-size: 18px; }
 
 @media (max-width: 1280px) { .ps-row { flex-wrap: wrap; } .ps-row .ps-search { flex-basis: 100% !important; } .ps-row .ps-types { flex: 1; overflow-x: auto; scrollbar-width: none; } }
+
+/* ── Dish tiles on a tablet ──
+   A tile's height follows its width (the photo is a 4:3 box), so a wide tile is a tall tile: at
+   768 px two-to-a-row made them 340 px across and 345 px tall, and a 10 inch screen showed four
+   dishes at a time. These widths get small tiles instead — four or five a row — with the text
+   scaled to match, which is what a till is for: see the menu, not one dish.
+   Ordered narrowest-last on purpose: a phone matches every one of these queries, so the rule it
+   should keep (two a row, big enough for a thumb) has to come after the tablet rule. */
+@media (max-width: 1400px) {
+  .ps .pos-menu-items { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 6px 6px 16px; }
+  .ps .pos-menu-item .item-name { margin: 7px 8px 0; font-size: .78rem; }
+  .ps .pos-menu-item .item-image.ps-noimg b { font-size: 1.6rem; }
+  .ps .pos-menu-item .item-image .ps-veg { top: 5px; left: 5px; width: 13px; height: 13px; }
+  .ps .pos-menu-item .item-image .ps-count-badge { top: 5px; right: 5px; min-width: 24px; height: 21px; padding: 0 6px; font-size: .7rem; }
+  .ps-foot { padding: 5px 6px 6px 8px; gap: 4px; }
+  .ps .pos-menu-item .ps-foot .item-price { font-size: .82rem; }
+  .ps-plus, .ps-minus { width: 28px; height: 28px; border-radius: 9px; }
+  .ps-plus .material-symbols-rounded, .ps-minus .material-symbols-rounded { font-size: 18px; }
+  .ps .pos-menu-item.ps-in .ps-plus, .ps .pos-menu-item.ps-in .ps-minus { width: 25px; height: 25px; }
+  /* the list view is a row per dish; it should not get narrower, only lose its left padding */
+  .ps .pos-menu-items.ps-list { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+}
+/* Five fit once the menu column passes ~640 px: a tablet in landscape, and a tablet in portrait,
+   where the bill sits under the menu and the dishes have the whole width to themselves. */
+@media (min-width: 961px) and (max-width: 1024px) {
+  .ps .pos-menu-items { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
 @media (max-width: 768px) {
-  .ps .pos-menu-items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 6px 10px 16px; }
+  .ps .pos-menu-items { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .ps .pos-menu-items.ps-list { grid-template-columns: 1fr; }
   .ps-kbd { display: none; }
+}
+@media (max-width: 700px) {
+  .ps .pos-menu-items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* Phone: back to two a row. There is no room for five 70 px tiles, and this is the one place where
+   a dish is tapped with a thumb rather than a finger on a propped-up tablet. */
+@media (max-width: 560px) {
+  .ps .pos-menu-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ps .pos-menu-item .item-name { font-size: .84rem; }
+  .ps .pos-menu-item .ps-foot .item-price { font-size: .9rem; }
+  .ps-plus, .ps-minus { width: 32px; height: 32px; }
 }
 /* POS dishes: the green "×2" on the photo and the green border for dishes in the cart (as before) */
 .ps .pos-menu-item .item-image .ps-count-badge { position: absolute; top: 8px; right: 8px; min-width: 30px; height: 26px; padding: 0 8px; display: grid; place-items: center; border-radius: 999px; background: #16a34a; color: #fff; font-size: .8rem; font-weight: 800; box-shadow: 0 4px 10px -4px rgba(22,163,74,.8); }
