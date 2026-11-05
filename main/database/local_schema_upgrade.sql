@@ -118,3 +118,58 @@ CREATE TABLE IF NOT EXISTS bestsellers (
 ALTER TABLE menu ADD COLUMN IF NOT EXISTS prep_station VARCHAR(10) NOT NULL DEFAULT 'kitchen';
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS prep_station VARCHAR(10) NULL DEFAULT NULL;
 ALTER TABLE kot ADD COLUMN IF NOT EXISTS station VARCHAR(10) NOT NULL DEFAULT 'kitchen';
+
+-- ── subcategories (Menu > categories can hold sub-groups; also auto-created by admin/add_subcategories.php) ──
+CREATE TABLE IF NOT EXISTS subcategories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  menu_id INT NOT NULL,
+  subcategory_name VARCHAR(100) NOT NULL,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_menu_id (menu_id),
+  INDEX idx_sort_order (sort_order),
+  UNIQUE KEY unique_subcategory_per_menu (menu_id, subcategory_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── menu_items: the rest of what api/get_menu_items.php selects ──
+-- Without these the POS dish list answers 500 and sits on its loading skeleton for ever,
+-- which reads as a broken grid rather than a missing column.
+ALTER TABLE menu_items
+  ADD COLUMN IF NOT EXISTS subcategory_id INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS is_hidden TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS ingredients TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS health_tags VARCHAR(255) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS protein_g DECIMAL(6,1) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS fat_g DECIMAL(6,1) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS carbs_g DECIMAL(6,1) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS fibre_g DECIMAL(6,1) DEFAULT NULL;
+
+-- ── orders.source (website vs POS; read by the pending-order polling) ──
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'pos';
+
+-- ── users: opening hours and subscription auto-pay ──
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS opening_hours TEXT NULL DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS auto_pay TINYINT(1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS auto_pay_method VARCHAR(50) DEFAULT 'phonepe';
+
+-- ── website_offer_banners (also auto-created by config/website_theme_helpers.php) ──
+CREATE TABLE IF NOT EXISTS website_offer_banners (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id VARCHAR(50) NOT NULL,
+  template VARCHAR(20) NOT NULL DEFAULT 'burst',
+  title VARCHAR(40) NOT NULL,
+  subtitle VARCHAR(90) NULL,
+  code VARCHAR(30) NULL,
+  cta VARCHAR(24) NULL,
+  color VARCHAR(7) NOT NULL DEFAULT '#e11d48',
+  menu_item_id INT NULL,
+  placement VARCHAR(20) NOT NULL DEFAULT 'home_top',
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  display_order INT NOT NULL DEFAULT 0,
+  opts TEXT NULL,
+  ends_ts INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_offer_banners_rid (restaurant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
