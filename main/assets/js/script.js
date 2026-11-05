@@ -8032,11 +8032,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const mobileBillSummary = document.getElementById('mobilePosBillSummary');
     const mobileBottomActions = document.getElementById('mobilePosBottomActions');
     
-    // 860, the width where the POS drops to one column (".ps .pos-container" in studio-ui.css).
-    // At 768 these appeared too late: from 769 to 1024 the bill sat below the whole menu with no
-    // bar to tap, so taking an order meant scrolling past every dish to reach the total.
-    // Asked of the stylesheet so the two cannot drift a pixel apart.
-    if (window.matchMedia('(max-width: 860px)').matches) {
+    // 768: the width where the POS drops to one column (".ps .pos-container" in studio-ui.css) and
+    // where these three are pinned to the bottom of the screen (style.css). Asked of the stylesheet
+    // rather than compared against innerWidth, so the two cannot drift a pixel apart.
+    if (window.matchMedia('(max-width: 768px)').matches) {
       if (mobileBtn) mobileBtn.style.display = 'flex';
       if (mobileBillSummary) mobileBillSummary.style.display = 'block';
       if (mobileBottomActions) mobileBottomActions.style.display = 'flex';

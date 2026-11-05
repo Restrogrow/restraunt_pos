@@ -1819,13 +1819,14 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 }
 .ps-search { flex: 0 0 auto !important; }
 @media (min-width: 900px) { .ps-cats { flex-wrap: wrap; overflow: visible; } }
-/* One column, bill under the menu. This used to start at 1024 px, from when main-content stayed
-   302 px narrow below that breakpoint (style.css) and a 330 px bill column genuinely did not fit.
-   With the page using the whole window there, 1fr + 330 px is comfortable down to about 860 px —
-   and one column here was the worst of both worlds: the bill sat below every dish on the menu, and
-   the floating bill bar only appears at 768 px and under, so there was nothing to tap either.
-   Keep this number the same as the one checkMobileView() uses in assets/js/script.js. */
-@media (max-width: 860px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr); height: auto; } .ps .pos-menu-section { max-height: none; overflow: visible; } .ps-bar { position: static; } }
+/* One column, bill under the menu — and only on a phone, where the floating bill bar and bottom
+   actions take over (they are pinned inside the 768 px block in style.css, and checkMobileView()
+   in assets/js/script.js switches them on at the same width).
+   This used to start at 1024 px, from when main-content stayed 302 px narrow below that breakpoint
+   (style.css) and a 330 px bill column genuinely did not fit. It fits now. One column from 769 to
+   1024 was the worst of both worlds: the bill sat below every dish on the menu, and the floating
+   bar was not shown that wide, so there was nothing to tap either. */
+@media (max-width: 768px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr); height: auto; } .ps .pos-menu-section { max-height: none; overflow: visible; } .ps-bar { position: static; } }
 .ps .pos-menu-section, .ps .pos-cart-section { min-width: 0; }
 
 /* ── POS cart: keep the totals + Pay/Hold/KOT pinned; only the item list scrolls ── */
@@ -1833,9 +1834,14 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps .pos-cart-items { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ps .pos-cart-header, .ps .pos-table-select, .ps .pos-cart-summary, .ps .pos-cart-actions { flex: 0 0 auto; }
 
-/* Fit the POS to the viewport on desktop so the page itself never scrolls:
-   the menu grid and the cart item list are the only things that move. */
-@media (min-width: 1025px) {
+/* Fit the POS to the viewport so the page itself never scrolls: the menu grid and the cart item
+   list are the only things that move, and Pay / Hold / KOT stay pinned where the thumb expects
+   them. This started at 1025 px, which left the two-column tablet range out: there the cart was
+   given "height: calc(100vh - 150px)" measured from the top of the window, while the page actually
+   starts 56 px lower because the sidebar is a bar across the top — so the buttons sat just past the
+   bottom edge and an order could not be taken without scrolling the whole page. Down to 769 px now,
+   which is where the layout becomes one column and the floating bar takes over. */
+@media (min-width: 769px) {
   .main-content:has(#posPage.ps.active) { height: 100vh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
   .main-content:has(#posPage.ps.active) #posPage.ps.active { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
   .main-content:has(#posPage.ps.active) #posPage.ps.active .page-header { flex: 0 0 auto; }
@@ -1843,10 +1849,9 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
   .main-content:has(#posPage.ps.active) #posPage.ps.active .pos-container { flex: 1 1 auto; min-height: 0; height: auto; }
 }
 
-/* Tablet (menu stacked above cart): cap the item list so the totals + buttons stay on screen */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .ps .pos-cart-items { max-height: 46vh; }
-}
+/* The 769–1024 range used to stack the menu above the cart and capped the item list to keep the
+   totals in view. It is two columns with a viewport fit there now, so the cap would only shorten
+   the list for no reason. On a phone the floating bar handles it. */
 
 /* new-order popup: Ready in = preparing (+ delivery) time rows with chips and a − / + stepper */
 .no-times { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
