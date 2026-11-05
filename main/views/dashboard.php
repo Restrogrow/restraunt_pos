@@ -1254,7 +1254,12 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
             </li>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="creditPage">
-                <span class="nav-icon material-symbols-rounded">handshake</span>
+                <!-- "balance" rather than "handshake": the icon font is a subset of the names in
+                     config/icon_names.txt, and handshake was never in it, so this read "handshake"
+                     in the sidebar instead of showing an icon. The list is full (adding a name
+                     tips the request past the length where Google stops subsetting and sends the
+                     whole 365 KB font), so this reuses one already there. -->
+                <span class="nav-icon material-symbols-rounded">balance</span>
                 <span class="nav-label">Credit</span>
               </a>
               <span class="nav-tooltip">Credit (udhaar)</span>
@@ -1271,7 +1276,9 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
         <!-- staff attendance, salaries and the payroll report (config/attendance.php) -->
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
-            <span class="nav-icon material-symbols-rounded">how_to_reg</span>
+            <!-- "badge" rather than "how_to_reg", for the same reason as Credit above: how_to_reg
+                 is not in config/icon_names.txt, so the sidebar printed the word itself. -->
+            <span class="nav-icon material-symbols-rounded">badge</span>
             <span class="nav-label">Attendance</span>
             <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
           </a>
@@ -1279,7 +1286,7 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
           <ul class="submenu">
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="attendancePage">
-                <span class="nav-icon material-symbols-rounded">how_to_reg</span>
+                <span class="nav-icon material-symbols-rounded">badge</span>
                 <span class="nav-label">Attendance</span>
               </a>
               <span class="nav-tooltip">Attendance</span>
