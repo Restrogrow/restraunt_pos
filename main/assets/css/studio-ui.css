@@ -1819,8 +1819,13 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 }
 .ps-search { flex: 0 0 auto !important; }
 @media (min-width: 900px) { .ps-cats { flex-wrap: wrap; overflow: visible; } }
-@media (max-width: 1024px) { .ps .pos-container { grid-template-columns: 1fr; height: auto; } .ps .pos-menu-section { max-height: none; overflow: visible; } .ps-bar { position: static; } }
-@media (max-width: 1024px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr); } }
+/* One column, bill under the menu. This used to start at 1024 px, from when main-content stayed
+   302 px narrow below that breakpoint (style.css) and a 330 px bill column genuinely did not fit.
+   With the page using the whole window there, 1fr + 330 px is comfortable down to about 860 px —
+   and one column here was the worst of both worlds: the bill sat below every dish on the menu, and
+   the floating bill bar only appears at 768 px and under, so there was nothing to tap either.
+   Keep this number the same as the one checkMobileView() uses in assets/js/script.js. */
+@media (max-width: 860px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr); height: auto; } .ps .pos-menu-section { max-height: none; overflow: visible; } .ps-bar { position: static; } }
 .ps .pos-menu-section, .ps .pos-cart-section { min-width: 0; }
 
 /* ── POS cart: keep the totals + Pay/Hold/KOT pinned; only the item list scrolls ── */

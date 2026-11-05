@@ -160,6 +160,13 @@
   }
 
   async function blePick() {
+    // A machine with Bluetooth switched off, or none at all, still opens an empty picker and then
+    // throws the same NotFoundError as "the person pressed Cancel" — so ask first and say so plainly.
+    if (navigator.bluetooth.getAvailability) {
+      var has = true;
+      try { has = await navigator.bluetooth.getAvailability(); } catch (e) {}
+      if (!has) { var off = new Error('Bluetooth is off, or this computer has none. Switch it on and try again.'); off.name = 'RgBluetoothOff'; throw off; }
+    }
     var dev = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BLE_SERVICES });
     setState('connecting');
     bleAttach(dev, await bleOpen(dev));
@@ -304,8 +311,19 @@
       } catch (e) {
         log('connect failed:', e && e.name, e && e.message);
         setState(saved() ? 'disconnected' : 'idle');
-        // picker closed, or opened too long after the tap (the caller then asks with a button)
-        if (e && (e.name === 'NotFoundError' || e.name === 'AbortError' || e.name === 'SecurityError')) return false;
+        // The picker opened too long after the tap, or was dismissed by the page: not worth a window.
+        if (e && (e.name === 'AbortError' || e.name === 'SecurityError')) return false;
+        // NotFoundError means one of two very different things and the browser will not say which:
+        // the person pressed Cancel, or the list was empty and there was nothing to press. Staying
+        // silent is right for the first and is why the second looked like the button did nothing —
+        // which is what a receipt printer speaking only classic Bluetooth does here, because Web
+        // Bluetooth only ever sees BLE. Say it once, quietly, with what actually works instead.
+        if (e && e.name === 'NotFoundError') {
+          if (want === 'bluetooth') {
+            say('No printer was picked. If yours never appeared in the list, it is probably a classic-Bluetooth printer, which a website cannot see — pair it in Windows Bluetooth settings, then choose USB printer in Settings › Printer.', 'error');
+          }
+          return false;
+        }
         lastError = e && e.message ? e.message : 'Could not connect to the printer';
         setState(state);
         await showProblem('Printer did not connect', lastError, want);
@@ -432,7 +450,10 @@
   async function showProblem(title, msg, mode) {
     var tips = mode === 'serial'
       ? ['Check the USB cable, or that the printer is paired in Windows Bluetooth settings.', 'If the receipt comes out as symbols, change Speed in Settings > Printer.']
-      : ['Turn the printer off and on, and keep it close.', 'Disconnect it from any other phone or app (a printer takes one connection at a time).', 'If the list shows two names for it, try the other one.', 'Older printers that only use classic Bluetooth can\'t be reached by a website on Android. On a Windows PC, pair it in Windows and choose USB printer.'];
+      : ['If the printer never appears in the list, it almost certainly speaks only classic Bluetooth, which no website can see. On Windows: pair it in Bluetooth settings, then pick USB printer in Settings › Printer — Windows gives it a COM port and that route works. Most counter-top receipt printers (ZKTeco, Epson, TVS and the rest) are this kind.',
+         'Turn the printer off and on, and keep it close.',
+         'Disconnect it from any other phone or app — a printer takes one connection at a time.',
+         'If the list shows two names for it, try the other one.'];
     if (global.Swal) {
       await global.Swal.fire({
         title: title, icon: 'error', confirmButtonText: 'OK', confirmButtonColor: '#2563eb',
