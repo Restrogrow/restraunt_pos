@@ -398,6 +398,8 @@ require_once __DIR__ . '/../website/rg_net.php'; echo rgNetScript(false); ?>
   <!-- Navigation style (Settings › Navigation style): sidebar, bottom dock or round menu — assets/js/nav-style.js -->
   <link rel="stylesheet" href="../assets/css/nav-style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/nav-style.css'); ?>">
   <script>try { var rgNs = localStorage.getItem('rgNavStyle'); if (rgNs === 'dock' || rgNs === 'radial') document.documentElement.classList.add(rgNs === 'dock' ? 'rg-nav-dock' : 'rg-nav-radial'); } catch (e) {}</script>
+  <!-- switched off in Settings › Navigation style: set before the page draws so it never flashes up -->
+  <script>try { if (localStorage.getItem('rgAiFabOff') === '1') document.documentElement.classList.add('rg-aim-off'); } catch (e) {}</script>
   <link rel="stylesheet" href="../assets/css/rg-stats.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/rg-stats.css'); ?>">
   <!-- phones and small tablets: loaded last so it only corrects narrow screens; tables become cards -->
   <link rel="stylesheet" href="../assets/css/mobile.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/mobile.css'); ?>">
@@ -5934,6 +5936,20 @@ function toggleGatewayMode() {
               </div>
               <p class="rgnav-note">Changes straight away and is remembered on this device. Every page works the same in all three.</p>
             </div>
+            <?php if (!in_array('ownerManagerPage', $accessOff, true)): ?>
+            <!-- the floating AI manager button (assets/js/ai-manager-fab.js), kept on this device -->
+            <div class="st-card">
+              <div class="st-card-h"><b>Floating AI manager button</b><small>The ✨ button that opens the AI manager from any page.</small></div>
+              <label class="st-toggle st-toggle-flat">
+                <span><b>Show the floating button</b></span>
+                <span class="st-switch"><input type="checkbox" id="rgAiFabToggle"><i></i></span>
+              </label>
+              <div class="st-inline">
+                <span class="st-help">Drag the button anywhere you like — it keeps away from Billing's Pay, Hold and KOT on its own. The × on it hides it.</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="rgAiFabReset"><span class="material-symbols-rounded">restart_alt</span>Reset position</button>
+              </div>
+            </div>
+            <?php endif; ?>
           </section>
 
           <!-- one save bar for every section -->
@@ -7738,10 +7754,27 @@ function toggleGatewayMode() {
   <?php if (!in_array('ownerManagerPage', $accessOff, true)): ?>
   <!-- Growth › AI manager, as a button that stays on screen: owners were not finding it buried in
        the Growth menu. Opens the very same page the sidebar item does. Left out entirely when Super
-       Admin has switched the section off for this restaurant. -->
+       Admin has switched the section off for this restaurant.
+
+       Drag it anywhere, the × puts it away, and Settings › Navigation style brings it back. Where it
+       parks itself and how it is dragged: assets/js/ai-manager-fab.js. -->
   <style>
+    html.rg-aim-off .rg-aim { display: none !important; }
     .rg-aim {
-      position: fixed; right: 20px; bottom: 20px; z-index: 900;
+      position: fixed; z-index: 900;
+      right: var(--rg-aim-edge, 20px); bottom: calc(var(--rg-aim-edge, 20px) + var(--rg-aim-lift, 0px));
+      display: inline-flex; align-items: center;
+      touch-action: none; -webkit-user-select: none; user-select: none;
+    }
+    /* the bottom-right corner was busy: the other one, clear of the sidebar */
+    .rg-aim-left { right: auto; left: var(--rg-aim-gut, 20px); }
+    /* dragged: the script sets left and top, and it now sits over the furniture it was dropped on */
+    .rg-aim-free { right: auto; bottom: auto; z-index: 996; }
+    .rg-aim-hide { display: none !important; }
+    html.rgnav-stack-open .rg-aim { visibility: hidden; }
+    body:has(.sidebar.menu-active) .rg-aim { display: none !important; }
+
+    .rg-aim-go {
       display: inline-flex; align-items: center; gap: 10px;
       height: 56px; padding: 0 18px 0 16px;
       border: 0; border-radius: 999px; cursor: pointer;
@@ -7750,49 +7783,51 @@ function toggleGatewayMode() {
       box-shadow: 0 10px 26px -8px rgba(79, 70, 229, .65), 0 2px 6px rgba(0, 0, 0, .18);
       transition: transform .15s ease, box-shadow .15s ease;
     }
-    .rg-aim:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -10px rgba(79, 70, 229, .7), 0 3px 8px rgba(0, 0, 0, .2); }
-    .rg-aim:active { transform: translateY(0); }
-    .rg-aim:focus-visible { outline: 3px solid #c7d2fe; outline-offset: 3px; }
-    .rg-aim .material-symbols-rounded { font-size: 24px; }
-    .rg-aim-hide { display: none !important; }
-    @media (max-width: 768px) { .rg-aim { right: 14px; bottom: 14px; height: 52px; padding: 0 16px 0 14px; font-size: 14px; } }
-    /* on a small phone the words cost more width than they earn: the icon alone */
-    @media (max-width: 420px) { .rg-aim { width: 52px; padding: 0; justify-content: center; } .rg-aim-text { display: none; } }
-    @media (prefers-reduced-motion: reduce) { .rg-aim { transition: none; } }
-  </style>
-  <button type="button" class="rg-aim" id="rgAiManagerFab"
-          title="AI manager — your daily report, and answers to any question about your restaurant"
-          aria-label="Open the AI manager">
-    <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-    <span class="rg-aim-text">AI manager</span>
-  </button>
-  <script>
-  (function () {
-    var fab = document.getElementById('rgAiManagerFab');
-    if (!fab) return;
-    var page = document.getElementById('ownerManagerPage');
-    var bars = [].slice.call(document.querySelectorAll('.sort-bar'));
+    .rg-aim-go:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -10px rgba(79, 70, 229, .7), 0 3px 8px rgba(0, 0, 0, .2); }
+    .rg-aim-go:active { transform: translateY(0); }
+    .rg-aim-go:focus-visible { outline: 3px solid #c7d2fe; outline-offset: 3px; }
+    .rg-aim-go .material-symbols-rounded { font-size: 24px; }
+    .rg-aim-drag { cursor: grabbing; }
+    .rg-aim-drag .rg-aim-go { transform: scale(1.04); box-shadow: 0 22px 40px -12px rgba(79, 70, 229, .75); }
 
-    fab.addEventListener('click', function () {
-      if (window.showPage) { window.showPage('ownerManagerPage'); return; }
-      // script.js is deferred; before it lands, the sidebar's own link still works
-      var link = document.querySelector('.sidebar [data-page="ownerManagerPage"]');
-      if (link) link.click();
-    });
-
-    // out of the way when the AI manager is already open, and when the menu's reorder bar is
-    // across the bottom — that bar is fixed too and lands in the same corner
-    function sync() {
-      var open = !!(page && page.classList.contains('active'));
-      var sorting = bars.some(function (b) { return getComputedStyle(b).display !== 'none'; });
-      fab.classList.toggle('rg-aim-hide', open || sorting);
+    /* × to put it away; on a touch screen there is no hover to wait for */
+    .rg-aim-x {
+      position: absolute; top: -7px; right: -7px; width: 24px; height: 24px;
+      border: 2px solid #fff; border-radius: 50%; padding: 0; cursor: pointer;
+      background: #111827; color: #fff; display: grid; place-items: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+      opacity: 0; transform: scale(.7); transition: opacity .15s ease, transform .15s ease;
     }
-    var watch = new MutationObserver(sync);
-    if (page) watch.observe(page, { attributes: true, attributeFilter: ['class'] });
-    bars.forEach(function (b) { watch.observe(b, { attributes: true, attributeFilter: ['style', 'class'] }); });
-    sync();
-  })();
-  </script>
+    .rg-aim-x .material-symbols-rounded { font-size: 14px; }
+    .rg-aim:hover .rg-aim-x, .rg-aim:focus-within .rg-aim-x, .rg-aim-drag .rg-aim-x { opacity: 1; transform: none; }
+    .rg-aim-x:focus-visible { outline: 3px solid #c7d2fe; outline-offset: 2px; opacity: 1; transform: none; }
+    @media (hover: none) { .rg-aim-x { opacity: 1; transform: none; } }
+
+    @media (max-width: 768px) {
+      .rg-aim { --rg-aim-edge: 14px; }
+      .rg-aim-go { height: 52px; padding: 0 16px 0 14px; font-size: 14px; }
+    }
+    /* on a small phone the words cost more width than they earn: the icon alone */
+    @media (max-width: 420px) { .rg-aim-go { width: 52px; padding: 0; justify-content: center; } .rg-aim-text { display: none; } }
+    @media (prefers-reduced-motion: reduce) { .rg-aim-go { transition: none; } }
+
+    /* Settings › Navigation style: nothing to reset until the button has been dragged */
+    #rgAiFabReset:disabled { opacity: .45; cursor: default; }
+  </style>
+  <div class="rg-aim" id="rgAiManagerFab">
+    <button type="button" class="rg-aim-go" id="rgAiManagerOpen"
+            title="AI manager — your daily report, and answers to any question about your restaurant. Drag to move."
+            aria-label="Open the AI manager">
+      <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+      <span class="rg-aim-text">AI manager</span>
+    </button>
+    <button type="button" class="rg-aim-x" id="rgAiManagerHide"
+            title="Hide this button — Settings › Navigation style brings it back"
+            aria-label="Hide the AI manager button">
+      <span class="material-symbols-rounded" aria-hidden="true">close</span>
+    </button>
+  </div>
+  <script src="../assets/js/ai-manager-fab.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/ai-manager-fab.js'); ?>" defer></script>
   <?php endif; ?>
 
   <!-- Script -->
