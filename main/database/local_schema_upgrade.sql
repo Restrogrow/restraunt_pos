@@ -36,6 +36,7 @@ ALTER TABLE order_items
 
 -- ── users (restaurant settings) ──
 ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS phone_2 VARCHAR(20) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS owner_name VARCHAR(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS description_format VARCHAR(20) DEFAULT 'paragraph',

@@ -1997,7 +1997,11 @@ window.socialLinks = {
       <div style="position:relative">
         <button class="more-btn" onclick="toggleDropdown()"><i class="fa fa-ellipsis-v"></i></button>
         <div class="more-dropdown" id="moreDropdown">
-          <a onclick="closeDropdown();window.location.href='tel:<?php echo htmlspecialchars($restaurant_phone ?? '', ENT_QUOTES, 'UTF-8'); ?>'"><i class="fa fa-phone"></i> Call</a>
+          <?php require_once __DIR__ . '/../config/restaurant_contact.php'; $rgPhones = rgPhones($restaurant_phone ?? '', $restaurant_phone_2 ?? ''); ?>
+          <a onclick="closeDropdown();window.location.href='tel:<?php echo htmlspecialchars($rgPhones[0] ?? '', ENT_QUOTES, 'UTF-8'); ?>'"><i class="fa fa-phone"></i> Call</a>
+          <?php if (count($rgPhones) > 1): ?>
+          <a onclick="closeDropdown();window.location.href='tel:<?php echo htmlspecialchars($rgPhones[1], ENT_QUOTES, 'UTF-8'); ?>'"><i class="fa fa-phone"></i> Call <?php echo htmlspecialchars($rgPhones[1], ENT_QUOTES, 'UTF-8'); ?></a>
+          <?php endif; ?>
           <a onclick="closeDropdown();window.location.href='mailto:<?php echo htmlspecialchars($restaurant_email ?? '', ENT_QUOTES, 'UTF-8'); ?>'"><i class="fa fa-envelope"></i> Email</a>
           <div class="divider"></div>
           <a onclick="closeDropdown();scrollToSection('homeSection',document.querySelector('.nav-item'))"><i class="fa fa-home"></i> Home</a>
@@ -2138,9 +2142,9 @@ window.socialLinks = {
       <div class="link-icon" style="background:#3b82f6"><i class="fa fa-envelope link-icon-i"></i></div>
       <div><div class="link-name">Email</div><div class="link-desc"><?php echo htmlspecialchars($restaurant_email ?? 'Send us an email', ENT_QUOTES, 'UTF-8'); ?></div></div>
     </div>
-    <div class="link-card" onclick="window.location.href='tel:<?php echo htmlspecialchars($restaurant_phone ?? '', ENT_QUOTES, 'UTF-8'); ?>'">
+    <div class="link-card" onclick="window.location.href='tel:<?php echo htmlspecialchars($rgPhones[0] ?? '', ENT_QUOTES, 'UTF-8'); ?>'">
       <div class="link-icon" style="background:#10b981"><i class="fa fa-phone link-icon-i"></i></div>
-      <div><div class="link-name">Call</div><div class="link-desc"><?php echo htmlspecialchars($restaurant_phone ?? 'Tap to call', ENT_QUOTES, 'UTF-8'); ?></div></div>
+      <div><div class="link-name">Call</div><div class="link-desc"><?php echo $rgPhones ? htmlspecialchars(implode(' · ', $rgPhones), ENT_QUOTES, 'UTF-8') : 'Tap to call'; ?></div></div>
     </div>
     <div class="link-card" onclick="showQR()">
       <div class="link-icon" style="background:#8b5cf6"><i class="fa fa-qrcode link-icon-i"></i></div>

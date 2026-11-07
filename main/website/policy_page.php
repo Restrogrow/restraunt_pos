@@ -77,13 +77,15 @@ function renderPolicyPage($type) {
             }
         }
         if ($restaurant_id) {
-            $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, email, phone, owner_name, address FROM users WHERE restaurant_id = ? LIMIT 1");
+            require_once __DIR__ . '/../config/schema_cache.php';
+            $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, email, phone, " . (rgHasColumn($conn, 'users', 'phone_2') ? 'phone_2' : "'' AS phone_2") . ", owner_name, address FROM users WHERE restaurant_id = ? LIMIT 1");
             $stmt->execute([$restaurant_id]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user) {
                 $restaurant_name = $user['restaurant_name'] ?: 'Restaurant';
                 $restaurant_email = $user['email'] ?? '';
                 $restaurant_phone = $user['phone'] ?? '';
+                $restaurant_phone_2 = $user['phone_2'] ?? '';
                 $restaurant_owner = $user['owner_name'] ?? '';
                 $restaurant_address = $user['address'] ?? '';
                 // same logo rules as header.php
@@ -126,7 +128,10 @@ function renderPolicyPage($type) {
     $e = function ($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); };
     $initials = '';
     foreach (preg_split('/\s+/', trim($restaurant_name)) as $w) { if ($w !== '' && strlen($initials) < 2) $initials .= mb_strtoupper(mb_substr($w, 0, 1)); }
-    $tel = preg_replace('/[^0-9+]/', '', $restaurant_phone);
+    require_once __DIR__ . '/../config/restaurant_contact.php';
+    $rgPhones = rgPhones($restaurant_phone, $restaurant_phone_2 ?? '');
+    $tel = isset($rgPhones[0]) ? preg_replace('/[^0-9+]/', '', $rgPhones[0]) : '';
+    $tel2 = isset($rgPhones[1]) ? preg_replace('/[^0-9+]/', '', $rgPhones[1]) : '';
     $cssV = @filemtime(__DIR__ . '/policy_page.css') ?: 1;
     $jsV = @filemtime(__DIR__ . '/policy_page.js') ?: 1;
     require_once __DIR__ . '/font_links.php';
@@ -199,7 +204,7 @@ function renderPolicyPage($type) {
                     <span>Get in touch with <?php echo $e($restaurant_name); ?> and we will help you out.</span>
                 </div>
                 <div class="pp-help-actions">
-                    <?php if ($tel): ?><a class="pp-btn" href="tel:<?php echo $e($tel); ?>"><span class="material-symbols-rounded">call</span>Call us</a><?php endif; ?>
+                    <?php if ($tel): ?><a class="pp-btn" href="tel:<?php echo $e($tel); ?>"><span class="material-symbols-rounded">call</span>Call us</a><?php endif; ?><?php if ($tel2): ?><a class="pp-btn pp-btn-ghost" href="tel:<?php echo $e($tel2); ?>"><span class="material-symbols-rounded">call</span><?php echo $e($rgPhones[1]); ?></a><?php endif; ?>
                     <?php if ($restaurant_email): ?><a class="pp-btn pp-btn-ghost" href="mailto:<?php echo $e($restaurant_email); ?>"><span class="material-symbols-rounded">mail</span>Email us</a><?php endif; ?>
                 </div>
             </section>

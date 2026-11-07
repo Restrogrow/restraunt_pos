@@ -167,6 +167,8 @@
     if (opts.restaurantName) { p.bold(true); p.line(opts.restaurantName); p.bold(false); }
     if (opts.address) p.line(opts.address);
     if (opts.phone) p.line('Ph: ' + opts.phone);
+    // the second contact number, on its own line: two numbers side by side do not fit 32-column paper
+    if (opts.phone2 && opts.phone2 !== opts.phone) p.line('Ph: ' + opts.phone2);
 
     if (opts.title) {
       p.line('');
@@ -288,7 +290,7 @@
     return left + ' '.repeat(Math.max(1, width - left.length - right.length)) + right;
   }
 
-  // o: { charWidth, restaurantName, address, phone, email, website, businessIdLabel, businessIdNo,
+  // o: { charWidth, restaurantName, address, phone, phone2, email, website, businessIdLabel, businessIdNo,
   //      billNo, createdAt, billTo, items: [{ name, quantity, rate, amount?, sub? }], subtotal,
   //      discounts: [[label, amount]], taxLabel, tax, total, afterTotal: [[label, value]],
   //      paymentMethod, notes: [line], logoRaster, qrRaster, qrLabel }
@@ -305,6 +307,7 @@
     p.size(false).bold(false);
     wrapText(o.address || '', width).forEach(function (l) { if (l) p.line(l); });
     if (o.phone) p.line('Phone: ' + o.phone);
+    if (o.phone2 && o.phone2 !== o.phone) p.line('Phone: ' + o.phone2);
     if (o.email) p.line('Email: ' + o.email);
     if (o.website) wrapText('Website Menu: ' + o.website, width).forEach(function (l) { p.line(l); });
     if (o.businessIdNo) p.line((o.businessIdLabel || 'PAN') + ': ' + o.businessIdNo);

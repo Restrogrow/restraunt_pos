@@ -36,6 +36,14 @@ let menuItemSortMode = false;
 let menuSortData = [];
 let menuItemSortData = [];
 
+// The second contact number (Settings › Restaurant profile › Contact), when there is one and it is
+// not the first one typed twice. Bills and previews print it on its own line under the first.
+function rgSecondPhone(info) {
+  var a = String((info && info.phone) || '').replace(/\D/g, '');
+  var b = String((info && info.phone2) || '').trim();
+  return (b && b.replace(/\D/g, '') !== a) ? b : '';
+}
+
 // Toast fallback when Swal is not available
 function showToastFallback(msg, type) {
   if (window.RGNotify) return RGNotify.toast(msg, type);
@@ -9167,7 +9175,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, kotNumber) {
-    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '', showBusinessId: false, businessIdLabel: '', businessIdNo: '' };
+    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', phone2: '', user_id: '', showBusinessId: false, businessIdLabel: '', businessIdNo: '' };
     try {
       const infoRes = await rgFetchRetry('../admin/get_session.php');
       const infoData = await infoRes.json();
@@ -9177,6 +9185,7 @@ document.addEventListener("DOMContentLoaded", () => {
         restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
         restaurantInfo.address = infoData.data.address || '';
         restaurantInfo.phone = infoData.data.phone || '';
+        restaurantInfo.phone2 = infoData.data.phone_2 || '';
         restaurantInfo.showBusinessId = infoData.data.show_business_id == 1 || infoData.data.show_business_id === '1';
         restaurantInfo.businessIdLabel = infoData.data.business_id_label || '';
         restaurantInfo.businessIdNo = infoData.data.business_id_no || '';
@@ -9258,6 +9267,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+        ${rgSecondPhone(restaurantInfo) ? `<div class="restaurant-details">Ph: ${escapeHtml(rgSecondPhone(restaurantInfo))}</div>` : ''}
         ${restaurantInfo.showBusinessId && restaurantInfo.businessIdNo ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.businessIdLabel || 'PAN')}: ${escapeHtml(restaurantInfo.businessIdNo)}</div>` : ''}
         ${isNepal && showGst ? '<div class="bill-tag">TAX INVOICE</div>' : ''}
         <div class="bill-tag">BILL #${escapeHtml(String(kotNumber))}</div>
@@ -9316,6 +9326,7 @@ document.addEventListener("DOMContentLoaded", () => {
         restaurantName: restaurantInfo.name,
         address: restaurantInfo.address,
         phone: restaurantInfo.phone,
+        phone2: restaurantInfo.phone2,
         businessIdLabel: restaurantInfo.businessIdLabel,
         businessIdNo: restaurantInfo.showBusinessId ? restaurantInfo.businessIdNo : '',
         billNo: kotNumber,
@@ -11136,6 +11147,7 @@ window.printKOT = async function(kotId, onClose, opts) {
         restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
         restaurantInfo.address = infoData.data.address || '';
         restaurantInfo.phone = infoData.data.phone || '';
+        restaurantInfo.phone2 = infoData.data.phone_2 || '';
         restaurantInfo.email = infoData.data.email || '';
       }
     } catch (e) {
@@ -11215,6 +11227,7 @@ window.printKOT = async function(kotId, onClose, opts) {
         <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+        ${rgSecondPhone(restaurantInfo) ? `<div class="restaurant-details">Ph: ${escapeHtml(rgSecondPhone(restaurantInfo))}</div>` : ''}
       </div>
       <div class="kot-banner">
         ${isBot ? '<div class="kot-ser">BAR ORDER TICKET</div>' : ''}
@@ -11456,6 +11469,7 @@ window.printOrder = async function(orderId, preset) {
         restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
         restaurantInfo.address = infoData.data.address || '';
         restaurantInfo.phone = infoData.data.phone || '';
+        restaurantInfo.phone2 = infoData.data.phone_2 || '';
         restaurantInfo.email = infoData.data.email || '';
         restaurantInfo.business_qr_code_path = infoData.data.business_qr_code_path || '';
         restaurantInfo.enable_gst = infoData.data.enable_gst !== undefined ? Boolean(Number(infoData.data.enable_gst)) : true;
@@ -11577,6 +11591,7 @@ window.printOrder = async function(orderId, preset) {
         <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Mob: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+        ${rgSecondPhone(restaurantInfo) ? `<div class="restaurant-details">Mob: ${escapeHtml(rgSecondPhone(restaurantInfo))}</div>` : ''}
       </div>
 
       <div class="bill-meta">
@@ -11645,7 +11660,7 @@ window.printOrder = async function(orderId, preset) {
       <div class="asterisk">* * * * * * * * * * * * *</div>
       <div class="payment-info">
         <strong>Need help? Contact us:</strong><br>
-        ${escapeHtml(restaurantInfo.phone)}
+        ${escapeHtml(restaurantInfo.phone)}${rgSecondPhone(restaurantInfo) ? '<br>' + escapeHtml(rgSecondPhone(restaurantInfo)) : ''}
       </div>
       ` : ''}
 
@@ -11668,6 +11683,7 @@ window.printOrder = async function(orderId, preset) {
         restaurantName: restaurantInfo.name,
         address: restaurantInfo.address,
         phone: restaurantInfo.phone,
+        phone2: restaurantInfo.phone2,
         email: restaurantInfo.email,
         billNo: order.bill_label || order.bill_no || order.order_number || order.id,
         createdAt: order.created_at,
@@ -12499,6 +12515,8 @@ async function loadSettingsData() {
       if (restaurantIdSetting) restaurantIdSetting.value = user.restaurant_id || '';
       if (restaurantEmail) restaurantEmail.value = user.email || '';
       if (restaurantPhone) restaurantPhone.value = user.phone || '';
+      const restaurantPhone2 = document.getElementById('restaurantPhone2');
+      if (restaurantPhone2) restaurantPhone2.value = user.phone_2 || '';
       if (document.getElementById('ownerName')) document.getElementById('ownerName').value = user.owner_name || '';
       if (restaurantAddress) restaurantAddress.value = user.address || '';
       const restaurantDescription = document.getElementById('restaurantDescription');
@@ -12886,6 +12904,7 @@ function setupSettingsForms() {
       const restaurantName = document.getElementById('restaurantNameSetting')?.value.trim();
       const restaurantEmail = document.getElementById('restaurantEmail')?.value.trim();
       const restaurantPhone = document.getElementById('restaurantPhone')?.value.trim();
+      const restaurantPhone2 = document.getElementById('restaurantPhone2')?.value.trim();
       const restaurantAddress = document.getElementById('restaurantAddress')?.value.trim();
       const restaurantDescription = document.getElementById('restaurantDescription')?.value.trim();
       
@@ -12928,7 +12947,7 @@ function setupSettingsForms() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&enable_reservations=${encodeURIComponent(document.getElementById('enableReservationsToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}&show_business_id=${encodeURIComponent(document.getElementById('showBusinessIdToggle')?.checked ? '1' : '0')}&business_id_label=${encodeURIComponent(document.getElementById('businessIdLabelInput')?.value || '')}&business_id_no=${encodeURIComponent(document.getElementById('businessIdNoInput')?.value || '')}` +
+          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&phone_2=${encodeURIComponent(restaurantPhone2 || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&enable_reservations=${encodeURIComponent(document.getElementById('enableReservationsToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}&show_business_id=${encodeURIComponent(document.getElementById('showBusinessIdToggle')?.checked ? '1' : '0')}&business_id_label=${encodeURIComponent(document.getElementById('businessIdLabelInput')?.value || '')}&business_id_no=${encodeURIComponent(document.getElementById('businessIdNoInput')?.value || '')}` +
             (document.getElementById('pricesIncludeTaxToggle') ? `&prices_include_tax=${document.getElementById('pricesIncludeTaxToggle').checked ? '1' : '0'}&service_charge_percent=${encodeURIComponent(document.getElementById('serviceChargeInput')?.value || '0')}` : '')
         });
         

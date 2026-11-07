@@ -59,12 +59,14 @@ try {
     ensureGstinColumns($conn);
     require_once __DIR__ . '/../config/business_id_helpers.php';
     ensureBusinessIdColumns($conn);
+    require_once __DIR__ . '/../config/restaurant_contact.php';
+    rgEnsureOnce('ensureRestaurantContactColumns', $conn);
 
     $row = [];
 
     if ($isAdmin) {
         try {
-            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, show_business_id, business_id_label, business_id_no FROM users WHERE id = :id LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, phone_2, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, show_business_id, business_id_label, business_id_no FROM users WHERE id = :id LIMIT 1");
             $stmt->execute([':id' => $_SESSION['user_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
@@ -105,7 +107,7 @@ try {
             if (!empty($staffRow['restaurant_id'])) {
                 // enable_gst/tax_percent/tax_name: the app's POS works its tax out from these, and
                 // pos_operations.php rejects any tax that differs from the restaurant's own setting
-                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, address, phone, country, show_business_id, business_id_label, business_id_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, enable_gst, tax_name, tax_percent FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, address, phone, phone_2, country, show_business_id, business_id_label, business_id_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, enable_gst, tax_name, tax_percent FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
                 $restStmt->execute([':restaurant_id' => $staffRow['restaurant_id']]);
                 $restRow = $restStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -155,6 +157,7 @@ try {
         'restaurant_name' => $_SESSION['restaurant_name'] ?? ($row['restaurant_name'] ?? 'Restaurant'),
         'email' => $row['email'] ?? $_SESSION['email'] ?? null,
         'phone' => $row['phone'] ?? null,
+        'phone_2' => $row['phone_2'] ?? null,   // the second contact number (config/restaurant_contact.php)
         'address' => $row['address'] ?? null,
         'description' => $row['description'] ?? null,
         'description_format' => $row['description_format'] ?? 'paragraph',

@@ -5343,6 +5343,12 @@ function toggleGatewayMode() {
                   <input type="email" id="restaurantEmail" placeholder="Enter email address">
                 </div>
               </div>
+              <!-- the other line: a landline beside a mobile, the kitchen beside the counter -->
+              <div class="st-field">
+                <label for="restaurantPhone2">Second phone number <em>Optional</em></label>
+                <input type="tel" id="restaurantPhone2" placeholder="Another number customers can call">
+                <p class="st-help">Shown next to the first one on your website and on bills. Leave it empty if you have only one.</p>
+              </div>
             </div>
             <div class="st-card st-card-muted">
               <div class="st-field st-id">

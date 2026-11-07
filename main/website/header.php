@@ -139,6 +139,7 @@ $restaurant_address = null;
 $restaurant_description = null;
 $restaurant_description_format = 'paragraph';
 $restaurant_phone = null;
+$restaurant_phone_2 = null;   // the second contact number (Settings › Restaurant profile › Contact)
 $restaurant_email = null;
 $opening_hours = null;
 $restaurant_open = true;
@@ -223,13 +224,13 @@ if ($restaurant_id) {
         if (function_exists('getConnection')) {
             $conn = getConnection();
             try {
-$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, phone_2, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             } catch (Exception $e2) {
                 // Fallback: a newer column (delivery_radius_km, etc.) is missing on this database - ask
                 // only for the columns it has, so one missing column doesn't also drop the tax rate,
                 // country or COD setting (the cart then showed 5% GST while the order was billed the real rate)
-                $hdrCols = ['id', 'restaurant_name', 'restaurant_logo', 'currency_symbol', 'country', 'tax_name', 'tax_percent', 'timezone', 'address', 'description', 'description_format', 'phone', 'email', 'opening_hours', 'minimum_order_value', 'packaging_charge', 'enable_gst', 'payment_gateway_type', 'show_install_app', 'google_maps_link', 'owner_name', 'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link', 'enable_delivery', 'enable_takeaway', 'enable_dinein', 'cod_enabled', 'custom_domain', 'embed_enabled', 'delivery_radius_km', 'restaurant_lat', 'restaurant_lng', 'enable_km_delivery', 'delivery_rate_per_km', 'subscription_status'];
+                $hdrCols = ['id', 'restaurant_name', 'restaurant_logo', 'currency_symbol', 'country', 'tax_name', 'tax_percent', 'timezone', 'address', 'description', 'description_format', 'phone', 'phone_2', 'email', 'opening_hours', 'minimum_order_value', 'packaging_charge', 'enable_gst', 'payment_gateway_type', 'show_install_app', 'google_maps_link', 'owner_name', 'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link', 'enable_delivery', 'enable_takeaway', 'enable_dinein', 'cod_enabled', 'custom_domain', 'embed_enabled', 'delivery_radius_km', 'restaurant_lat', 'restaurant_lng', 'enable_km_delivery', 'delivery_rate_per_km', 'subscription_status'];
                 $hdrHave = [];
                 foreach ($conn->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_ASSOC) as $hc) $hdrHave[$hc['Field']] = true;
                 $hdrSel = array_map(function ($c) use ($hdrHave) { return isset($hdrHave[$c]) ? $c : "NULL AS $c"; }, $hdrCols);
@@ -268,6 +269,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 $restaurant_description = $row['description'] ?? null;
                 $restaurant_description_format = $row['description_format'] ?? 'paragraph';
                 $restaurant_phone = $row['phone'] ?? null;
+                $restaurant_phone_2 = $row['phone_2'] ?? null;
                 $restaurant_email = $row['email'] ?? null;
                 $opening_hours = $row['opening_hours'] ?? null;
                 $google_maps_link = $row['google_maps_link'] ?? null;
