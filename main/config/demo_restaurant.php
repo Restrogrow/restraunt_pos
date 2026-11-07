@@ -763,8 +763,8 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
             'Indiranagar 2nd Stage', 'HAL 3rd Stage', 'Domlur Layout', 'Jeevan Bima Nagar', 'CMH Road', 'Defence Colony',
             'Old Airport Road', 'Ulsoor', 'Kodihalli', 'New Thippasandra',
         ];
-        $seq = 0; $nOrders = 0; $todaySales = 0.0; $busy = [];
-        $makeOrder = function (int $ts, string $type, string $status, string $source) use (&$seq, &$nOrders, &$todaySales, &$busy, $pdo, $rid, $pool, $tables, $areas, $basket, $now, $items, $barMenus, $kitchenDrinks) {
+        $seq = 0; $nOrders = 0; $nRatings = 0; $todaySales = 0.0; $busy = [];
+        $makeOrder = function (int $ts, string $type, string $status, string $source) use (&$seq, &$nOrders, &$nRatings, &$todaySales, &$busy, $pdo, $rid, $pool, $tables, $areas, $basket, $now, $items, $barMenus, $kitchenDrinks) {
             $hour = (int)date('G', $ts);
             $cust = mt_rand(1, 10) <= 7 || $type === 'Delivery' ? $pool[mt_rand(0, count($pool) - 1)] : null;
             $tableId = $type === 'Dine-in' ? $tables[mt_rand(0, count($tables) - 1)] : null;
@@ -827,6 +827,25 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                 $date = date('Y-m-d', $ts);
                 $pdo->prepare('UPDATE customers SET total_visits = total_visits + 1, total_spent = total_spent + ?, last_visit_date = GREATEST(COALESCE(last_visit_date, ?), ?) WHERE id = ?')
                     ->execute([$total, $date, $date, $cust['id']]);
+            }
+            // Ratings, on about three in five finished orders. Without these the demo restaurant has
+            // 1,200 orders and an empty Feedback page, no stars on its website and none on its
+            // bestseller cards — the three parts of the product that only exist once customers have
+            // rated something. Spread the way real ones are: mostly 5 and 4, a few 3s, the odd 2.
+            if ($status === 'Completed' && $cust && mt_rand(1, 100) <= 60) {
+                $roll = mt_rand(1, 100);
+                if ($roll <= 55)      { $rating = 5; $say = ['Food was hot and fresh, packed well.', 'Tasted great, portion size was good.', 'Ordered again this week. Consistent.', 'Quick delivery and still warm.', 'Good value for the price.', null]; }
+                elseif ($roll <= 85)  { $rating = 4; $say = ['Good food, delivery took a little long.', 'Tasty, could be slightly less oily.', 'Nice portions. Packing could be better.', null]; }
+                elseif ($roll <= 97)  { $rating = 3; $say = ['Food was okay. Arrived a bit cold.', 'Average this time.', 'Took longer than the estimate.']; }
+                else                  { $rating = 2; $say = ['Order was late and the food was cold.', 'Not as good as last time.']; }
+                demoInsert($pdo, 'order_feedback', [
+                    'restaurant_id' => $rid, 'order_id' => $orderId,
+                    'order_number' => 'ORD-' . date('Ymd', $ts) . '-' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT),
+                    'customer_name' => $cust['name'], 'customer_phone' => $cust['phone'] ?? null,
+                    'rating' => $rating, 'review' => $say[mt_rand(0, count($say) - 1)], 'is_approved' => 1,
+                    'created_at' => date('Y-m-d H:i:s', $ts + mt_rand(2, 20) * 3600),
+                ]);
+                $nRatings++;
             }
             if (date('Y-m-d', $ts) === date('Y-m-d', $now) && $status !== 'Cancelled') $todaySales += $total;
             $nOrders++;
@@ -1119,6 +1138,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         'tables' => count($tables),
         'customers' => count($customers),
         'orders' => $nOrders,
+        'ratings' => $nRatings,
         'today_sales' => round($todaySales, 2),
         'login' => DEMO_USERNAME . ' / ' . DEMO_PASSWORD,
     ];
