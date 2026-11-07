@@ -57,13 +57,21 @@ if (!function_exists('rgHasColumn')) {
         return $yes;
     }
 
-    /** Run a "create tables / add columns if missing" function once per deploy. Never inside a transaction. */
+    /**
+     * Run a "create tables / add columns if missing" function once per deploy. Never inside a transaction.
+     *
+     * An ensure that returns false is not remembered, so it is tried again on the next request. Ensures
+     * catch their own database errors, so without that we cannot tell a real failure from a success: one
+     * ALTER that failed (table not there yet, lock timeout) would be marked done and the column would stay
+     * missing until the defining file was next edited. Returning nothing still counts as success, so the
+     * ensures that don't report back are unaffected.
+     */
     function rgEnsureOnce(string $fn, PDO $conn): void {
         if (!function_exists($fn)) return;
         $file = (new ReflectionFunction($fn))->getFileName();
         $key = 'e:' . $fn . ':' . @filemtime($file);
         if (rgSchemaKnown($key)) return;
-        $fn($conn);
+        if ($fn($conn) === false) return;
         rgSchemaRemember($key);
     }
 }

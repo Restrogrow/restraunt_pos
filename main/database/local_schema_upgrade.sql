@@ -193,3 +193,10 @@ CREATE TABLE IF NOT EXISTS website_offer_banners (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_offer_banners_rid (restaurant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Home page sliders. The table comes from the base dump without `placement`, which the website theme
+-- API selects, so a fresh local database serves every Website Appearance request as an error until
+-- this runs. The app adds it at runtime too (ensureBannerPlacementColumn), but only on a database the
+-- runtime ensure has not already been marked done for.
+ALTER TABLE website_banners
+  ADD COLUMN IF NOT EXISTS placement VARCHAR(20) NOT NULL DEFAULT 'home_top';

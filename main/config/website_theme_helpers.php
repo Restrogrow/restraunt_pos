@@ -187,17 +187,24 @@ function websiteBannerSlot(string $placement, array $placements, string $pad = '
 const BANNER_PLACEMENTS = ['home_top', 'home_menu', 'menu_top', 'cart', 'story'];
 const STORY_PHOTOS_MAX = 10;
 
-/** website_banners.placement, added once (default: Home page top). */
+/**
+ * website_banners.placement, added once (default: Home page top). Returns false when the column could
+ * not be added, so rgEnsureOnce tries again next request rather than remembering a failed ALTER - that
+ * is how a database ended up serving theme_api with no placement column at all.
+ */
 function ensureBannerPlacementColumn($conn) {
     static $done = false;
-    if ($done) return;
-    $done = true;
+    if ($done) return true;
     try {
         $col = $conn->query("SHOW COLUMNS FROM website_banners LIKE 'placement'");
-        if ($col && $col->fetch()) return;
-        $conn->exec("ALTER TABLE website_banners ADD COLUMN placement VARCHAR(20) NOT NULL DEFAULT 'home_top'");
+        if (!($col && $col->fetch())) {
+            $conn->exec("ALTER TABLE website_banners ADD COLUMN placement VARCHAR(20) NOT NULL DEFAULT 'home_top'");
+        }
+        $done = true;
+        return true;
     } catch (PDOException $e) {
         error_log('ensureBannerPlacementColumn: ' . $e->getMessage());
+        return false;
     }
 }
 
