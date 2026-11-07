@@ -1457,7 +1457,9 @@ body {
   display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 12px;
   margin-top: 12px;
 }
-.footer-links a { font-size: 11px; color: #888; text-decoration: none; }
+/* the padding is what makes an 11px link big enough to hit with a thumb; the negative margin
+   hands the space back so the row of links looks exactly as it did */
+.footer-links a { font-size: 11px; color: #888; text-decoration: none; padding: 7px 4px; margin: -7px -4px; }
 .footer-links span { color: #ccc; }
 
 .bottom-nav {

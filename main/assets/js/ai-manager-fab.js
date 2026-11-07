@@ -98,6 +98,24 @@
       up += step;
       fab.style.setProperty('--rg-aim-lift', up + 'px');
     }
+    return up;
+  }
+
+  /**
+   * Is it sitting on one of the page's own buttons? The list above only knows the furniture that is
+   * always in a corner; a card's Edit, a table row's Delete or a staff card's buttons land wherever
+   * the page puts them, and the button was covering those on a dozen screens.
+   */
+  function onAControl() {
+    var page = document.querySelector('.main-content > .page.active');
+    if (!page) return false;
+    var me = fab.getBoundingClientRect();
+    var list = page.querySelectorAll('button, a[href], select, input, textarea, [onclick], [role="button"]');
+    for (var i = 0; i < list.length; i++) {
+      var r = vis(list[i]);
+      if (r && hits(me, r)) return true;
+    }
+    return false;
   }
 
   function place() {
@@ -112,11 +130,32 @@
     }
     fab.style.left = fab.style.top = '';
     fab.style.setProperty('--rg-aim-gut', gutter() + 'px');
-    fab.classList.remove('rg-aim-left');
+    fab.classList.remove('rg-aim-left', 'rg-aim-tight');
     fab.style.setProperty('--rg-aim-lift', '0px');
-    if (!lift()) return;                 // the usual corner is free
-    fab.classList.add('rg-aim-left');    // busy: take the other one
-    liftClear();                         // and rise above anything running across the bottom
+
+    if (!lift() && !onAControl()) return;       // the usual corner is free
+    fab.classList.add('rg-aim-left');           // busy: try the other one
+    var up = liftClear();
+    if (!onAControl()) return;
+
+    // both corners have something under them. Step up a little — on a page of cards there is usually
+    // a gap between two rows — but only so far: past that it stops looking like a corner button.
+    for (var i = 0; i < 3; i++) {
+      up += 58;
+      fab.style.setProperty('--rg-aim-lift', up + 'px');
+      if (!lift() && !onAControl()) return;
+    }
+
+    // Nowhere on this page is clear. Back to the corner it belongs in, as the round icon alone: a
+    // third of the width has a third of the chance of sitting on something, and the words are the
+    // part that was doing the covering.
+    fab.classList.remove('rg-aim-left');
+    fab.classList.add('rg-aim-tight');
+    fab.style.setProperty('--rg-aim-lift', '0px');
+    liftClear();
+    if (!onAControl()) return;
+    fab.classList.add('rg-aim-left');
+    liftClear();
   }
 
   // ── on and off ──
@@ -226,8 +265,22 @@
     watch.observe(document.body, { childList: true });   // chips and bars appended straight to the body
   }
 
+  // A page draws its header first and loads its cards a moment later, so where the corner is free
+  // changes twice while it settles. Without these the button sat in the old page's spot for a
+  // second, then hopped — visible, and on a card page it hopped onto a button.
+  var lastPage = '';
+  function onPageChange() {
+    var now = document.querySelector('.main-content > .page.active');
+    var id = now ? now.id : '';
+    if (id === lastPage) return;
+    lastPage = id;
+    setTimeout(sync, 250);
+    setTimeout(sync, 700);
+  }
+
   function sync() {
     observe();
+    onPageChange();
     var busy = !!(aiPage && aiPage.classList.contains('active'));
     if (!busy) busy = HIDE_FOR.some(function (sel) {
       return [].some.call(document.querySelectorAll(sel), function (el) { return !!vis(el); });

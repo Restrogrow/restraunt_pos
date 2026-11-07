@@ -162,7 +162,10 @@ body.pp {
 /* tablet and phone: contents becomes a fold-out list above the text */
 @media (max-width: 900px) {
   .pp-main { grid-template-columns: 1fr; gap: 16px; padding-top: 20px; }
-  .pp-toc { position: static; max-height: none; overflow: visible; background: #fff; border: 1px solid var(--pp-line); border-radius: 14px; }
+  /* overflow stays hidden, not visible: Chrome hides a shut <details>'s contents by containing them,
+     and `visible` switches that off — so on a phone the shut "On this page" list drew itself anyway,
+     the policy text was laid out over it, and every tap meant for a link hit the text instead. */
+  .pp-toc { position: static; max-height: none; overflow: hidden; background: #fff; border: 1px solid var(--pp-line); border-radius: 14px; }
   .pp-toc::before { display: none; }
   .pp-toc summary {
     display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; list-style: none;
@@ -208,4 +211,13 @@ body.pp {
   .pp-body { padding: 0; }
   .pp-hero-ic { box-shadow: none; }
   .pp-body h2 { break-after: avoid; }
+}
+
+/* ── finger-sized hit areas on a phone ──
+   The back link and the footer's legal links are 24 px tall, which is small to hit and easy to miss.
+   The words keep their size; the padding that makes them easier to hit is taken back as negative
+   margin, so nothing on the line moves. */
+@media (max-width: 640px) {
+  .pp-back, .pp-foot nav a { padding: 7px 4px; margin: -7px -4px; }
+  .pp-foot nav { gap: 10px 16px; }
 }

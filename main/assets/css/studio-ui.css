@@ -736,7 +736,10 @@
 }
 
 /* ── order alerts set-up chip (assets/js/order-alerts.js) ── */
-.rg-alert-chip { position: fixed; left: 50%; bottom: 18px; z-index: 9000; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); padding: 10px 10px 10px 14px; border-radius: 16px; background: #111827; color: #fff; box-shadow: 0 18px 40px -14px rgba(17,24,39,.6); animation: stUp .3s ease both; }
+/* Centred with `translate`, not `transform`: the stUp entrance ends on `transform: none` and holds
+   it (fill-mode both), which wiped the centring out — so the chip sat with its left edge on the
+   middle of the screen, half of it lying over Billing's bill column. */
+.rg-alert-chip { position: fixed; left: 50%; bottom: 18px; z-index: 9000; translate: -50% 0; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); padding: 10px 10px 10px 14px; border-radius: 16px; background: #111827; color: #fff; box-shadow: 0 18px 40px -14px rgba(17,24,39,.6); animation: stUp .3s ease both; }
 .rg-alert-chip > .material-symbols-rounded { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px; background: #f59e0b; color: #111827; font-size: 21px; }
 .rg-alert-chip b { display: block; font-size: .9rem; }
 .rg-alert-chip small { display: block; color: rgba(255,255,255,.7); font-size: .76rem; }
@@ -744,6 +747,29 @@
 .rg-alert-x { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 9px; background: transparent; color: rgba(255,255,255,.7); cursor: pointer; }
 .rg-alert-x:hover { background: rgba(255,255,255,.1); color: #fff; }
 @media (max-width: 600px) { .rg-alert-chip small { display: none; } .rg-alert-chip { bottom: 12px; } }
+
+/* On a phone this bar already sits above the page and the page starts below it (mobile.css). On a
+   computer it floated over the bottom of the window, where it covered whatever happened to be at the
+   foot of the first screenful — on 25 of the dashboard's pages, something you could click, and on
+   Billing it was Pay and Hold. It gets the same treatment here: above the page rather than on top of
+   it, and centred over the content rather than over the window, so it clears the sidebar. */
+/* Centred by its margins between two insets, not by `left: 50%`: with only `left` set, the room it
+   has to lay itself out in is whatever is to the right of that point, so it wrapped onto two lines
+   and grew past the gap left for it. */
+@media (min-width: 641px) {
+  .rg-alert-chip {
+    top: 20px; bottom: auto; left: 0; right: 0;
+    translate: none; margin-inline: auto; width: max-content;
+    animation-name: rgChipDown;
+  }
+  body.rg-alert-shown .main-content > .page.active { margin-top: 62px; }
+}
+/* above 1024 px the sidebar holds its column, so the bar is centred over what is left of the window */
+@media (min-width: 1025px) {
+  .rg-alert-chip { left: 302px; }
+  body:has(.sidebar.collapsed) .rg-alert-chip { left: 117px; }
+  html.rg-nav-dock .rg-alert-chip, html.rg-nav-radial .rg-alert-chip { left: 0; }
+}
 
 /* ── Dashboard home (dh-*): assets/js/dashboard-home.js ── */
 .dh { font-variant-numeric: tabular-nums; }
@@ -1786,8 +1812,15 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps-badge { position: absolute; top: 8px; right: 8px; min-width: 30px; height: 26px; display: grid; place-items: center; padding: 0 7px; border-radius: 999px; background: #16a34a; color: #fff; font-size: .8rem; font-weight: 800; box-shadow: 0 4px 10px -4px rgba(22,163,74,.8); }
 /* cart */
 .ps .pos-cart-section { padding: 16px; border: 1px solid var(--sx-line); border-radius: 18px; box-shadow: var(--sx-shadow); }
-.ps .pos-cart-header { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--sx-line); }
-.ps .pos-cart-header h3 { font-size: 1.15rem; font-weight: 800; color: var(--sx-ink); }
+.ps .pos-cart-header { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--sx-line); gap: 8px; }
+.ps .pos-cart-header h3 { font-size: 1.15rem; font-weight: 800; color: var(--sx-ink); white-space: nowrap; }
+/* The bill column is 280 px from 1025 to 1400 px, and "Order Cart" + Held + Clear Cart does not fit:
+   the heading broke onto two lines. The two buttons keep their icons and drop their words instead. */
+@media (max-width: 1400px) and (min-width: 769px) {
+  .ps .pos-cart-header .btn-clear-cart { padding: 0 8px; gap: 0; font-size: 0; }
+  .ps .pos-cart-header .btn-clear-cart .material-symbols-rounded { font-size: 19px; }
+  .ps .pos-cart-header #heldOrdersCount { font-size: 11px !important; }
+}
 .ps .btn-clear-cart { height: 34px; padding: 0 10px; border: 1.5px solid var(--sx-line); border-radius: 10px; background: #fff; color: #374151; font: inherit; font-size: .8rem; font-weight: 700; }
 .ps .btn-clear-cart:hover { background: #f9fafb; }
 .ps #clearCartBtn { color: #dc2626; } .ps #clearCartBtn:hover { background: #fef2f2; border-color: #fecaca; }
@@ -1804,8 +1837,18 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps .empty-cart .material-symbols-rounded { font-size: 3rem; }
 .ps .pos-cart-summary { padding: 12px 14px; border-radius: 14px; background: #f9fafb; }
 .ps .cart-summary-row.total { font-size: 1.15rem; font-weight: 800; color: var(--sx-ink); }
-.ps .pos-cart-actions { gap: 8px; margin-top: 12px; }
-.ps .pos-cart-actions .btn { height: 50px; border-radius: 14px; font-weight: 800; font-size: .95rem; }
+/* Pay, Hold and KOT share the bill column's width, whatever it is. They used to be flex items with
+   .btn's 100 px minimum, which needs 316 px — and from 1025 to 1400 px the column gives them 246 px,
+   so KOT ran past the right of a card that hides its overflow and was cut in half. A grid of equal
+   minmax(0, 1fr) tracks cannot overflow; the icon and the padding give way first, then the label. */
+.ps .pos-cart-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.ps .pos-cart-actions.pos-cart-actions-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ps .pos-cart-actions .btn { min-width: 0; height: 50px; padding: 0 8px; border-radius: 14px; font-weight: 800; font-size: .95rem; overflow: hidden; }
+.ps .pos-cart-actions .btn .material-symbols-rounded { font-size: 20px; flex: none; }
+@media (max-width: 1400px) and (min-width: 769px) {
+  .ps .pos-cart-actions .btn { font-size: .86rem; gap: 5px; }
+  .ps .pos-cart-actions .btn .material-symbols-rounded { font-size: 18px; }
+}
 .ps #processPaymentBtn { background: #16a34a; border-color: #16a34a; box-shadow: 0 10px 20px -12px rgba(22,163,74,.8); }
 .ps #processPaymentBtn:hover { background: #15803d; }
 .ps #holdOrderBtn { background: #fff; border: 1.5px solid var(--sx-line); color: #374151; }
@@ -1818,7 +1861,9 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 @media (max-width: 768px) {
   .ps .pos-container { height: auto; }
   .ps-bar { border-radius: 18px 18px 0 0; padding: 10px; }
-  .ps .pos-menu-items { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; }
+  /* room at the foot for the bill total and the Pay / Hold / KOT bar, which are fixed over this
+     list: without it the last row of dishes could never be scrolled out from under them */
+  .ps .pos-menu-items { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 10px 160px; }
   .ps .pos-menu-item .item-image { height: 80px; }
 }
 .ps-search { flex: 0 0 auto !important; }
@@ -2653,7 +2698,11 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .mk-ratio.r-wide { width: 24px; height: 13px; }
 .mk .poster-canvas-wrap { display: flex; justify-content: center; padding: 14px; border-radius: 16px; background: repeating-conic-gradient(#F3F4F6 0 25%, #fff 0 50%) 0 0 / 20px 20px; box-shadow: none; }
 .mk .poster-canvas-wrap canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: 66vh; border-radius: 10px; box-shadow: 0 18px 40px -20px rgba(17,24,39,.5); }
-.mk-acts { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+/* Wraps instead of overflowing: as a grid of 1fr auto auto, the two `auto` columns kept their full
+   content width whatever room there was, so at 1280 px the row ran 122 px past the preview panel and
+   17 px off the screen. Wrapping fits whatever the panel happens to be, with no breakpoint to guess. */
+.mk-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.mk-acts > * { flex: 1 1 auto; min-width: 0; }
 .mk-share { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #E5E7EB; border-radius: 14px; background: #F9FAFB; }
 .mk-share-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .mk-share-h b { color: #111827; font-size: .9rem; }
@@ -2731,8 +2780,7 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
   .mk-camp > span { flex-basis: calc(100% - 50px); }
   .mk-row, .mk-stats { grid-template-columns: 1fr; }
   .mk-fmt button small { display: none; }
-  .mk-acts { grid-template-columns: 1fr 1fr; }
-  .mk-acts .mk-btn.big { grid-column: 1 / -1; }
+  .mk-acts .mk-btn.big { flex-basis: 100%; }   /* the row wraps now, so the big one takes one of its own */
   .mk-dish-grid { grid-template-columns: repeat(2, 1fr); }
   .dh-soon-go { padding: 0 8px; }
 }

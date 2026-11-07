@@ -33,6 +33,7 @@
     top: calc(64px + env(safe-area-inset-top, 0px));   /* under the top bar: never over Pay / Save bars */
     bottom: auto;
     transform: none;
+    translate: none;   /* on a computer it is centred with `translate`; here it spans the screen */
     max-width: none;
     gap: 10px;
     padding: 9px 8px 9px 10px;
@@ -186,4 +187,15 @@
   body:has(.sidebar.menu-active) { overflow: hidden; }
   /* the alerts bar waits behind the open menu instead of covering it */
   body:has(.sidebar.menu-active) .rg-alert-chip { display: none; }
+}
+
+/* ── finger-sized hit areas ──
+   Apple and Google both ask for about 44 px; these were 15 to 22 px across, which on a phone means
+   missing them and hitting whatever is next to them. The look is left alone: the small × buttons
+   simply grow, and the text links keep their size and gain padding that is taken back as negative
+   margin, so the line they sit on does not move. */
+@media (max-width: 640px) {
+  .up-pair-x, .up-chip-x, .scx-del, .wl-tdel { min-width: 30px; min-height: 30px; }
+  #upRelearn { min-height: 30px; padding: 4px 8px; }
+  .rv-meta a, .stf-contact a, .sx-note a { padding: 6px 2px; margin: -6px -2px; }
 }

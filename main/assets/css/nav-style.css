@@ -15,8 +15,7 @@ html.rg-nav-radial .main-content { padding-bottom: 96px; }
   html.rg-nav-dock .main-content,
   html.rg-nav-radial .main-content { padding-top: 15px !important; }
 }
-/* things pinned to the bottom of the screen move up above the dock */
-html.rg-nav-dock .rg-alert-chip { bottom: 100px !important; }
+/* the order-alerts bar sits above the page now (studio-ui.css), so it never meets the dock */
 html.rgnav-r-open .rg-alert-chip,
 html.rgnav-stack-open .rg-alert-chip { visibility: hidden; }
 

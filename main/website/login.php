@@ -113,7 +113,8 @@ body {
   font-size: 12px;
 }
 .remember-row label { display: flex; align-items: center; gap: 6px; color: #555; cursor: pointer; }
-.remember-row a { color: #d63031; font-weight: 600; text-decoration: none; }
+/* padding for the thumb, negative margin so the row keeps its height */
+.remember-row a { color: #d63031; font-weight: 600; text-decoration: none; padding: 8px 4px; margin: -8px -4px; }
 .remember-row a:hover { text-decoration: underline; }
 
 .btn-auth-submit {

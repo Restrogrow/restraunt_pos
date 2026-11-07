@@ -7807,8 +7807,11 @@ function toggleGatewayMode() {
       .rg-aim { --rg-aim-edge: 14px; }
       .rg-aim-go { height: 52px; padding: 0 16px 0 14px; font-size: 14px; }
     }
-    /* on a small phone the words cost more width than they earn: the icon alone */
+    /* on a small phone the words cost more width than they earn: the icon alone. The script asks for
+       the same on a page where every corner has a button in it (.rg-aim-tight). */
     @media (max-width: 420px) { .rg-aim-go { width: 52px; padding: 0; justify-content: center; } .rg-aim-text { display: none; } }
+    .rg-aim-tight .rg-aim-go { width: 52px; padding: 0; justify-content: center; }
+    .rg-aim-tight .rg-aim-text { display: none; }
     @media (prefers-reduced-motion: reduce) { .rg-aim-go { transition: none; } }
 
     /* Settings › Navigation style: nothing to reset until the button has been dragged */
