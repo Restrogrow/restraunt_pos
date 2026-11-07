@@ -151,3 +151,128 @@ Goal: rank for "own ordering platform" searches. We don't claim "India's No. 1" 
 | 18-zero-commission | zero commission food ordering | ₹500 order maths, 30-day plan, mistakes |
 
 All starters 11–18 score 100 on the editor's SEO checklist. Next in this cluster: "restaurant website builder india", "commission free food delivery app for restaurants", "how to reduce zomato commission", "custom domain for restaurant website".
+
+## Batch 4: India POS cluster (starters 19–21)
+
+| File | Keyword | Angle |
+|---|---|---|
+| 19-bot-full-form | bot full form | BOT vs KOT, bar tickets; pairs with the KOT pillar |
+| 20-best-pos-software-india | best restaurant pos software | Fair comparison of the Indian field |
+| 21-petpooja-alternatives | petpooja alternatives | What to check before switching |
+
+## Nepal: keyword research (7 Nov 2026)
+
+Nepal was researched the same way India was, so the two plans can be compared. 4,080 autocomplete
+calls were made against Google scoped to Nepal (`gl=np`), in English and Nepali, from 63
+restaurant-owner seed topics. That returned **11,070 distinct phrases**, of which 2,891 name Nepal, a
+Nepali city or a Nepali service. "Signal" below is again how many different starting words Google
+suggested that phrase for — a proxy for demand, not a volume.
+
+The same limits apply: no exact monthly numbers, and difficulty was judged by reading the current
+results, not measured. Search Console will give the real figures for these pages after a month.
+
+### What the data says about Nepal
+
+- **Nobody owns the Nepali tax-and-billing questions.** "ird approved billing software in nepal" (24)
+  and the whole PAN-bill cluster (format 10, limit 9, sample 9, rules 8, vs VAT bill 7) are answered
+  today by law-firm blogs that are thin on the restaurant side, or not at all.
+- **The incumbents are accounting packages, not restaurant software.** "swastik software price in
+  nepal" (15) and "ims software price in nepal" (13) outrank every POS phrase. Nepali owners are
+  being quoted accounting licences for a job a POS does. That gap is the opening here, and it is the
+  Nepali equivalent of the "petpooja alternative" play in India.
+- **Starting-out questions are the strongest single signals:** "how much does it cost to open a
+  restaurant in nepal" (19), "how much does it cost to open a cafe in nepal" (11), "restaurant
+  registration process in nepal" (14).
+- **Momo is its own category.** "momo business ideas" (19), "momo business in nepal" (10), "is momo
+  business profitable" (8), "frozen momo business in nepal" (7). No vendor writes about it seriously.
+- **Hardware searches are local and specific:** "kot printer price in nepal" (14), "bill printer
+  price in nepal" (12), "thermal printer price in nepal" (10).
+- **Delivery-app searches are customer-intent, not owner-intent:** "pathao food contact number" (17),
+  "foodmandu near me" (11), "pathao food promo code" (12). A Nepal commission post would be read by
+  diners, not owners — so commission is covered inside the cost and momo posts instead, with sources.
+
+### Nepal posts (starters 22–29)
+
+| File | Keyword | Signal | Why it can rank |
+|---|---|---|---|
+| 22-best-pos-software-nepal | restaurant pos software (Nepal) | 8–16 across variants | Written before this research; sits at the top of the cluster |
+| 23-ird-approved-billing-software-nepal | ird approved billing software | 24 | Highest Nepal signal; only tax-adviser pages answer it |
+| 24-pan-bill-vat-bill-nepal | pan bill | 10+9+9+8+7 cluster | Nothing explains it for a restaurant; feeds the billing product |
+| 25-restaurant-cost-nepal | cost to open a restaurant in nepal | 19 (+11 cafe) | Strongest single Nepal signal; results are law firms and one Quora answer |
+| 26-restaurant-registration-nepal | restaurant registration process in nepal | 14 | Law-firm pages only, none written for an owner |
+| 27-momo-business-nepal | momo business | 19+10+8 | Nobody has done the numbers honestly |
+| 28-kot-printer-price-nepal | kot printer price in nepal | 14 (+12 +10) | Mirrors the India printer post, which already ranks |
+| 29-swastik-ims-alternatives-nepal | swastik software price in nepal | 15 (+13 IMS) | The Nepali "petpooja alternative" |
+
+All 29 starters now score 100 on the editor's SEO checklist. Posts 01, 04 and 05 were fixed in this
+pass — their SEO title or meta description did not carry the focus keyword. **Those three are already
+live, so the fix has to be applied to the live posts too:** open each in Super Admin › Blog and paste
+the SEO title and meta description from the starter file.
+
+Every Nepal post states up front that it is general information rather than tax or legal advice, and
+cites its source where a number comes from outside (IRD thresholds, delivery commissions, setup
+costs). Nepali tax rules change with each finance act; the three tax-touching posts (23, 24, 26)
+should be re-read once a year.
+
+### Nepal keywords to import (Super Admin › Blog › Keywords › Add many at once)
+
+```
+ird approved billing software in nepal | commercial | 1 | 24 | Covered by starter 23. Highest Nepal signal
+how much does it cost to open a restaurant in nepal | info | 1 | 19 | Covered by starter 25
+momo business in nepal | info | 1 | 19 | Covered by starter 27. Also "is momo business profitable" (8)
+swastik software price in nepal | commercial | 1 | 15 | Covered by starter 29. Also ims software price (13)
+restaurant registration process in nepal | info | 1 | 14 | Covered by starter 26
+kot printer price in nepal | commercial | 1 | 14 | Covered by starter 28. Also bill printer (12), thermal (10)
+pan bill format in nepal | info | 1 | 10 | Covered by starter 24. Also limit (9), rules (8), vs vat bill (7)
+restaurant billing software in nepal | commercial | 1 | 16 | Covered by starter 22
+how much does it cost to open a cafe in nepal | info | 2 | 11 | Next: a cafe-specific version of starter 25
+frozen momo business in nepal | info | 2 | 7 | Next: its own post, production and cold chain
+vat bill in nepal | info | 2 | 8 | Partly in starter 24; could be its own page on the bill format
+e billing requirement in nepal | info | 2 | 8 | Partly in starter 23
+qr menu nepal | commercial | 2 | 6 | Next: Nepali version of the QR menu post
+dftqc license in nepal | info | 2 | 8 | Partly in starter 26; could be its own page
+restaurant business in nepal | info | 3 | 11 | Broad; use as an internal hub later
+pos software price in nepal | commercial | 2 | 10 | Overlaps 22 and 29
+```
+
+### Next for Nepal, after these
+
+A cafe-cost version of 25, a frozen-momo post, a Nepali QR-menu post, and a standalone DFTQC licence
+page. Hold off on Nepali-language posts until these eight have a month of Search Console data — the
+autocomplete shows Nepali phrasing, but there is no point translating pages that have not proved
+themselves in English first.
+
+## Getting new posts indexed (7 Nov 2026)
+
+What changed: **IndexNow is now automatic.** When a post is published or updated from Super Admin ›
+Blog, `main/config/indexnow.php` submits its URL and the blog home to IndexNow, which reaches Bing,
+Yandex, Seznam and Naver in one call. The site's key is generated on first use and served at
+`https://restrogrow.com/<key>.txt` (`.htaccess` routes it to `indexnow.php`). The reply shows in the
+save response; a failure is logged and never blocks the save.
+
+**Google is still manual, and that is not something our code can fix:** Google stopped accepting
+sitemap pings in 2023, and its Indexing API only accepts job postings and live videos. For Google a
+new post is found when `sitemap-blog.xml` is next crawled, which usually takes days. To make it
+hours, open Search Console, go to URL Inspection, paste the URL and choose Request Indexing. Once per
+post, on the day it goes live.
+
+After importing and publishing starters 24–29, request indexing for:
+
+```
+https://restrogrow.com/blog/pan-bill-vs-vat-bill-nepal
+https://restrogrow.com/blog/cost-to-open-a-restaurant-in-nepal
+https://restrogrow.com/blog/restaurant-registration-process-in-nepal
+https://restrogrow.com/blog/momo-business-in-nepal-profit
+https://restrogrow.com/blog/kot-printer-price-in-nepal
+https://restrogrow.com/blog/swastik-software-price-in-nepal-restaurants
+```
+
+And re-request indexing for the three posts whose SEO title or description changed:
+
+```
+https://restrogrow.com/blog/kot-full-form
+https://restrogrow.com/blog/swiggy-joining-charges-for-restaurants
+https://restrogrow.com/blog/zomato-commission-rates
+```
+
+Check each slug against the live post first — Search Console rejects a URL that 404s.

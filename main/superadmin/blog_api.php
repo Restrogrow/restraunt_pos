@@ -168,7 +168,21 @@ try {
         $post = $st->fetch(PDO::FETCH_ASSOC);
         $post['cover_url'] = blogImageUrl($post['cover_image']);
         $live = $status === 'published' && strtotime((string)$pubAt) <= time();
-        blogOut(['success' => true, 'post' => $post, 'seo' => blogSeoReport($post),
+
+        // A page that has just gone live is worth telling the search engines about straight away.
+        // IndexNow reaches Bing, Yandex, Seznam and Naver in one call; Google dropped sitemap pings
+        // in 2023, so for Google this page waits for the next crawl of sitemap-blog.xml, or an
+        // "Request indexing" in Search Console. Nothing here can fail the save.
+        $indexNow = null;
+        if ($live && empty($post['noindex'])) {
+            try {
+                require_once __DIR__ . '/../config/indexnow.php';
+                $r = rgIndexNowSubmit([blogWebBase() . '/blog/' . $post['slug'], blogWebBase() . '/blog/']);
+                $indexNow = $r['message'] ?? null;
+            } catch (Throwable $e) { error_log('IndexNow on publish: ' . $e->getMessage()); }
+        }
+
+        blogOut(['success' => true, 'post' => $post, 'seo' => blogSeoReport($post), 'indexnow' => $indexNow,
             'message' => $status === 'draft' ? 'Draft saved' : ($live ? 'Published' : 'Scheduled for ' . date('d M, h:i A', strtotime((string)$pubAt))),
             'url' => blogWebBase() . '/blog/' . $post['slug']]);
     }
