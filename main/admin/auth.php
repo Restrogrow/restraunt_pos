@@ -1272,6 +1272,18 @@ function handleUpdateRestaurantSettings() {
             try { $pdo->prepare('UPDATE users SET phone_2 = ? WHERE id = ?')->execute([$phone2 !== '' ? $phone2 : null, $userId]); }
             catch (Throwable $e) { error_log('save phone_2: ' . $e->getMessage()); }
         }
+        // The starting rating, on its own for the same reason. Blank turns it off; once three customers
+        // have rated an order the real average is shown instead. See config/restaurant_rating.php.
+        if (isset($_POST['manual_rating']) || isset($_POST['manual_rating_count'])) {
+            require_once __DIR__ . '/../config/restaurant_rating.php';
+            rgEnsureOnce('ensureRestaurantRatingColumns', $pdo);
+            try {
+                $mr = rgNormaliseManualRating($_POST['manual_rating'] ?? '');
+                $mrc = $mr === null ? null : rgNormaliseManualRatingCount($_POST['manual_rating_count'] ?? '');
+                $pdo->prepare('UPDATE users SET manual_rating = ?, manual_rating_count = ? WHERE id = ?')
+                    ->execute([$mr, $mrc, $userId]);
+            } catch (Throwable $e) { error_log('save manual_rating: ' . $e->getMessage()); }
+        }
         require_once __DIR__ . '/../config/activity_log.php'; $__before = activityUserRow($pdo, $userId);
         $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, enable_reservations = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, enable_km_delivery = ?, delivery_rate_per_km = ?, show_business_id = ?, business_id_label = ?, business_id_no = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $enableReservations, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $enableKmDelivery, $deliveryRatePerKm, $showBusinessId, $businessIdLabel, $businessIdNo, $userId]);

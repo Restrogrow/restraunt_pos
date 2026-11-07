@@ -5350,6 +5350,22 @@ function toggleGatewayMode() {
                 <p class="st-help">Shown next to the first one on your website and on bills. Leave it empty if you have only one.</p>
               </div>
             </div>
+            <!-- What the website shows before any customer has rated an order. config/restaurant_rating.php -->
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-card-h"><b>Starting rating</b><small>Only until your own customers have rated you.</small></div>
+              <div class="st-grid2">
+                <div class="st-field">
+                  <label for="manualRating">Rating out of 5 <em>Optional</em></label>
+                  <input type="number" id="manualRating" min="1" max="5" step="0.1" placeholder="e.g. 4.3">
+                </div>
+                <div class="st-field">
+                  <label for="manualRatingCount">Number of reviews <em>Optional</em></label>
+                  <input type="number" id="manualRatingCount" min="1" step="1" placeholder="e.g. 128">
+                </div>
+              </div>
+              <p class="st-help">A restaurant that has just opened has no ratings yet, and an empty space where other listings show stars puts customers off. Put the figure you already have — your Google or Zomato rating — and your website shows it in the meantime. <b>The moment three customers rate an order, your real average takes over</b> and this is ignored, so it can never hide genuine feedback. Leave both empty to show no rating at all.</p>
+              <p class="st-help" id="manualRatingNow" hidden></p>
+            </div>
             <div class="st-card st-card-muted">
               <div class="st-field st-id">
                 <label for="restaurantIdSetting">Restaurant ID</label>

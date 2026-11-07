@@ -200,3 +200,9 @@ CREATE TABLE IF NOT EXISTS website_offer_banners (
 -- runtime ensure has not already been marked done for.
 ALTER TABLE website_banners
   ADD COLUMN IF NOT EXISTS placement VARCHAR(20) NOT NULL DEFAULT 'home_top';
+
+-- The starting rating a brand-new restaurant's website shows until three customers have rated an
+-- order, after which the real average takes over. See main/config/restaurant_rating.php.
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS manual_rating DECIMAL(2,1) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS manual_rating_count INT DEFAULT NULL;

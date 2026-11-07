@@ -148,6 +148,27 @@ try {
         }
     }
 
+    // The starting rating, read on its own rather than added to the big SELECT above: that one falls
+    // back to a much shorter column list on any "Unknown column", so one missing column there costs
+    // the settings form every other field too.
+    $manualRating = null; $manualRatingCount = null;
+    try {
+        $mrSt = $conn->prepare('SELECT manual_rating, manual_rating_count FROM users WHERE id = :id LIMIT 1');
+        $mrSt->execute([':id' => $_SESSION['user_id'] ?? 0]);
+        if ($mrRow = $mrSt->fetch(PDO::FETCH_ASSOC)) {
+            $manualRating = $mrRow['manual_rating'] === null ? null : (float)$mrRow['manual_rating'];
+            $manualRatingCount = $mrRow['manual_rating_count'] === null ? null : (int)$mrRow['manual_rating_count'];
+        }
+    } catch (PDOException $e) { /* database predates the columns; the form shows the fields empty */ }
+
+    // What the public website is showing right now, so the settings form can tell the owner whether
+    // their figure is still in use or their customers' real average has taken over.
+    $publicRating = null;
+    try {
+        require_once __DIR__ . '/../config/restaurant_rating.php';
+        $publicRating = rgPublicRating($conn, (string)($_SESSION['restaurant_id'] ?? ''));
+    } catch (Throwable $e) { /* never worth failing the session over */ }
+
     $responseData = [
         'id' => $row['id'] ?? ($_SESSION['user_id'] ?? $_SESSION['staff_id'] ?? null),
         'user_id' => $_SESSION['user_id'] ?? null,
@@ -158,6 +179,9 @@ try {
         'email' => $row['email'] ?? $_SESSION['email'] ?? null,
         'phone' => $row['phone'] ?? null,
         'phone_2' => $row['phone_2'] ?? null,   // the second contact number (config/restaurant_contact.php)
+        'manual_rating' => $manualRating,             // starting rating until customers rate (config/restaurant_rating.php)
+        'manual_rating_count' => $manualRatingCount,
+        'public_rating' => $publicRating,             // what the website shows, and which of the two it came from
         'address' => $row['address'] ?? null,
         'description' => $row['description'] ?? null,
         'description_format' => $row['description_format'] ?? 'paragraph',

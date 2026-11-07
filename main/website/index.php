@@ -39,18 +39,14 @@ if ($hx_style) {
     } else {
         $hxHours = $restaurant_open ? 'Open now' : 'Closed now';
     }
-    // Real rating from customers' order feedback (shown from 3 ratings up)
-    $hxRating = null;
-    try {
-        // only ratings of completed orders count toward the public stars
-        $hxSt = $conn->prepare("SELECT COUNT(*) AS n, AVG(f.rating) AS avg FROM order_feedback f JOIN orders o ON o.id = f.order_id AND o.order_status = 'Completed' WHERE f.restaurant_id = ? AND f.rating > 0");
-        $hxSt->execute([$restaurant_id]);
-        $hxR = $hxSt->fetch(PDO::FETCH_ASSOC);
-        if ($hxR && (int)$hxR['n'] >= 3) $hxRating = ['avg' => number_format((float)$hxR['avg'], 1), 'n' => (int)$hxR['n']];
-    } catch (Exception $e) {}
+    // Customers' order feedback from 3 ratings up; below that, the starting rating the owner set in
+    // Settings › Restaurant profile. See config/restaurant_rating.php.
+    require_once __DIR__ . '/../config/restaurant_rating.php';
+    $hxRating = rgPublicRating($conn, (string)$restaurant_id);
     $hx_meta_html = '<div class="hx-meta">' .
         '<span class="hx-chip' . ($hxHoursClosed ? ' closed' : '') . '"><i class="fa-regular fa-clock"></i>' . htmlspecialchars($hxHours, ENT_QUOTES, 'UTF-8') . '</span>' .
-        ($hxRating ? '<span class="hx-chip rate">' . $hxRating['avg'] . ' <i class="fa-solid fa-star"></i></span><span class="hx-chip soft">' . $hxRating['n'] . ' reviews</span>' : '') .
+        ($hxRating ? '<span class="hx-chip rate">' . $hxRating['avg'] . ' <i class="fa-solid fa-star"></i></span>' .
+            ($hxRating['n'] > 0 ? '<span class="hx-chip soft">' . $hxRating['n'] . ' reviews</span>' : '') : '') .
     '</div>';
 }
 // If table parameter is present (from QR code), redirect to menu
