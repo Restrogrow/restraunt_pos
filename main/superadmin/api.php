@@ -1608,11 +1608,10 @@ break;
       }
 
       // Assign a photo from our local images/ library (e.g. images/Beverages/*) to
-      // each item Gemini left blank. Cheap local text scoring narrows each item
-      // down to a short candidate shortlist (keeps token usage small); Gemini
-      // itself then picks the best candidate (or none) using real judgement —
-      // e.g. telling "Veg Momo" vs "Chicken Momo" vs "Egg Momo" apart — instead
-      // of a fixed scoring formula guessing among near-duplicate stock filenames.
+      // each item Gemini left blank. includes/menu_image_matcher.php shortlists on
+      // what each photo is actually of and has Gemini make the call — telling
+      // "Veg Momo" from "Chicken Momo" from "Egg Momo" — and leaves an item with no
+      // photo rather than one that is only nearly right.
       require_once __DIR__ . '/../includes/menu_image_matcher.php';
       $itemLines = array_map(function ($line) {
         $lineParts = array_map('trim', explode('|', $line));
@@ -1620,74 +1619,14 @@ break;
         return $lineParts;
       }, $itemLines);
 
-      $itemCandidates = [];
+      $wantPhoto = [];
       foreach ($itemLines as $idx => $lineParts) {
         if ($lineParts[9] !== '') continue;
-        $catRaw = $lineParts[0];
-        $category = $catRaw;
-        if (preg_match('/^(.+?)\s*>\s*(.+)$/', $catRaw, $m)) $category = trim($m[1]);
-        $candidates = find_local_menu_item_image_candidates($lineParts[1], $category, 8);
-        if (!empty($candidates)) $itemCandidates[$idx] = $candidates;
+        $category = $lineParts[0];
+        if (preg_match('/^(.+?)\s*>\s*(.+)$/', $lineParts[0], $m)) $category = trim($m[1]);
+        $wantPhoto[$idx] = ['name' => $lineParts[1], 'category' => $category, 'type' => $lineParts[3]];
       }
-
-      if (!empty($itemCandidates)) {
-        $pickPrompt = "For each restaurant menu item below, pick the ONE candidate photo filename that most accurately depicts it, or 0 if none genuinely match. "
-          . "Filenames are descriptive of what's in the photo. Pay close attention to protein/veg type (veg, chicken, egg, mutton, buff, paneer, prawn, fish, pork, etc.) and dish style — a mismatch there means it's not a match.\n\n"
-          . "Respond with ONLY one line per item, in the exact format ITEM_INDEX:CHOICE (e.g. \"3:2\" or \"5:0\"). No explanations, no other text.\n\n";
-        foreach ($itemCandidates as $idx => $candidates) {
-          $itemLabel = $itemLines[$idx][1] . ($itemLines[$idx][0] !== '' ? ' (' . $itemLines[$idx][0] . ')' : '');
-          $pickPrompt .= "Item {$idx}: {$itemLabel}\n";
-          foreach ($candidates as $ci => $cand) {
-            $label = str_replace(['-', '_'], ' ', preg_replace('/\.[a-zA-Z0-9]+$/', '', $cand['file']));
-            $pickPrompt .= '  ' . ($ci + 1) . ") {$label}\n";
-          }
-        }
-
-        $pickBody = [
-          'contents' => [['parts' => [['text' => $pickPrompt]]]],
-          'generationConfig' => [
-            'temperature' => 0.1,
-            'maxOutputTokens' => 4096,
-            'thinkingConfig' => ['thinkingBudget' => 0]
-          ]
-        ];
-        $ch2 = curl_init($geminiUrl);
-        curl_setopt($ch2, CURLOPT_POST, true);
-        curl_setopt($ch2, CURLOPT_POSTFIELDS, json_encode($pickBody));
-        curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch2, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch2, CURLOPT_HTTPHEADER, [
-          'Content-Type: application/json',
-          'x-goog-api-key: ' . $geminiApiKey
-        ]);
-        $pickResponse = curl_exec($ch2);
-        $pickErr = curl_error($ch2);
-        curl_close($ch2);
-
-        if (!$pickErr) {
-          $pickResult = json_decode($pickResponse, true);
-          $pickText = $pickResult['candidates'][0]['content']['parts'][0]['text'] ?? '';
-          foreach (explode("\n", $pickText) as $pickLine) {
-            if (preg_match('/^\s*(\d+)\s*:\s*(\d+)\s*$/', trim($pickLine), $pm)) {
-              $idx = (int)$pm[1];
-              $choice = (int)$pm[2];
-              if ($choice > 0 && isset($itemCandidates[$idx][$choice - 1])) {
-                $pick = $itemCandidates[$idx][$choice - 1];
-                $itemLines[$idx][9] = 'local:' . $pick['folder'] . '/' . $pick['file'];
-              }
-            }
-          }
-        }
-
-        // Safety net only for items Gemini's picking call couldn't reach
-        // (request failure) or skipped — reuse the best-scoring shortlist
-        // candidate, but only when it's a genuinely strong text match.
-        foreach ($itemCandidates as $idx => $candidates) {
-          if ($itemLines[$idx][9] === '' && !empty($candidates) && $candidates[0]['score'] >= 0.6) {
-            $itemLines[$idx][9] = 'local:' . $candidates[0]['folder'] . '/' . $candidates[0]['file'];
-          }
-        }
-      }
+      foreach (match_menu_item_images($wantPhoto) as $idx => $ref) $itemLines[$idx][9] = $ref;
 
       $itemLines = array_map(function ($lineParts) { return implode('|', $lineParts); }, $itemLines);
 

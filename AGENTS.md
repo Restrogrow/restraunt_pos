@@ -43,6 +43,10 @@ php main/database/seed_demo_restaurant.php      # Spice Garden Indiranagar, demo
 php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner / Owner@123)
 ```
 
+- **Dish photos** for menu import and "Make your menu" come from `images/` (not in git, copied to each machine).
+  What each photo is of is in git (`main/uploads/cache/menu-images/catalogue.json`), so nothing needs building.
+  Only after adding photos: `php main/tools/build_menu_image_catalogue.php`, then commit the catalogue.
+
 - **Local URLs**: Customer: `http://localhost/menuwebsite/{restaurant-slug}` — Admin: `http://localhost/menuwebsite/main/admin/login.php`
 - `.env` is loaded by `main/config/env_loader.php`. `.env.local` overrides `.env` (both gitignored).
 - Required env vars: DB credentials, PhonePe config, Google Maps API key, Google Gemini API key, SMTP config.

@@ -263,10 +263,37 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
   `main/.env` changes it). If Gemini is down or the limit is hit, the visitor gets "Send on WhatsApp" instead.
   Dish photos come from the photo library on the server (the `images/` folder, same as Super Admin's menu import);
   a dish with no matching photo just shows without one. More photos in `images/` = more dishes with pictures.
+  See **The dish photo library** below.
 - **Separate QR kit dashboard:** https://restrogrow.com/main/qrkit/ (local: http://localhost/menuwebsite/main/qrkit/).
   Make a login for a sales or delivery person in Super Admin › QR kit orders › Dashboard logins; they see only these
   orders (numbers, chart by day, To do / Delivered / Cancelled / Not paid, search, CSV, status, balance, notes).
   Switch a login off there to lock them out.
+
+## The dish photo library
+
+Both Super Admin › Menu import and "Make your menu" give each imported dish a photo from `images/` on the server
+(30-odd folders, a few thousand photos). `images/` itself is too big for git and is copied to each server by hand.
+
+- **The catalogue is in git, so nothing has to be done on the live server.** `git pull` brings
+  `main/uploads/cache/menu-images/catalogue.json` with it and menu import uses it straight away. It is one of the
+  only things under `main/uploads/` that is tracked: the photo library is the same everywhere, so building it once
+  saves every server half an hour and a few hundred Gemini calls.
+- **Only after adding photos to `images/`**, on whichever machine has the new photos:
+  `php main/tools/build_menu_image_catalogue.php`, then commit the changed `catalogue.json`.
+  (`--status` to see where it is, `--all` to start over.) Gemini reads the library and writes down what each photo
+  is of: the dish, what it is made of, and the other names it is sold under, Hindi and Devanagari included.
+  Progress is saved after every batch, so it is safe to stop and re-run, and a second run only costs the photos
+  added since. A few thousand photos take roughly half an hour.
+- **Photos whose file name says nothing** (`NSS09821.JPG`) are looked at rather than read: the picture itself goes to
+  Gemini. `--no-vision` skips them.
+- **A photo in `images/` that the catalogue has never seen still works**, by its file name alone — so new photos are
+  usable the moment they are copied up, and the build only sharpens them.
+- **Without the catalogue everything still works**, just less well: matching falls back to the file name, which can
+  tell a momo from a roti but not "Kaju Katli" from a cashew barfi.
+- **How a dish gets its photo** (`main/includes/menu_image_matcher.php`): the catalogue is searched for photos of
+  that dish — never limited to one folder, and anything made of the wrong thing (a chicken momo for "Veg Momo") is
+  dropped outright — then Gemini picks one of the shortlist, or none. A dish it isn't sure about is left without a
+  photo on purpose: no photo reads as "not set up yet", the wrong photo reads as a broken product.
 
 ## Rooms (hotel / lodge), for support
 

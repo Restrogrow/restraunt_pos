@@ -107,6 +107,13 @@ main/config/.ga-service-account.json
 main/uploads/signatures/*
 # small photo copies made by main/website/image.php
 main/uploads/cache/*
+# …except what Gemini wrote down about the images/ photo library (includes/menu_image_catalogue.php).
+# It is the same library on every server, so it is built once and travels with the code — otherwise
+# each server would have to spend half an hour and a few hundred Gemini calls rebuilding it.
+!main/uploads/cache/menu-images/
+main/uploads/cache/menu-images/*
+!main/uploads/cache/menu-images/catalogue.json
+!main/uploads/cache/menu-images/.htaccess
 
 # Super Admin call recordings: private, stay on the server only
 main/uploads/lead_recordings/
