@@ -19,7 +19,9 @@ test.describe('Guest checkout - place an order end-to-end', () => {
       // Item detail sheet opens; these items have no real variants, so it's a
       // direct add at base price.
       await expect(page.locator('#productSheetOverlay')).toHaveClass(/active/);
-      await page.click('.sheet-add-btn');
+      // the sheet asks twice now: ADD+ reveals the quantity stepper, then "Add item · ₹x" confirms
+      await page.click('#productSheetOverlay .sheet-add');
+      await page.click('#productSheetOverlay .sheet-add-btn');
       await expect(page.locator('#productSheetOverlay')).not.toHaveClass(/active/);
     }
 

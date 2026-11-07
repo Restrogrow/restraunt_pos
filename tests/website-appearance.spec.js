@@ -24,7 +24,7 @@ test.describe('Website Appearance', () => {
 
       await dismissNewOrderOverlay(page);
       await page.click('#saveWebsiteThemeBtn');
-      await expect(page.locator('.notification.success')).toContainText(/saved/i, { timeout: 10000 });
+      await expect(page.locator('.rgn-card').filter({ hasText: /saved/i }).first()).toBeVisible({ timeout: 10000 });
 
       // Confirm the API actually persisted it (not just a client-side echo).
       const res = await request.get(
@@ -45,7 +45,7 @@ test.describe('Website Appearance', () => {
       await page.locator('#primaryRedHex').blur();
       await dismissNewOrderOverlay(page);
       await page.click('#saveWebsiteThemeBtn');
-      await expect(page.locator('.notification.success')).toContainText(/saved/i, { timeout: 10000 });
+      await expect(page.locator('.rgn-card').filter({ hasText: /saved/i }).first()).toBeVisible({ timeout: 10000 });
     }
   });
 });

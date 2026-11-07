@@ -36,13 +36,17 @@ async function loginAsOwner(page, context) {
  */
 async function dismissTour(page) {
   const skip = page.locator('[data-obt-skip]').first();
-  for (let i = 0; i < 3; i++) {
+  // it is drawn a moment after the dashboard loads, not with it, so wait for it rather than
+  // looking once and finding nothing
+  await skip.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+  for (let i = 0; i < 4; i++) {
     if (!(await skip.isVisible().catch(() => false))) break;
-    await skip.click({ timeout: 3000 }).catch(() => {});
-    await page.waitForTimeout(400);
+    await skip.click({ timeout: 3000, force: true }).catch(() => {});
+    await page.waitForTimeout(500);
   }
-  // whatever is left of it (the checklist card) must not sit over the page either
-  await page.evaluate(() => document.querySelectorAll('.obt-ov').forEach(e => e.remove())).catch(() => {});
+  // and make sure nothing of it is left lying over the page
+  await page.locator('.obt-ov').first().waitFor({ state: 'detached', timeout: 4000 }).catch(() => {});
+  await page.evaluate(() => document.querySelectorAll('.obt-ov, .obg').forEach(e => e.remove())).catch(() => {});
 }
 
 /**
