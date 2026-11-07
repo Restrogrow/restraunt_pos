@@ -73,8 +73,10 @@ if (!function_exists('rgIndexNowSubmit')) {
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $body,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 12,
+            // kept short on purpose: this runs while someone is waiting for "Published" to appear,
+            // and a server with no outbound access must not hold the save open
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 6,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json; charset=utf-8'],
         ]);
         $ca = trim((string)env('AI_CAINFO', ''));

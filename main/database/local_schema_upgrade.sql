@@ -37,6 +37,25 @@ ALTER TABLE order_items
 -- ── users (restaurant settings) ──
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS phone_2 VARCHAR(20) DEFAULT NULL,
+  -- these fifteen are selected by admin/get_session.php and written by the Settings save. Without
+  -- them both fall back to a shorter column list, so Settings quietly saves only the name and the
+  -- dashboard loads with the wrong tax rate and no country. Types follow the one-off migrations in
+  -- main/admin/ that added each one to the live database.
+  ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India',
+  ADD COLUMN IF NOT EXISTS tax_name VARCHAR(50) DEFAULT 'GST',
+  ADD COLUMN IF NOT EXISTS tax_percent DECIMAL(5,2) DEFAULT 5.00,
+  ADD COLUMN IF NOT EXISTS minimum_order_value DECIMAL(10,2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS cod_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS enable_reservations TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS delivery_radius_km DECIMAL(10,2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS restaurant_lat DECIMAL(10,7) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS restaurant_lng DECIMAL(10,7) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS enable_km_delivery TINYINT(1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS delivery_rate_per_km DECIMAL(10,2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS show_install_app TINYINT(1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS show_business_id TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS business_id_label VARCHAR(30) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS business_id_no VARCHAR(20) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS owner_name VARCHAR(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS description_format VARCHAR(20) DEFAULT 'paragraph',

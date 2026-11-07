@@ -23,7 +23,26 @@ async function loginAsOwner(page, context) {
   await page.fill('#loginPassword', DEMO_ADMIN.password);
   await page.click('#loginBtn');
   await page.waitForURL(/dashboard\.php/, { timeout: 15000 });
+  await dismissTour(page);
   await dismissNewOrderOverlay(page);
+}
+
+/**
+ * The first-run onboarding tour (assets/js/onboarding.js) covers the screen with .obt-ov and
+ * swallows every click behind it, so a test that signs in as a restaurant which has not finished
+ * setting up — which the test fixture never will — cannot reach the sidebar at all. Pressing Skip
+ * records it against the restaurant, so it does not come back on the next test either. Safe no-op
+ * when the tour isn't showing.
+ */
+async function dismissTour(page) {
+  const skip = page.locator('[data-obt-skip]').first();
+  for (let i = 0; i < 3; i++) {
+    if (!(await skip.isVisible().catch(() => false))) break;
+    await skip.click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  // whatever is left of it (the checklist card) must not sit over the page either
+  await page.evaluate(() => document.querySelectorAll('.obt-ov').forEach(e => e.remove())).catch(() => {});
 }
 
 /**
@@ -48,4 +67,4 @@ function uniqueTestPhone() {
   return '9' + String(Date.now()).slice(-9);
 }
 
-module.exports = { DEMO_ADMIN, TEST_RESTAURANT_ID, loginAsOwner, dismissNewOrderOverlay, uniqueTestPhone };
+module.exports = { DEMO_ADMIN, TEST_RESTAURANT_ID, loginAsOwner, dismissTour, dismissNewOrderOverlay, uniqueTestPhone };
