@@ -181,8 +181,18 @@
     else if (w) waiting.delete(d);   // measured and too small: a spinner, not a section placeholder
     else waiting.add(d);             // nothing to measure yet; ask again when it's on screen
   }
+  // A placeholder on a page nobody has open cannot be measured and will not change until it is
+  // opened — and opening it fires the observer. Measuring all of them every 400 ms forever was the
+  // dashboard's single busiest habit while nothing at all was happening.
+  function onScreenPage(el) {
+    var pg = el.closest('.main-content > .page');
+    return !pg || pg.classList.contains('active');
+  }
   function sweepDots() {
-    waiting.forEach(function (d) { if (!d.isConnected) waiting.delete(d); else dot(d); });
+    waiting.forEach(function (d) {
+      if (!d.isConnected) { waiting.delete(d); return; }
+      if (onScreenPage(d)) dot(d);
+    });
   }
 
   function look(root) {
@@ -231,15 +241,19 @@
     });
   }
 
-  var queue = [], planned = false;
+  var queue = [], planned = false, tidied = 0;
   function plan() {
     if (planned) return;
     planned = true;
     (window.requestAnimationFrame || setTimeout)(function () {
       planned = false;
       var q = queue; queue = [];
-      tidy();
-      sweepDots();
+      // tidy() and sweepDots() walk everything they are holding, and a dashboard with a few pages
+      // open changes something several times a second — so they run at most four times a second.
+      // A skeleton clearing a quarter of a second later is not something anyone can see.
+      var now = Date.now();
+      if (now - tidied > 250) { tidied = now; tidy(); sweepDots(); }
+      else setTimeout(plan, 260);
       q.forEach(look);
     });
   }
@@ -262,11 +276,14 @@
     // still loading after 20 s on screen while online: Try again. Only time on screen counts: a placeholder in a
     // closed section (the POS before it's opened) starts its 20 s when it shows.
     setInterval(function () {
+      if (!boxes.size) return;
       var now = Date.now(), off = navigator.onLine === false;
       boxes.forEach(function (el) {
         var t = +el.getAttribute('data-rg-skel');
         if (!el.isConnected || !t) return;
-        if (off || !el.getClientRects().length) { el.setAttribute('data-rg-skel', String(now)); return; }
+        // same again: a closed page's placeholder is not on screen, so its 20 s has not started and
+        // there is nothing to measure. Only the open page costs a layout read.
+        if (off || !onScreenPage(el) || !el.getClientRects().length) { el.setAttribute('data-rg-skel', String(now)); return; }
         if (now - t > GIVE_UP_MS) failBox(el);
       });
     }, 2000);

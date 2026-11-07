@@ -9317,17 +9317,14 @@ if ('serviceWorker' in navigator) {
           return navigator.serviceWorker.ready.then(function() {
             pwaDiagnostics.swActive = true;
             console.log('%c✅ SW is now active and controlling this page!', 'background:#059669;color:#fff;padding:3px 6px;border-radius:3px;font-size:12px;');
-            
-            // Reload page once so Chrome sees the SW was active from the start
-            // This allows beforeinstallprompt to fire properly
-            // Use sessionStorage so the flag persists across the reload
-            if (!sessionStorage.getItem('pwa_refreshed')) {
-              sessionStorage.setItem('pwa_refreshed', '1');
-              console.log('%c🔄 Refreshing page so SW controls from the start...', 'font-size:12px;color:#2563eb;');
-              setTimeout(function() {
-                window.location.reload();
-              }, 800);
-            }
+
+            // This used to reload the whole dashboard here, a second after it had finished loading,
+            // so that Chrome would see the service worker in charge from the start and offer to
+            // install the app. It cost every sign-in a second full page load — on a cheap tablet,
+            // several seconds of frozen screen, right at the moment the owner starts working — for
+            // a prompt that may not appear anyway. The worker is in charge from the start of the
+            // next page they open, so the offer comes on its own, and Settings › Account › Install
+            // the app puts it one tap away in the meantime.
           });
         }
       }).catch(function(err) {

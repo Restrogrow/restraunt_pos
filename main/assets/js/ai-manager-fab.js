@@ -102,19 +102,32 @@
   }
 
   /**
-   * Is it sitting on one of the page's own buttons? The list above only knows the furniture that is
-   * always in a corner; a card's Edit, a table row's Delete or a staff card's buttons land wherever
-   * the page puts them, and the button was covering those on a dozen screens.
+   * Where the page's own buttons are. The BLOCK list above only knows the furniture that is always
+   * in a corner; a card's Edit, a table row's Delete or a staff card's buttons land wherever the
+   * page puts them, and the button was covering those on a dozen screens.
+   *
+   * Measured once per placement and handed to each attempt: the button is fixed, so moving it does
+   * not move them, and asking a busy page for every button's box six times over was the most
+   * expensive thing this script did. getClientRects() answers "is it on screen" without the style
+   * lookup vis() needs.
    */
-  function onAControl() {
+  function controlBoxes() {
     var page = document.querySelector('.main-content > .page.active');
-    if (!page) return false;
-    var me = fab.getBoundingClientRect();
+    if (!page) return [];
     var list = page.querySelectorAll('button, a[href], select, input, textarea, [onclick], [role="button"]');
+    var out = [];
     for (var i = 0; i < list.length; i++) {
-      var r = vis(list[i]);
-      if (r && hits(me, r)) return true;
+      var el = list[i];
+      if (!el.getClientRects().length) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 1 && r.height > 1) out.push(r);
     }
+    return out;
+  }
+
+  function onAControl(boxes) {
+    var me = fab.getBoundingClientRect();
+    for (var i = 0; i < boxes.length; i++) if (hits(me, boxes[i])) return true;
     return false;
   }
 
@@ -133,17 +146,18 @@
     fab.classList.remove('rg-aim-left', 'rg-aim-tight');
     fab.style.setProperty('--rg-aim-lift', '0px');
 
-    if (!lift() && !onAControl()) return;       // the usual corner is free
+    var boxes = controlBoxes();
+    if (!lift() && !onAControl(boxes)) return;  // the usual corner is free
     fab.classList.add('rg-aim-left');           // busy: try the other one
     var up = liftClear();
-    if (!onAControl()) return;
+    if (!onAControl(boxes)) return;
 
     // both corners have something under them. Step up a little — on a page of cards there is usually
     // a gap between two rows — but only so far: past that it stops looking like a corner button.
     for (var i = 0; i < 3; i++) {
       up += 58;
       fab.style.setProperty('--rg-aim-lift', up + 'px');
-      if (!lift() && !onAControl()) return;
+      if (!lift() && !onAControl(boxes)) return;
     }
 
     // Nowhere on this page is clear. Back to the corner it belongs in, as the round icon alone: a
@@ -153,7 +167,7 @@
     fab.classList.add('rg-aim-tight');
     fab.style.setProperty('--rg-aim-lift', '0px');
     liftClear();
-    if (!onAControl()) return;
+    if (!onAControl(boxes)) return;
     fab.classList.add('rg-aim-left');
     liftClear();
   }
@@ -252,8 +266,8 @@
 
   // ── keeping up with the page ──
 
-  var watch = new MutationObserver(function () { clearTimeout(timer); timer = setTimeout(sync, 60); });
-  var timer = 0;
+  var watch = new MutationObserver(function () { dirty = true; clearTimeout(timer); timer = setTimeout(sync, 300); });
+  var timer = 0, dirty = true, quiet = 0;
 
   function observe() {
     // the dock, the round menu and the alert chip are built later, so this is called on every sync;
@@ -279,6 +293,8 @@
   }
 
   function sync() {
+    dirty = false;
+    if (!isOn()) return;        // switched off: measure nothing, there is nothing to place
     observe();
     onPageChange();
     var busy = !!(aiPage && aiPage.classList.contains('active'));
@@ -289,10 +305,20 @@
     if (!busy) place();
   }
 
-  window.addEventListener('resize', function () { clearTimeout(timer); timer = setTimeout(sync, 120); });
-  // a last resort: POS shows its bottom bar from script, and pages here grow new overlays all the
-  // time. Measuring eight selectors costs nothing, and this is what keeps it off the KOT button.
-  setInterval(function () { if (!grab) sync(); }, 1200);
+  window.addEventListener('resize', function () { dirty = true; clearTimeout(timer); timer = setTimeout(sync, 120); });
+
+  // A backstop, for the few things the observers above cannot see — but a cheap one. Re-measuring
+  // every button on the page once a second forever is exactly the kind of work that makes a
+  // dashboard feel heavy on a cheap tablet, so this only does anything when something has actually
+  // changed since the last look, with one unconditional sweep every twelve seconds in case it has
+  // not. Nothing at all while the tab is in the background or while the button is being dragged.
+  setInterval(function () {
+    if (grab || document.hidden) return;
+    if (!dirty && ++quiet < 10) return;
+    quiet = 0;
+    sync();
+  }, 1200);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { dirty = true; sync(); } });
 
   function start() {
     document.documentElement.classList.toggle('rg-aim-off', !isOn());

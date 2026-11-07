@@ -13,7 +13,10 @@
     if (heads.length < 3) return;
     var names = Array.prototype.map.call(heads, function (th) { return th.textContent.replace(/\s+/g, ' ').trim(); });
     table.classList.add('rg-cardtable');
-    Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) {
+    // rows already labelled are skipped: the observer fires on anything the dashboard adds anywhere,
+    // and re-labelling every cell of every table each time was pure repeat work
+    Array.prototype.forEach.call(table.querySelectorAll('tbody tr:not([data-rg-cells])'), function (tr) {
+      tr.setAttribute('data-rg-cells', '1');
       var col = 0;
       Array.prototype.forEach.call(tr.children, function (td) {
         if (td.tagName !== 'TD' && td.tagName !== 'TH') return;
@@ -23,8 +26,12 @@
     });
   }
 
+  // Only the page being looked at, and only at the width where the card styles exist: every table of
+  // all 60-odd pages was being walked again a few times a second on a desktop that never shows cards.
   function run() {
-    Array.prototype.forEach.call(document.querySelectorAll('.page table'), label);
+    if (window.innerWidth > 640) return;
+    var page = document.querySelector('.main-content > .page.active');
+    Array.prototype.forEach.call((page || document).querySelectorAll('table'), label);
   }
 
   var timer = null;
@@ -35,6 +42,8 @@
 
   function start() {
     run();
+    // turned sideways, or the window made narrow: the open page's tables get their labels now
+    window.addEventListener('resize', soon);
     var root = document.querySelector('.main-content') || document.body;
     new MutationObserver(function (list) {
       for (var i = 0; i < list.length; i++) {

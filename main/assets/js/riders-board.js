@@ -179,7 +179,15 @@
       if (d.success) fillAssign(box);
     }).finally(function () { b.disabled = false; });
   });
+  // Debounced: this fires on every change anywhere in the dashboard, and the dashboard changes
+  // something several times a second, so searching the whole document each time was adding up to
+  // real work while nobody was doing anything. A rider box filling in 300 ms later is not noticed.
+  var fillSoon = null;
   new MutationObserver(function () {
-    document.querySelectorAll('.rg-rider-assign:not([data-ready])').forEach(fillAssign);
+    if (fillSoon) return;
+    fillSoon = setTimeout(function () {
+      fillSoon = null;
+      document.querySelectorAll('.rg-rider-assign:not([data-ready])').forEach(fillAssign);
+    }, 300);
   }).observe(document.documentElement, { childList: true, subtree: true });
 })();
