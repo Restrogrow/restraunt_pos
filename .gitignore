@@ -137,3 +137,6 @@ app/fake-orders-*.php
 app/inject-*.php
 app/run-*-migration.php
 app/test-*.php
+
+# Playwright: the owner session loginAsOwner caches between tests (holds a session cookie)
+tests/.auth/

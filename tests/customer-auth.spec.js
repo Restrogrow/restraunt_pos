@@ -18,6 +18,14 @@ test.describe('Customer account signup + login', () => {
     await page.fill('#signupConfirmPassword', password);
     await page.click('#signupSubmitBtn');
 
+    // Signup is capped at three a day per IP (config/rate_limit.php: 'signup' => 3 per 3600s), so
+    // running the suite four times in an hour hits it. Say so and skip, rather than sit waiting for
+    // a redirect that is never coming and then fail on a navigation timeout that says nothing about
+    // why. A genuinely broken signup still fails below.
+    const limited = await page.getByText(/too many|try again (in|later)|rate limit/i).first()
+      .waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
+    test.skip(limited, 'Signup rate limit reached for this IP (3 per hour) - try again later');
+
     // Successful signup logs the customer straight in and redirects off login.php.
     await page.waitForURL((url) => !url.pathname.endsWith('login.php'), { timeout: 10000 });
 

@@ -7,22 +7,61 @@
 // DB (it was overwritten by real usage), and tests must never run against
 // real restaurants/credentials.
 
+const fs = require('fs');
+const path = require('path');
+
 const DEMO_ADMIN = { username: 'pw_test_admin', password: 'PwTest#2026' };
 const TEST_RESTAURANT_ID = 'TEST01';
 
+// Where the owner's signed-in cookies are kept between tests. See loginAsOwner.
+const OWNER_STATE = path.join(__dirname, '.auth', 'owner.json');
+
 /**
- * Logs in as the restaurant owner and waits for the dashboard to load.
- * Grants the "notifications" permission first so the post-login push-notification
- * prompt modal (main/admin/login.php -> showNotificationPrompt) auto-skips itself
- * instead of blocking navigation.
+ * Puts the test in the restaurant owner's dashboard, signed in.
+ *
+ * It signs in for real once and then reuses the cookies, because the auth endpoints share an
+ * IP-based rate limit of five logins a minute. Every spec calling this used to mean a fresh login,
+ * and the suite quietly grew past five: the sixth login was refused, the test sat waiting for a
+ * dashboard that was never coming, and it failed on a timeout a long way from the real cause. One
+ * login for the whole suite also takes a good minute off it.
+ *
+ * A saved session that has since expired just falls through to signing in again, so there is no
+ * state to clear by hand. Delete tests/.auth to force a fresh login.
+ *
+ * Grants the "notifications" permission first so the post-login push-notification prompt modal
+ * (main/admin/login.php -> showNotificationPrompt) auto-skips itself instead of blocking navigation.
  */
 async function loginAsOwner(page, context) {
   await context.grantPermissions(['notifications']);
+
+  if (fs.existsSync(OWNER_STATE)) {
+    try {
+      const saved = JSON.parse(fs.readFileSync(OWNER_STATE, 'utf8'));
+      await context.addCookies(saved.cookies || []);
+      await page.goto('main/views/dashboard.php');
+      if (/dashboard\.php/.test(page.url())) {
+        await dismissTour(page);
+        await dismissNewOrderOverlay(page);
+        return;
+      }
+    } catch (e) {
+      // unreadable or no longer valid - sign in below
+    }
+  }
+
   await page.goto('main/admin/login.php');
   await page.fill('#loginUsername', DEMO_ADMIN.username);
   await page.fill('#loginPassword', DEMO_ADMIN.password);
   await page.click('#loginBtn');
   await page.waitForURL(/dashboard\.php/, { timeout: 15000 });
+
+  try {
+    fs.mkdirSync(path.dirname(OWNER_STATE), { recursive: true });
+    fs.writeFileSync(OWNER_STATE, JSON.stringify({ cookies: await context.cookies() }));
+  } catch (e) {
+    // worth carrying on without the saving; the next test just logs in again
+  }
+
   await dismissTour(page);
   await dismissNewOrderOverlay(page);
 }
