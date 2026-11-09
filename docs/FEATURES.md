@@ -24,7 +24,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Emails | 9 |
 | Reports & analytics | 10 |
 | Inventory | 9 |
-| Payments & billing | 12 |
+| Payments & billing | 13 |
 | Google & SEO | 9 |
 | Website look & settings | 21 |
 | Security & accounts | 11 |
@@ -285,6 +285,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Payment gateway | Take online payments through RestroGrow's account (paid to you in 2 days) or your own PhonePe. **India only** (PhonePe takes rupees): restaurants in other countries see "contact support", and their customers, wallet top-ups, VIP and meal plans never reach PhonePe. | Dashboard › Payments › Gateway | owner | Super Admin "Online pay" switch + PhonePe keys; Super Admin can't switch it on outside India |
 | Payment methods | Add your own methods (e.g. Paytm QR) that show in POS and reports. | Dashboard › Payments › Gateway › Payment methods | owner | — |
 | Business UPI QR | Upload your UPI QR; guests pay and upload a screenshot. | Dashboard › Settings › Payments | owner | — |
+| Pay by UPI at the counter | Save a payment method's UPI ID and the POS shows a QR code with the bill amount already in it, plus a link that opens the customer's UPI app (GPay, PhonePe, Paytm, BHIM) with the amount and the table filled in — they only enter their PIN. No gateway and no fee. A split bill gets one QR per UPI method for its own share. **UPI sends no confirmation back**, so you still mark the bill paid yourself. | Dashboard › Settings › Payments (UPI ID), then the POS payment window | owner, customer | — |
 | Confirm payment screenshots | Check and confirm the screenshot a guest uploaded. | Dashboard › Orders (order details) | owner, staff | — |
 | Update payment status | Mark an order paid / part paid / refunded. | Dashboard › Orders › Online Orders / Orders | owner, staff | — |
 | Missed-payment checker | A background job confirms PhonePe payments whose callback was missed. | Automatic (tools/reconcile_pending_payments.php) | super admin | Cron job + PhonePe keys |
