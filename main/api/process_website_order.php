@@ -1309,28 +1309,60 @@ $conn->beginTransaction();
         exit();
     }
 
-    // Create order
+    // Create order.
+    //
+    // The column list is built from the columns this database actually has, so an unrun migration
+    // costs the order that one field instead of the whole order. There used to be three statements
+    // written out in full here, each dropping the columns of one migration: the first failed on any
+    // column the other two did not know about, the catch took every "Unknown column" for one of
+    // those three, and the last of them was malformed - 24 columns against 25 values. So a database
+    // missing, say, delivery_zone_id refused every website order with "Column count doesn't match
+    // value count", which names neither the column that was missing nor the order that was lost.
+    require_once __DIR__ . '/../config/schema_cache.php';
     $orderStatusForInsert = $is_scheduled_order ? 'Scheduled' : 'Pending';
-    try {
-        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, landmark, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source, scheduled_at, is_scheduled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)");
-        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $landmark, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $orderStatusForInsert, $subtotal, $tax, $grand_total, $scheduled_at_db, $is_scheduled_order ? 1 : 0]);
-    } catch (PDOException $e) {
-        // landmark / address_lat / address_lng migrations may not have been
-        // run on this DB yet - fall back so order placement never breaks
-        // over an unrun migration.
-        $missingLandmark = stripos($e->getMessage(), 'landmark') !== false;
-        $missingLatLng = stripos($e->getMessage(), 'address_lat') !== false || stripos($e->getMessage(), 'address_lng') !== false;
-        if (!$missingLandmark && !$missingLatLng && stripos($e->getMessage(), 'Unknown column') === false) {
-            throw $e;
-        }
-        if ($missingLandmark && !$missingLatLng) {
-            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source, scheduled_at, is_scheduled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)");
-            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $orderStatusForInsert, $subtotal, $tax, $grand_total, $scheduled_at_db, $is_scheduled_order ? 1 : 0]);
-        } else {
-            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source, scheduled_at, is_scheduled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)");
-            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $orderStatusForInsert, $subtotal, $tax, $grand_total, $scheduled_at_db, $is_scheduled_order ? 1 : 0]);
+    $orderRow = [
+        'restaurant_id' => $restaurant_id,
+        'table_id' => $table_id,
+        'order_number' => $order_number,
+        'customer_name' => $customer_name,
+        'customer_phone' => $customer_phone,
+        'customer_email' => $customer_email,
+        'customer_address' => $customer_address,
+        'landmark' => $landmark,
+        'address_lat' => $address_lat,
+        'address_lng' => $address_lng,
+        'notes' => $notes,
+        'coupon_code' => $coupon_code,
+        'discount_amount' => $discount_amount,
+        'loyalty_points_redeemed' => $loyalty_points_to_redeem,
+        'loyalty_discount_amount' => $loyalty_discount_amount,
+        'order_type' => $order_type,
+        'delivery_zone_id' => $delivery_zone_id,
+        'delivery_charge' => $deliveryCharge,
+        'payment_method' => $payment_method,
+        'payment_status' => $paymentStatus,
+        'order_status' => $orderStatusForInsert,
+        'subtotal' => $subtotal,
+        'tax' => $tax,
+        'total' => $grand_total,
+        'source' => 'website',
+        'scheduled_at' => $scheduled_at_db,
+        'is_scheduled' => $is_scheduled_order ? 1 : 0,
+    ];
+    // These are what an order is. Quietly dropping one would write a half order - no total, no
+    // status - so they are never dropped and a database without them fails loudly instead.
+    $orderMustHave = ['restaurant_id', 'order_number', 'customer_name', 'order_type',
+                      'payment_method', 'payment_status', 'order_status', 'subtotal', 'tax', 'total', 'source'];
+    foreach (array_keys($orderRow) as $col) {
+        if (in_array($col, $orderMustHave, true)) continue;
+        if (!rgHasColumn($conn, 'orders', $col)) {
+            unset($orderRow[$col]);
+            error_log('process_website_order: orders.' . $col . ' is missing, order saved without it (run the migrations)');
         }
     }
+    $conn->prepare('INSERT INTO orders (`' . implode('`, `', array_keys($orderRow)) . '`) VALUES ('
+            . implode(', ', array_fill(0, count($orderRow), '?')) . ')')
+         ->execute(array_values($orderRow));
     $order_id = $conn->lastInsertId();
     if ($client_ref !== '' || $tableSession) {
         $conn->prepare('UPDATE orders SET client_ref = ?, table_session_id = ? WHERE id = ?')
