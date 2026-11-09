@@ -18,13 +18,14 @@ test.describe('Customer account signup + login', () => {
     await page.fill('#signupConfirmPassword', password);
     await page.click('#signupSubmitBtn');
 
-    // Signup is capped at three a day per IP (config/rate_limit.php: 'signup' => 3 per 3600s), so
-    // running the suite four times in an hour hits it. Say so and skip, rather than sit waiting for
-    // a redirect that is never coming and then fail on a navigation timeout that says nothing about
-    // why. A genuinely broken signup still fails below.
-    const limited = await page.getByText(/too many|try again (in|later)|rate limit/i).first()
+    // Signing up sends a verification code, and codes are capped at ten an hour from one address
+    // (website/otp.php: otp_ip_<ip>, 10 per 3600s). So this test can only run ten times an hour,
+    // and past that it would otherwise sit waiting for a redirect that is never coming and fail on
+    // a navigation timeout that says nothing about why. The page's own message is what is read, so
+    // a genuinely broken signup still fails below rather than being skipped.
+    const limited = await page.locator('#authError').filter({ hasText: /too many codes/i }).first()
       .waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
-    test.skip(limited, 'Signup rate limit reached for this IP (3 per hour) - try again later');
+    test.skip(limited, 'Verification codes capped at 10/hour for this IP (website/otp.php) - try again later');
 
     // Successful signup logs the customer straight in and redirects off login.php.
     await page.waitForURL((url) => !url.pathname.endsWith('login.php'), { timeout: 10000 });
