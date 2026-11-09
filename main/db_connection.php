@@ -186,6 +186,14 @@ function createDatabaseConnection() {
             // Create connection
             $pdo = new PDO($dsn, $username, $password, $options);
 
+            // Which database this process actually ended up talking to. config/schema_cache.php
+            // keys its "this column exists" notes on it: one set of notes shared between the local
+            // copy and the server describes whichever was connected first, so a column present on
+            // one gets reported as present on the other and the migration that would have added it
+            // is skipped. Taken from the DSN we connected with rather than from .env, because of the
+            // remote-to-local and socket-to-TCP fallbacks above.
+            $GLOBALS['rg_db_scope'] = $dsn;
+
             // Note: no post-connect "SELECT 1" verify here — the PDO
             // constructor above already throws on failure, so a fresh
             // connection is proven alive without an extra round trip.

@@ -10,10 +10,23 @@
  */
 if (!function_exists('rgHasColumn')) {
 
+    /**
+     * One file per database, not per installation.
+     *
+     * The local copy and the server are different databases behind the same code, and a single
+     * shared file described whichever was connected first: a column present on one was then
+     * reported as present on the other, and the ensure that would have added it never ran. That is
+     * how a database ended up being served with no website_banners.placement and no
+     * customers.birthday while the notes said both had been dealt with.
+     *
+     * A restored dump is still a database changing under the same name, so after restoring one the
+     * file for it has to be deleted - but it is now obvious which file that is.
+     */
     function rgSchemaCacheFile(): string {
         $dir = __DIR__ . '/../tmp';
         if (!is_dir($dir)) @mkdir($dir, 0755, true);
-        return $dir . '/schema_cache.json';
+        $scope = (string)($GLOBALS['rg_db_scope'] ?? '');   // set by db_connection.php on connect
+        return $dir . '/schema_cache' . ($scope === '' ? '' : '_' . substr(sha1($scope), 0, 12)) . '.json';
     }
 
     function rgSchemaKnown(string $key): bool {
