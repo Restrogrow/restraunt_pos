@@ -227,6 +227,9 @@ ALTER TABLE coupons
 ALTER TABLE kot
   ADD COLUMN IF NOT EXISTS order_id INT DEFAULT NULL;
 
--- How many months a subscription payment covered (the receipt email needs it).
+-- What the receipt email reads off a subscription payment. The canonical migration is
+-- main/database/run_subscription_payments_migration.php; these are its columns.
 ALTER TABLE subscription_payments
-  ADD COLUMN IF NOT EXISTS duration_months INT DEFAULT 1;
+  ADD COLUMN IF NOT EXISTS duration_months INT DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'phonepe',
+  ADD COLUMN IF NOT EXISTS notes VARCHAR(255) DEFAULT NULL;
