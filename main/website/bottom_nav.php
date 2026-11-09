@@ -1,4 +1,9 @@
 <?php
+// DEFAULT_NAV_LABELS, NAV_ICON_STYLES and THEME_NAV_BAR_STYLES, all used below. They used to come
+// from whichever page included this one, so the bar was one fatal error away from any page that had
+// not already pulled them in - and asking for bottom_nav.php over HTTP got that fatal with a stack
+// trace in the reply. The partial's other three dependencies were already required here.
+require_once __DIR__ . '/../config/website_theme_helpers.php';
 require_once __DIR__ . '/../config/meal_subscription_schema.php';
 require_once __DIR__ . '/../config/reservation_helpers.php';
 $bottomNavShowPlans = isset($conn, $restaurant_id) && mealSubscriptionsFeatureEnabled($conn, $restaurant_id);
