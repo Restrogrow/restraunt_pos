@@ -23,6 +23,7 @@
 - [Where RestroGrow is listed](#where-restrogrow-is-listed)
 - [Guides and documents](#guides-and-documents)
 - [Running it locally](#running-it-locally-xampp)
+- [Tests](#tests)
 - [Configuration (.env)](#configuration-env)
 - [Deploying, uptime monitoring, cron jobs and WhatsApp templates](#deploying)
 - [Project structure and tech stack](#project-structure)
@@ -31,6 +32,28 @@
 ---
 
 ## What's new
+
+### 9 November 2026
+
+| | Change | What it means |
+|---|---|---|
+| **Starting rating** | Settings › Restaurant profile › Starting rating | A restaurant that has just opened has no order feedback, so its website showed no stars at all — an empty space where every other listing has a rating. The owner can now put in the figure they already have (their Google or Zomato one) and a review count, and the website shows that until their own customers have rated them. It is a starting point, not an override: the moment **three** customers have rated a completed order the real average takes over, the owner's number is ignored, and the fields are disabled with a line saying which of the two the public is seeing. Blank shows no rating rather than a zero. Code: `main/config/restaurant_rating.php` (`rgPublicRating`), columns `users.manual_rating` / `manual_rating_count`. |
+| **The AI manager button moves** | Any dashboard screen | It used to sit on top of the KOT and billing buttons. Now you can drag it anywhere and it snaps to the nearest side, there is an **×** to put it away, Settings turns it off for good, and it parks itself clear of the page's own controls. Code: `main/assets/js/ai-manager-fab.js`. |
+| **Menu photos match by dish** | Super Admin › menu import | Matching was going by file name and getting it wrong as often as right (16 right, 2 wrong, 10 missed on the test menu). Gemini now reads the photo library once and writes down what each picture is **of** — looking at the image itself when the file name says nothing — and matching runs against that, with diet words (veg / jain) weighted so they narrow rather than decide. **28 of 28 correct, none wrong.** Code: `main/config/menu_image_catalogue.php`, `main/includes/menu_image_matcher.php`; build with `php main/tools/build_menu_image_catalogue.php`. |
+| **A second phone number** | Settings › Restaurant profile › Contact | A landline beside a mobile, the kitchen beside the counter. Both show wherever one showed before — Call, Contact, About, the policy pages and the printed bill — and the second is optional everywhere. Code: `main/config/restaurant_contact.php` (`rgPhones`). |
+| **Faster, and it stops stuttering** | Dashboard | An idle dashboard was keeping the browser 13–82% busy and freezing for anywhere up to 5.7 seconds at a time; it now sits at **0.9–2.8% with a worst pause of 60ms**. Sign-in to a usable dashboard went 7.6s → 4.9s, and the Coupons page 5.8s → 0.9s. |
+| **Layout fixed across screen sizes** | Everywhere | Every screen was measured from 320px up. The dashboard went from 132 layout problems to 8 and the customer site from 91 to 5, with **none at all** at 1024, 1280 and 1920. |
+| **Nepal, and more blog posts** | restrogrow.com/blog | Keyword research for Nepal the same way it was done for India — 4,080 autocomplete queries scoped to Nepal — and eight posts written for what it found: IRD-approved billing, PAN vs VAT bills, what a restaurant costs to open, registration, the momo business, KOT printer prices, and the Swastik / IMS alternatives. New posts now tell Bing, Yandex, Seznam and Naver themselves the moment they are published (`main/config/indexnow.php`); Google still has to be asked by hand in Search Console. Plan and sources: [docs/BLOG_KEYWORD_PLAN.md](docs/BLOG_KEYWORD_PLAN.md). |
+
+**Fixes worth knowing about**
+
+| | What was wrong |
+|---|---|
+| **Website orders could fail outright** | There were three `INSERT INTO orders` statements, each dropping one migration's columns, and the last was malformed — 24 columns against 25 values. A database missing any column the other two did not know about refused **every** website order with "Column count doesn't match value count", which names neither the column nor the lost order. The column list is now built from the columns the table actually has, so an unrun migration costs that one field and says which; the columns that make an order an order are never dropped. |
+| **The schema cache described the wrong database** | `main/config/schema_cache.php` remembers which columns exist so it does not ask on every request — but it kept one file for the whole installation, while the same code connects to the local copy and to the server. The notes described whichever was connected first, so a column present on one was reported as present on the other and the migration that would have added it was skipped. One file per database now, named for what it connected to. This was behind a day of faults that each looked like something else. |
+| **A theme change made while the page was loading was lost** | Website Appearance snapshots the form 300ms after filling it in, to let the choices that set hidden inputs on click run first. A colour changed inside those 300ms was read as part of that snapshot: Save stayed greyed out saying "Saved" and the change was gone next time, with nothing on screen to say so. |
+| **An unused feature was filling the error log** | The dashboard's Catering tile reads a table that is only created when Catering is first opened, so a restaurant that never touched it wrote the same line on every dashboard load — 188 in two days locally, which is how a real error gets lost. The tile already showed zero; a missing table is simply no longer logged. |
+| **The bottom nav bar depended on its caller** | `bottom_nav.php` read three constants it never required the file for, taking them from whichever page included it. Every page that shows the bar happened to have pulled that file in, but asking for `bottom_nav.php` over HTTP returned a PHP fatal with a stack trace. |
 
 ### 28 October 2026
 
@@ -236,6 +259,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
 - **Rewards page** from the counter QR; table QR ordering, call waiter, reservations, catering, meal plans
 - **Ordering as a guest** is the owner's choice (Settings › Ordering): leave the "Continue as guest" button on, or ask every customer for an account so their history, points and wallet stay on one number. A table's QR code, room service and WhatsApp orders never ask anyone to log in either way
 - **Rooms** (hotels / lodges): see rooms with photos and prices, book dates, read the house rules; **room service** from the QR code in the room, added to the room bill
+- **Star rating** on the home page, from customers' own order feedback once three of them have rated. Until then, the owner's **starting rating** (Settings › Restaurant profile) — their Google or Zomato figure — so a restaurant that has just opened is not the only listing with an empty space where the stars go. The real average takes over the moment it exists, so the owner's number can never hide genuine feedback. Per-dish stars on bestsellers work the same way, from three rated orders containing that dish
 - Policy pages in the restaurant's own look; install as an app
 
 ### Admin dashboard
@@ -383,12 +407,28 @@ git clone https://github.com/Restrogrow/restraunt_pos.git menuwebsite
 # 2. Create the database and import main/database/full_database_dump.sql
 #    (database "menuwebsite_db", user root, no password on XAMPP)
 
-# 3. Configuration: copy main/.env.example to main/.env and fill in what you need
+# 3. Bring that dump up to the current schema - do not skip this
+mysql -u root menuwebsite_db < main/database/local_schema_upgrade.sql
 
-# 4. Open
+# 4. Configuration: copy main/.env.example to main/.env and fill in what you need
+
+# 5. Open
 #    Customer site: http://localhost/menuwebsite/{restaurant-slug}
 #    Admin:         http://localhost/menuwebsite/main/admin/login.php
 ```
+
+**Step 3 is not optional.** The dump is a snapshot and the schema has moved since; every statement in
+`local_schema_upgrade.sql` is `IF NOT EXISTS`, so it is safe to re-run and worth re-running after a
+pull. A database that is behind does not announce itself — on 9 Nov 2026 the only symptom of a
+missing `orders.delivery_zone_id` was that every single website order was refused. Run it again
+whenever something fails for no reason you can see, then check `xampp/apache/logs/error.log` for
+`Unknown column` or `doesn't exist`.
+
+**After restoring a dump, delete the schema cache for that database.** `main/config/schema_cache.php`
+remembers which columns exist in `main/tmp/schema_cache_<hash>.json` (one file per database, named
+for the host and database connected to). Restoring a dump changes the schema under the same name, so
+those notes become wrong and the migrations they describe are skipped. Deleting the file costs one
+round of checks on the next request.
 
 No Composer step is needed. On a local computer, by design:
 - OTP codes are shown on screen;
@@ -400,6 +440,55 @@ Demo data:
 - `php main/database/seed_demo_restaurant.php`: the demo restaurant **Spice Garden Indiranagar** (`demo` / `demo`, one-tap at `/demo/`).
 - `php main/database/seed_multibranch_demo.php`: the Spice Garden chain (owner `sg_owner` / `Owner@123`, branches Koramangala and HSR Layout, plus the demo restaurant as its Indiranagar branch).
 - `php main/database/seed_loyalty_demo.php [RESTAURANT_ID]` (default `RESSGI002`): loyalty, VIP, games and phone card on top.
+
+---
+
+## Tests
+
+Playwright drives a real browser against the local install: signing in, adding stock, placing an
+order through guest checkout, saving settings and saving a theme. Nine tests, run one at a time
+because the auth endpoints are rate limited per IP.
+
+```bash
+npm install                       # first time only
+npx playwright install chromium   # first time only
+
+mysql -u root menuwebsite_db < scripts/seed_test_restaurant.sql   # once: the TEST01 fixture
+
+npm test                          # all of them  <- use this
+npm run test:ui                   # watch it happen
+npm run test:headed               # in a visible browser
+npx playwright show-report        # the last run
+npx playwright test tests/place-order.spec.js    # one file (see the note below)
+```
+
+**Use `npm test`, not `npx playwright test` directly.** The `pretest` hook runs
+`scripts/clear-rate-limits.js`, which wipes the local per-IP auth counters first. Without it a
+second or third run in the same hour starts hitting limits meant for strangers, and the failures
+that follow look like product faults: a sign-in that never returns, a sign-up that stops at
+"Too many codes requested". Run `node scripts/clear-rate-limits.js` by hand before a single-file run
+if you have been round a few times.
+
+They run against restaurant **TEST01** (`scripts/seed_test_restaurant.sql`), never a real one or the
+demo: owner `pw_test_admin`, two menu items, open 24 hours. Each test cleans up after itself, so the
+suite can be re-run without resetting anything.
+
+Worth knowing before you read a failure:
+
+- **The limits, if you skip the clearing.** Owner sign-in is five a minute, which is also why
+  `loginAsOwner` signs in once and reuses the cookies (`tests/.auth/`, gitignored — delete it to
+  force a fresh sign-in). Customer sign-up sends a verification code, and codes are ten an hour from
+  one address (`main/website/otp.php`); past that `customer-auth` skips with the reason instead of
+  failing on a timeout that explains nothing.
+- **A real order each run.** `place-order` creates a genuine TEST01 order, which the dashboard then
+  pops a new-order card for in later tests. `dismissNewOrderOverlay` clears it.
+- **The dashboard tour** covers the screen on a restaurant that has not finished setting up, which
+  TEST01 never will. `dismissTour` presses Skip.
+- **Timeout is 90s**, not Playwright's 30s: every test signs in for real.
+
+A green suite is not the whole check. After a run, read `xampp/apache/logs/error.log` — a page can
+look right while logging a missing column on every load. It should hold nothing but the deliberate
+wrong-password case from `owner-login`.
 
 ---
 
@@ -492,6 +581,8 @@ main/
 ├── views/          Dashboards (admin, manager, waiter, chef), user guide, layout gallery
 └── website/        Customer website (menu, cart, track, profile, loyalty, policy pages) and its service worker
 docs/               RepeatGrow contract, audits, README screenshots
+tests/              Playwright end-to-end tests and their shared helpers (see Tests above)
+scripts/            Dev tooling the tests need: the TEST01 fixture, clearing local rate limits
 ```
 
 ### Tech stack

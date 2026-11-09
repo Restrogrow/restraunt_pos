@@ -1,6 +1,6 @@
 # RestroGrow feature list
 
-Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from the code itself (not from memory), updated 5 Nov 2026, so if it is in this list, it exists.
+Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from the code itself (not from memory), updated 9 Nov 2026, so if it is in this list, it exists.
 
 ## How to use this list
 
@@ -14,9 +14,9 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 |---|---|
 | Orders & POS | 18 |
 | Kitchen & staff | 16 |
-| Tables & dine-in | 11 |
-| Menu | 12 |
-| Customer website & online ordering | 29 |
+| Tables & dine-in | 18 |
+| Menu | 13 |
+| Customer website & online ordering | 31 |
 | Delivery | 10 |
 | Customers, loyalty & rewards | 20 |
 | Offers | 13 |
@@ -26,11 +26,11 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Inventory | 9 |
 | Payments & billing | 12 |
 | Google & SEO | 9 |
-| Website look & settings | 19 |
+| Website look & settings | 21 |
 | Security & accounts | 11 |
 | Apps | 18 |
-| Super Admin (platform) | 33 |
-| Demo & sales tools | 10 |
+| Super Admin (platform) | 38 |
+| Demo & sales tools | 11 |
 | **Total built** | **287** |
 | Planned, not built | 19 |
 
@@ -144,6 +144,8 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Ordering as a guest, on or off | Keep the "Continue as guest" button, or make an account the only way to order so a customer's history, points and wallet stay on one number. Off, the button goes and the order API refuses a website order with no account. A table's QR code, room service and WhatsApp orders never ask anyone to log in either way. | Dashboard › Settings › Ordering › Let customers order as a guest | owner | On by default |
 | Profile and order history | Saved address, past orders with reorder, favourites, rate an order. | `/{restaurant}/profile` | customer | — |
 | Rate your order | Guests rate orders; results go to Dashboard › Feedback. | Website › Profile › order | customer | — |
+| Stars on the home page | The rating and review count beside the opening hours, averaged from guests' own order feedback once three of them have rated a completed order. Below three, the owner's starting rating shows instead (Dashboard › Settings › Restaurant profile), and the real average replaces it the moment it exists. | `/{restaurant}` | customer | — |
+| Stars on each dish | A dish shows a rating on Bestsellers once three rated orders have contained it — the average of those orders. Fewer than three and it shows none rather than a misleading one. | Website home / menu (Bestsellers) | customer | — |
 | Ask for a Google review | Every 3rd completed order the guest is asked to rate you on Google. | Website › Profile | customer | Google Places key + your Google place |
 | Install as app (PWA) | Guests can "install" your website on their phone with your logo. | Website › install prompt | customer | HTTPS |
 | Catering request | Guests ask for a catering quote with a live price estimate. | `/{restaurant}/catering` | customer | **Half-built:** no link to this page anywhere on the website — guests must be sent the address |
@@ -322,6 +324,8 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Custom domain | Use your own web address (e.g. spicegarden.in) with a DNS check; QR codes switch to it. | Dashboard › Custom Domain | owner | Buy a domain + add a DNS record |
 | Embed on another website | Code to put the ordering menu inside a Wix / WordPress / HTML site. | Dashboard › Custom Domain (Embed) | owner | — |
 | Restaurant profile | Name, owner, tagline, phone, email. | Dashboard › Settings › Restaurant profile | owner | — |
+| Second phone number | A second number customers can call — a landline beside a mobile, the kitchen beside the counter. Shows wherever the first one does: Call, Contact, About, the policy pages and the printed bill. Optional. | Dashboard › Settings › Restaurant profile › Contact | owner | — |
+| Starting rating | The star rating the website shows until three of your own customers have rated an order — put in your Google or Zomato figure and review count so a new restaurant is not the only listing with an empty space where the stars go. Your real average takes over the moment it exists, and the fields then lock, so it can never hide genuine feedback. Leave empty to show no rating. | Dashboard › Settings › Restaurant profile › Starting rating | owner | — |
 | Location | Address, Google Maps link and pin. | Dashboard › Settings › Location | owner | Google Maps key for the pin map |
 | Business hours | Opening hours per day. | Dashboard › Settings › Business hours | owner | — |
 | Ordering switches | Delivery / takeaway / dine-in, table reservations, minimum order. | Dashboard › Settings › Ordering | owner | — |

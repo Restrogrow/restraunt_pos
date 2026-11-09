@@ -41,6 +41,10 @@ cp main/.env.example main/.env
 # 4. Demo data
 php main/database/seed_demo_restaurant.php      # Spice Garden Indiranagar, demo / demo
 php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner / Owner@123)
+
+# 5. To run the tests: the fixture restaurant they use, then npm (see Tests below)
+mysql -u root menuwebsite_db < scripts/seed_test_restaurant.sql
+npm install && npx playwright install chromium
 ```
 
 - **Dish photos** for menu import and "Make your menu" come from `images/` (not in git, copied to each machine).
@@ -366,18 +370,48 @@ page only has to include `header.php` like the others.
 ## DB migrations
 
 - Migration scripts live in `main/database/` (SQL) and `main/admin/` (PHP).
-- Key files: `full_database_dump.sql` (complete schema + sample data).
+- Key files: `full_database_dump.sql` (complete schema + sample data), then
+  `local_schema_upgrade.sql` to bring that snapshot up to the current schema. Every statement in it
+  is `IF NOT EXISTS`, so re-run it after a pull.
 - Run migrations via browser or CLI: `php main/admin/run_addons_migration.php` etc.
+- **The live database has never run `local_schema_upgrade.sql`**, so new code must add the column or
+  table it needs itself, outside a transaction — `rgEnsureOnce('ensureXyzSchema', $conn)` for a batch,
+  `rgHasColumn($conn, 'table', 'col')` for a single check (`main/config/schema_cache.php`).
+- An ensure that returns `false` is not remembered and runs again next request. Return it when the
+  work did not succeed: these functions catch their own PDO errors, so without it one failed `ALTER`
+  is recorded as a success and the column stays missing until the file is next edited.
+- `rgHasColumn` / `rgEnsureOnce` keep their notes in `main/tmp/schema_cache_<hash>.json`, **one file
+  per database**, named for the host and database connected to. After restoring a dump, delete that
+  file: the schema changed under the same name, so the notes are now wrong and describe migrations
+  that have not actually run.
+- Building an `INSERT` from the columns that exist beats writing out one statement per migration.
+  Three hand-written variants of the orders insert is how every website order came to be refused
+  with "Column count doesn't match value count" (fixed 9 Nov 2026; see
+  `main/api/process_website_order.php`).
 
-## No tests
+## Tests
 
-- No test framework (no phpunit, no test directory).
-- Manual testing via curl or browser.
+- Playwright end-to-end tests in `tests/`, nine of them: owner sign-in, inventory, guest checkout,
+  settings round-trip, theme save. They drive a real browser against the local install.
+- **Run them with `npm test`, not `npx playwright test`.** The `pretest` hook clears the local
+  per-IP auth counters (`scripts/clear-rate-limits.js`); without it a second run in the same hour
+  starts hitting rate limits meant for strangers and the failures look like product faults.
+- They use restaurant `TEST01` (`scripts/seed_test_restaurant.sql`), never a real one or the demo.
+  Import that fixture once. Each test cleans up after itself.
+- Shared helpers in `tests/helpers.js`: `loginAsOwner` (signs in once, reuses cookies — owner
+  sign-in is five a minute), `dismissTour`, `dismissNewOrderOverlay`, `clickPastOverlay` (the
+  new-order card arrives on a poll and will otherwise take a click meant for something else),
+  `gotoDashboardPage`.
+- A green suite is not the whole check: read `xampp/apache/logs/error.log` afterwards. A page can
+  look right while logging a missing column on every load.
+- There is still no PHP unit test framework (no phpunit).
 
 ## No build step
 
-- No npm scripts, no bundler, no codegen.
-- PHP files are served directly by Apache.
+- No bundler and no codegen; PHP files are served directly by Apache, and the JS and CSS in
+  `main/assets/` are the files the browser gets.
+- `package.json` exists only for the Playwright tests (`npm test`, `test:ui`, `test:headed`). It is
+  dev tooling and is not deployed.
 
 ## Related project: RepeatGrow
 
