@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginAsOwner } = require('./helpers');
+const { loginAsOwner, gotoDashboardPage } = require('./helpers');
 
 // Adds a stock item through the real UI, confirms it appears, then deletes it again so the test is
 // repeatable without leaving rows behind.
@@ -15,7 +15,7 @@ test.describe('Inventory (extracted feature)', () => {
     // Inventory lives in the collapsible "Menu" submenu - expand it first,
     // otherwise the submenu-toggle link intercepts the click.
     await page.click('.nav-item.has-submenu .submenu-toggle');
-    await page.click('.nav-link[data-page="inventoryPage"]');
+    await gotoDashboardPage(page, 'inventoryPage');
     // the studio opens on Overview; Add item lives on the Stock tab
     await page.click('#invRoot [data-iv-tab="stock"]');
     await expect(page.locator('#invRoot [data-iv-item-new]')).toBeVisible({ timeout: 15000 });

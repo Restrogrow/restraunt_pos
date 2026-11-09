@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginAsOwner, dismissNewOrderOverlay, TEST_RESTAURANT_ID } = require('./helpers');
+const { loginAsOwner, clickPastOverlay, TEST_RESTAURANT_ID, gotoDashboardPage } = require('./helpers');
 
 // Regression test for the Website Appearance rework: colors used to be almost
 // entirely disconnected from the customer site (most buttons were hardcoded),
@@ -9,7 +9,7 @@ test.describe('Website Appearance', () => {
   test('saving a new Primary Color persists and is served to the public site', async ({ page, context, request }) => {
     await loginAsOwner(page, context);
 
-    await page.click('.nav-link[data-page="websiteThemePage"]');
+    await gotoDashboardPage(page, 'websiteThemePage');
     await expect(page.locator('#primaryRedHex')).toBeVisible({ timeout: 10000 });
     // Wait for the page to have taken its "nothing changed yet" snapshot (script.js
     // setThemeBaseline). Typing before that happens puts the new value into the baseline itself, so
@@ -35,8 +35,7 @@ test.describe('Website Appearance', () => {
       // "Save never came alive" instead of a click that hangs until the test times out
       await expect(saveBtn).toBeEnabled({ timeout: 5000 });
 
-      await dismissNewOrderOverlay(page);
-      await saveBtn.click();
+      await clickPastOverlay(page, '#saveWebsiteThemeBtn');
       await expect(page.locator('.rgn-card').filter({ hasText: /saved/i }).first()).toBeVisible({ timeout: 10000 });
 
       // Confirm the API actually persisted it (not just a client-side echo).
@@ -56,10 +55,9 @@ test.describe('Website Appearance', () => {
       // leave the demo restaurant's theme visibly changed.
       await page.fill('#primaryRedHex', originalHex).catch(() => {});
       await page.locator('#primaryRedHex').blur().catch(() => {});
-      await dismissNewOrderOverlay(page);
       // already back where it started - Save is disabled and there is nothing left to do
       if (await saveBtn.isEnabled().catch(() => false)) {
-        await saveBtn.click().catch(() => {});
+        await clickPastOverlay(page, '#saveWebsiteThemeBtn').catch(() => {});
         await expect(page.locator('.rgn-card').filter({ hasText: /saved/i }).first())
           .toBeVisible({ timeout: 10000 }).catch(() => {});
       }
@@ -76,7 +74,7 @@ test.describe('Website Appearance', () => {
   // runs, and the change must survive it. Nothing is saved, so no state is left behind.
   test('a colour changed while the page was still loading is not swallowed by the baseline', async ({ page, context }) => {
     await loginAsOwner(page, context);
-    await page.click('.nav-link[data-page="websiteThemePage"]');
+    await gotoDashboardPage(page, 'websiteThemePage');
     await expect(page.locator('#primaryRedHex')).toBeVisible({ timeout: 10000 });
     const saveBtn = page.locator('#saveWebsiteThemeBtn');
     await expect(saveBtn).toHaveClass(/wt-clean/, { timeout: 15000 });

@@ -112,6 +112,38 @@ async function dismissNewOrderOverlay(page) {
   }).catch(() => {});
 }
 
+/**
+ * Clicks something on the dashboard, clearing the new-order card if it lands on top.
+ *
+ * The card arrives on a poll rather than with the page, so checking that it is not there and then
+ * clicking leaves a gap for it to appear in. A Playwright click on a covered element waits for the
+ * cover to go rather than failing, so one such click quietly spends the test's whole budget and the
+ * failure arrives as a bare timeout. Clearing the card once before the click is not enough either:
+ * after a reload the next poll can still be on its way.
+ *
+ * So each attempt clears whatever is up and then clicks with a deadline. The last attempt is left
+ * to throw, so something genuinely unclickable still reports itself as that.
+ */
+async function clickPastOverlay(page, selector, timeout = 5000) {
+  const target = page.locator(selector).first();
+  for (let i = 0; i < 3; i++) {
+    await dismissNewOrderOverlay(page);
+    try {
+      await target.click({ timeout });
+      return;
+    } catch (e) {
+      // something came up over it between the check and the click - clear it and try again
+    }
+  }
+  await dismissNewOrderOverlay(page);
+  await target.click({ timeout: timeout * 2 });
+}
+
+/** Opens a dashboard section from the sidebar. */
+async function gotoDashboardPage(page, pageId) {
+  await clickPastOverlay(page, `.nav-link[data-page="${pageId}"]`);
+}
+
 /** Generates a unique-enough 10-digit test phone number for customer signup. */
 function uniqueTestPhone() {
   // 9 + last 9 digits of the current timestamp - stays within a plausible
@@ -119,4 +151,5 @@ function uniqueTestPhone() {
   return '9' + String(Date.now()).slice(-9);
 }
 
-module.exports = { DEMO_ADMIN, TEST_RESTAURANT_ID, loginAsOwner, dismissTour, dismissNewOrderOverlay, uniqueTestPhone };
+module.exports = { DEMO_ADMIN, TEST_RESTAURANT_ID, loginAsOwner, dismissTour,
+                   dismissNewOrderOverlay, clickPastOverlay, gotoDashboardPage, uniqueTestPhone };
