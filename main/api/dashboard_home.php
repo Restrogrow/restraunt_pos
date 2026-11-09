@@ -28,7 +28,23 @@ $rid = $_SESSION['restaurant_id'];
 session_write_close();
 require_once __DIR__ . '/../db_connection.php';
 
-function dhTry(callable $f, $fallback) { try { return $f(); } catch (Throwable $e) { error_log('dashboard_home: ' . $e->getMessage()); return $fallback; } }
+/**
+ * One tile of the dashboard, with its own fallback so a feature that is not set up costs that tile
+ * rather than the whole page.
+ *
+ * A table that is not there is not worth logging. The tables behind the optional features are
+ * created when the feature is first used, so on a restaurant that has never opened Catering this
+ * ran on every dashboard load and wrote the same line every time - thousands of them, which is how
+ * a real error gets lost. Anything else is still logged.
+ */
+function dhTry(callable $f, $fallback) {
+    try {
+        return $f();
+    } catch (Throwable $e) {
+        if (strpos($e->getMessage(), '42S02') === false) error_log('dashboard_home: ' . $e->getMessage());
+        return $fallback;
+    }
+}
 
 try {
     $conn = getConnection();

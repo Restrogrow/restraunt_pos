@@ -32,7 +32,10 @@ ALTER TABLE kot_items
   ADD COLUMN IF NOT EXISTS addons TEXT DEFAULT NULL;
 
 ALTER TABLE order_items
-  ADD COLUMN IF NOT EXISTS variation_name VARCHAR(100) DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS variation_name VARCHAR(100) DEFAULT NULL,
+  -- what was ticked with the dish. kot_items got this below but order_items never did,
+  -- so every website order with an add-on failed (admin/run_addons_migration.php).
+  ADD COLUMN IF NOT EXISTS addons JSON DEFAULT NULL;
 
 -- ── users (restaurant settings) ──
 ALTER TABLE users
@@ -206,3 +209,24 @@ ALTER TABLE website_banners
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS manual_rating DECIMAL(2,1) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS manual_rating_count INT DEFAULT NULL;
+
+-- Delivery zones, prep times and the rest, from migrations whose columns never reached a database
+-- restored from an older dump. Without these, every website order failed outright.
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS delivery_zone_id INT NULL,
+  ADD COLUMN IF NOT EXISTS delivery_charge DECIMAL(10,2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS delivery_address TEXT NULL,
+  ADD COLUMN IF NOT EXISTS prep_minutes INT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS estimated_ready_at DATETIME DEFAULT NULL;
+
+-- Who a coupon belongs to (Coupons page reads it on every load).
+ALTER TABLE coupons
+  ADD COLUMN IF NOT EXISTS owner_phone VARCHAR(20) NULL DEFAULT NULL;
+
+-- The order a kitchen ticket came from (Tables studio joins on it).
+ALTER TABLE kot
+  ADD COLUMN IF NOT EXISTS order_id INT DEFAULT NULL;
+
+-- How many months a subscription payment covered (the receipt email needs it).
+ALTER TABLE subscription_payments
+  ADD COLUMN IF NOT EXISTS duration_months INT DEFAULT 1;
