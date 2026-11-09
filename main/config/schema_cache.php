@@ -25,7 +25,17 @@ if (!function_exists('rgHasColumn')) {
     function rgSchemaCacheFile(): string {
         $dir = __DIR__ . '/../tmp';
         if (!is_dir($dir)) @mkdir($dir, 0755, true);
-        $scope = (string)($GLOBALS['rg_db_scope'] ?? '');   // set by db_connection.php on connect
+        // the DSN db_connection.php connected with, reduced to host and database name: cron jobs
+        // reach the same server over TCP where the web requests use the socket, and 127.0.0.1 and
+        // localhost would otherwise each keep their own half-built copy of the same notes
+        $scope = (string)($GLOBALS['rg_db_scope'] ?? '');
+        if ($scope !== '') {
+            $host = ''; $name = '';
+            if (preg_match('/host=([^;]*)/i', $scope, $m)) $host = strtolower(trim($m[1]));
+            if (preg_match('/dbname=([^;]*)/i', $scope, $m)) $name = trim($m[1]);
+            if ($host === '127.0.0.1' || $host === '::1') $host = 'localhost';
+            $scope = $host . '/' . $name;
+        }
         return $dir . '/schema_cache' . ($scope === '' ? '' : '_' . substr(sha1($scope), 0, 12)) . '.json';
     }
 
