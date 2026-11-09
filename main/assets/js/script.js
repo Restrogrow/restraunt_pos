@@ -15830,6 +15830,8 @@ if (!window.customBgThemes) {
     const res = await fetch('../website/theme_api.php' + q);
     const data = await res.json();
     if (data.success && data.settings) {
+      // from here until the baseline is taken, anything the owner changes has to survive it
+      if (window.themeForgetLoadEdit) window.themeForgetLoadEdit();
       // Set color picker values from saved settings (dark_red is now auto-derived, not saved separately)
       if (pr && data.settings.primary_red) pr.value = data.settings.primary_red;
       if (py && data.settings.primary_yellow) py.value = data.settings.primary_yellow;
@@ -15909,8 +15911,9 @@ if (!window.customBgThemes) {
       
       // Load banners
       loadBanners();
-      // what's saved now = the starting point for "unsaved changes" (after the form settles)
-      setTimeout(function () { if (window.setThemeBaseline) window.setThemeBaseline(); }, 300);
+      // what's saved now = the starting point for "unsaved changes" (after the form settles).
+      // fromLoad: anything the owner changed during those 300ms must not be mistaken for the baseline
+      setTimeout(function () { if (window.setThemeBaseline) window.setThemeBaseline({ fromLoad: true }); }, 300);
     } else {
       // API returned but no settings - still show the grid with defaults
       populateBgThemeGrid('');
@@ -16114,7 +16117,32 @@ if (!window.customBgThemes) {
     function themeSnapshot() {
       try { return JSON.stringify(collectThemePayload().payload); } catch (e) { return null; }
     }
-    window.setThemeBaseline = function () { themeBaseline = themeSnapshot(); window.updateThemeDirty(); };
+
+    // The baseline is taken a moment after the form has been filled in from the server, to give the
+    // choices that set hidden inputs on click a chance to run. Anything the owner changed inside that
+    // moment used to be read as part of the baseline: the form then looked untouched, Save sat there
+    // greyed out saying "Saved", and the change was gone the next time the page was opened - with
+    // nothing on screen to say so.
+    //
+    // So a change made while the form was still loading is remembered, and the baseline it then gets
+    // is one the form can never match. Save comes alive and the change saves like any other.
+    //
+    // The flag lives on window rather than in this scope on purpose. This block runs again each time
+    // the page is opened, which makes a fresh scope and a fresh setThemeBaseline, while the listener
+    // that sets the flag is attached once and keeps writing to the scope it was born in. A local
+    // would be written by the first scope and read by the latest - never the same one.
+    var THEME_NEVER_MATCHES = 'changed-while-loading';   // a snapshot is JSON, so this can never equal one
+    if (window.themeEditedWhileLoading === undefined) window.themeEditedWhileLoading = false;
+    /** Called by the loader just before it fills the form in. */
+    window.themeForgetLoadEdit = function () { window.themeEditedWhileLoading = false; };
+
+    /** Pass {fromLoad: true} from the loader; only that call treats a change made during the load specially. */
+    window.setThemeBaseline = function (opts) {
+      var fromLoad = !!(opts && opts.fromLoad);
+      themeBaseline = (fromLoad && window.themeEditedWhileLoading) ? THEME_NEVER_MATCHES : themeSnapshot();
+      window.themeEditedWhileLoading = false;
+      window.updateThemeDirty();
+    };
     window.themeIsDirty = function () { return themeBaseline !== null && themeSnapshot() !== themeBaseline; };
     window.updateThemeDirty = function () {
       var btn = document.getElementById('saveWebsiteThemeBtn');
@@ -16139,7 +16167,14 @@ if (!window.customBgThemes) {
       page.dataset.dirtyWatch = '1';
       var t = 0;
       // after the page's own handlers have run (some choices set hidden inputs on click)
-      var later = function () { clearTimeout(t); t = setTimeout(window.updateThemeDirty, 60); };
+      var later = function (e) {
+        // Only a real person counts. The loader fills fields in by assignment and fires no events,
+        // but populateBgThemeGrid and the style forms do click and dispatch their way through the
+        // page, and taking that for someone typing is what the settle delay exists to avoid.
+        if (e && e.isTrusted) window.themeEditedWhileLoading = true;
+        clearTimeout(t);
+        t = setTimeout(window.updateThemeDirty, 60);
+      };
       ['input', 'change', 'click'].forEach(function (ev) { page.addEventListener(ev, later, true); });
       window.addEventListener('beforeunload', function (e) {
         if (window.themeIsDirty && window.themeIsDirty()) { e.preventDefault(); e.returnValue = ''; }

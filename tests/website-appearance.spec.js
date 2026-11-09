@@ -65,4 +65,45 @@ test.describe('Website Appearance', () => {
       }
     }
   });
+
+  // The page takes its "nothing changed yet" snapshot 300ms after filling the form in from the
+  // server, to let the choices that set hidden inputs on click run first. A colour changed inside
+  // those 300ms used to be read as part of the snapshot: the form then looked untouched, Save stayed
+  // greyed out saying "Saved", and the change was gone next time the page was opened - silently.
+  //
+  // Racing the real 300ms from a test would pass whether or not the fix is there, so this drives the
+  // mechanism instead: make a change as a person would, then run the same baseline call the loader
+  // runs, and the change must survive it. Nothing is saved, so no state is left behind.
+  test('a colour changed while the page was still loading is not swallowed by the baseline', async ({ page, context }) => {
+    await loginAsOwner(page, context);
+    await page.click('.nav-link[data-page="websiteThemePage"]');
+    await expect(page.locator('#primaryRedHex')).toBeVisible({ timeout: 10000 });
+    const saveBtn = page.locator('#saveWebsiteThemeBtn');
+    await expect(saveBtn).toHaveClass(/wt-clean/, { timeout: 15000 });
+
+    const originalHex = (await page.locator('#primaryRedHex').inputValue()).toLowerCase();
+    const typed = originalHex === '#123abc' ? '#654321' : '#123ABC';
+
+    // Typed, not filled: only a trusted event counts as a person changing something, which is what
+    // keeps the loader's own clicking and dispatching from being mistaken for an edit.
+    await page.locator('#primaryRedHex').click();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type(typed);
+    await page.locator('#primaryRedHex').blur();
+    await expect(saveBtn).toBeEnabled({ timeout: 5000 });
+
+    // exactly what the loader does 300ms after it has filled the form in
+    await page.evaluate(() => window.setThemeBaseline({ fromLoad: true }));
+
+    await expect(saveBtn).toBeEnabled();
+    await expect(saveBtn).not.toHaveClass(/wt-clean/);
+    await expect(page.locator('#primaryRedHex')).toHaveValue(typed);
+
+    // Put it back and tell the page it is clean again, so nothing is saved and leaving asks nothing.
+    await page.locator('#primaryRedHex').click();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type(originalHex);
+    await page.locator('#primaryRedHex').blur();
+    await page.evaluate(() => window.setThemeBaseline());
+  });
 });
