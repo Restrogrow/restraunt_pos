@@ -4014,3 +4014,37 @@ body:has(#posPage.page.active) #poBar { display: none; }   /* the POS shows the 
 }
 @keyframes noSlideIn { from { transform: translateX(calc(100% + 40px)); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { html body #newOrderOverlay .no-card { animation: none; } }
+
+/* ── Pay by UPI (rg-upi-*): assets/js/upi-pay.js ──
+   A QR the customer scans and a link for when this is already their phone. Sized so the QR stays
+   scannable on a counter tablet held at arm's length, and so the whole card still fits a 320px
+   phone without the QR shrinking below about 180px, which is where scanning starts to fail. */
+.rg-upi-ov { position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; padding: 16px;
+  background: rgba(17, 24, 39, .62); box-sizing: border-box; }
+.rg-upi-card { width: min(360px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box;
+  background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 30px 70px -20px rgba(0,0,0,.5);
+  font-family: inherit; color: #111827; }
+.rg-upi-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.rg-upi-h b { font-size: 1.02rem; }
+.rg-upi-x { width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: #f3f4f6; color: #374151; font-size: 20px; line-height: 1; display: grid; place-items: center; }
+.rg-upi-qr { display: grid; place-items: center; min-height: 190px; padding: 12px; border-radius: 14px;
+  background: #fff; border: 1px solid #e5e7eb; }
+/* the library returns an <svg> with no size of its own */
+.rg-upi-qr svg { width: 100%; max-width: 230px; height: auto; display: block; }
+.rg-upi-note { margin: 10px 0 0; font-size: .82rem; line-height: 1.45; color: #6b7280; }
+.rg-upi-small { font-size: .75rem; }
+.rg-upi-id { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 12px;
+  border-radius: 12px; background: #f9fafb; border: 1px solid #e5e7eb; }
+.rg-upi-id span { flex: 1; min-width: 0; font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
+.rg-upi-copy { flex-shrink: 0; border: 0; border-radius: 8px; padding: 7px 12px; cursor: pointer;
+  background: #111827; color: #fff; font-size: .78rem; font-weight: 700; }
+.rg-upi-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.rg-upi-btn { flex: 1 1 140px; padding: 12px 14px; border: 0; border-radius: 12px; cursor: pointer;
+  font-size: .88rem; font-weight: 700; text-align: center; text-decoration: none; box-sizing: border-box; }
+.rg-upi-done { background: #16a34a; color: #fff; }
+.rg-upi-ghost { background: #f3f4f6; color: #111827; }
+@media (max-width: 360px) {
+  .rg-upi-card { padding: 14px; }
+  .rg-upi-actions .rg-upi-btn { flex: 1 1 100%; }
+}

@@ -97,10 +97,29 @@ try {
         throw new Exception('Method name is too long');
     }
 
+    // The UPI ID this method pays into, so the POS can show a link and a QR with the bill amount
+    // already in them (config/upi_link.php). Refused rather than stored when it is not a UPI ID:
+    // a typo here sends a customer's money somewhere else, or nowhere.
+    require_once __DIR__ . '/../config/upi_link.php';
+    $upi_id = null;
+    $upiSent = array_key_exists('upi_id', $_POST);
+    if ($upiSent && trim((string)$_POST['upi_id']) !== '') {
+        $upi_id = rgUpiId($_POST['upi_id']);
+        if ($upi_id === null) {
+            throw new Exception('That does not look like a UPI ID. It should look like yourname@okhdfcbank.');
+        }
+    }
+
     if ($action === 'update') {
         if (!$id) throw new Exception('Method ID required for update');
-        $stmt = $conn->prepare("UPDATE payment_methods SET method_name = ?, emoji = ?, is_active = ? WHERE id = ? AND restaurant_id = ?");
-        $stmt->execute([$method_name, $emoji, $is_active, $id, $restaurant_id]);
+        // written only when the form sent the field, so another caller cannot clear it by omission
+        if ($upiSent) {
+            $stmt = $conn->prepare("UPDATE payment_methods SET method_name = ?, emoji = ?, is_active = ?, upi_id = ? WHERE id = ? AND restaurant_id = ?");
+            $stmt->execute([$method_name, $emoji, $is_active, $upi_id, $id, $restaurant_id]);
+        } else {
+            $stmt = $conn->prepare("UPDATE payment_methods SET method_name = ?, emoji = ?, is_active = ? WHERE id = ? AND restaurant_id = ?");
+            $stmt->execute([$method_name, $emoji, $is_active, $id, $restaurant_id]);
+        }
         echo json_encode(['success' => true, 'message' => 'Payment method updated']);
     } else {
         $check = $conn->prepare("SELECT id FROM payment_methods WHERE restaurant_id = ? AND method_name = ?");
@@ -112,8 +131,8 @@ try {
         $orderStmt->execute([$restaurant_id]);
         $nextOrder = (int)$orderStmt->fetchColumn();
 
-        $stmt = $conn->prepare("INSERT INTO payment_methods (restaurant_id, method_name, emoji, display_order, is_active, is_builtin) VALUES (?, ?, ?, ?, ?, 0)");
-        $stmt->execute([$restaurant_id, $method_name, $emoji, $nextOrder, $is_active]);
+        $stmt = $conn->prepare("INSERT INTO payment_methods (restaurant_id, method_name, emoji, display_order, is_active, is_builtin, upi_id) VALUES (?, ?, ?, ?, ?, 0, ?)");
+        $stmt->execute([$restaurant_id, $method_name, $emoji, $nextOrder, $is_active, $upi_id]);
         echo json_encode(['success' => true, 'message' => 'Payment method added', 'id' => $conn->lastInsertId()]);
     }
 

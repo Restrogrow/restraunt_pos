@@ -233,3 +233,8 @@ ALTER TABLE subscription_payments
   ADD COLUMN IF NOT EXISTS duration_months INT DEFAULT 1,
   ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'phonepe',
   ADD COLUMN IF NOT EXISTS notes VARCHAR(255) DEFAULT NULL;
+
+-- The UPI ID behind a payment method, so the counter can show a QR and a pay link with the bill
+-- amount already in them. See main/config/upi_link.php.
+ALTER TABLE payment_methods
+  ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100) DEFAULT NULL;

@@ -39,10 +39,15 @@ try {
 
     seedBuiltinPaymentMethods($conn, $restaurant_id);
 
-    $stmt = $conn->prepare("SELECT id, method_name, emoji, display_order, is_active, is_builtin, (qr_image IS NOT NULL) AS has_qr
+    $stmt = $conn->prepare("SELECT id, method_name, emoji, display_order, is_active, is_builtin, upi_id, (qr_image IS NOT NULL) AS has_qr
         FROM payment_methods WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC");
     $stmt->execute([$restaurant_id]);
     $methods = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // the name shown inside the customer's UPI app, so they can see who they are paying
+    $payeeStmt = $conn->prepare('SELECT restaurant_name FROM users WHERE restaurant_id = ? LIMIT 1');
+    $payeeStmt->execute([$restaurant_id]);
+    $payeeName = (string)($payeeStmt->fetchColumn() ?: '');
 
     foreach ($methods as &$m) {
         $m['id'] = (int)$m['id'];
@@ -50,6 +55,8 @@ try {
         $m['is_active'] = (int)$m['is_active'];
         $m['is_builtin'] = (int)$m['is_builtin'];
         $m['qr_code_url'] = ((int)$m['has_qr'] === 1) ? ('payment_method_qr.php?id=' . $m['id']) : '';
+        $m['upi_id'] = $m['upi_id'] ?: '';
+        $m['payee_name'] = $payeeName;
         unset($m['has_qr']);
     }
     unset($m);

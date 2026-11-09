@@ -7720,6 +7720,18 @@ function toggleGatewayMode() {
               </div>
             </div>
           </div>
+          <!-- the UPI ID this method pays into, so the counter can show a QR and a pay link with
+               the bill amount already in them (assets/js/upi-pay.js) -->
+          <div class="form-group">
+            <label for="paymentMethodUpiId">UPI ID (Optional)</label>
+            <input type="text" id="paymentMethodUpiId" placeholder="e.g., yourname@okhdfcbank" autocomplete="off"
+                   inputmode="email" spellcheck="false" />
+            <small style="display:block;margin-top:0.35rem;color:#6b7280;line-height:1.45;">
+              Fill this in and the counter shows a QR code with the bill amount already in it, plus a link that
+              opens the customer's UPI app. Leave it empty for methods that are not UPI, like cash or card.
+              <b>UPI does not tell us when money arrives</b>, so you still mark the bill paid yourself.
+            </small>
+          </div>
           <div class="form-group">
             <label>
               <input type="checkbox" id="paymentMethodActive" checked />
@@ -7861,6 +7873,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/escpos.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/escpos.js'); ?>"></script>
   <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
   <script src="../assets/libs/qrcode/qrcode.min.js" defer></script>
+  <!-- after qrcode.min.js: upi-pay.js draws its QR with it -->
+  <script src="../assets/js/upi-pay.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/upi-pay.js'); ?>" defer></script>
   <script src="../assets/js/poster-generator.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/poster-generator.js'); ?>" defer></script>
   <script src="../assets/js/video-generator.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/video-generator.js'); ?>" defer></script>
   <script src="../assets/js/caption-generator.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/caption-generator.js'); ?>" defer></script>

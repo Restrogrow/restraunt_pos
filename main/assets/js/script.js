@@ -333,7 +333,10 @@ window.showPaymentMethodSelector = async function showPaymentMethodSelector() {
 // The list of methods is loaded from paymentMethodsCache (see
 // loadPaymentMethods()) rather than hardcoded, so adding a payment method in
 // Settings makes it usable at POS immediately without a code change.
-window.showSplitPaymentModal = async function(total) {
+// `opts.note` is what the customer sees in their UPI app and what the restaurant sees beside the
+// payment later - the table, or Takeaway. The bill number cannot go in it: the order is created
+// after this window closes, so at this point there isn't one.
+window.showSplitPaymentModal = async function(total, opts) {
   if (!paymentMethodsCache.length) {
     await loadPaymentMethods();
   }
@@ -377,6 +380,9 @@ window.showSplitPaymentModal = async function(total) {
 
       <div id="splitPayInputsContainer"></div>
 
+      <!-- Pay by UPI: one button per selected method that has a UPI ID (assets/js/upi-pay.js) -->
+      <div id="splitPayUpiWrap" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+
       <div id="splitPayBalanceText" style="text-align:center;font-weight:700;font-size:1.05rem;margin-bottom:12px;"></div>
       <div id="splitPayConfirmBanner" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;font-weight:600;margin-bottom:16px;"></div>
 
@@ -393,6 +399,7 @@ window.showSplitPaymentModal = async function(total) {
     const inputsContainer = modal.querySelector('#splitPayInputsContainer');
     const balanceText = modal.querySelector('#splitPayBalanceText');
     const confirmBanner = modal.querySelector('#splitPayConfirmBanner');
+    const upiWrap = modal.querySelector('#splitPayUpiWrap');
 
     const btnBaseStyle = 'flex:1;min-width:90px;padding:14px 8px;border-radius:10px;font-weight:700;font-size:0.85rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     const activeBtnStyle = 'background:#0f4c5c;color:#fff;border:2px solid #0f4c5c;';
@@ -457,7 +464,41 @@ window.showSplitPaymentModal = async function(total) {
       return { amounts, entered };
     }
 
+    // A QR for the customer to scan, with this method's share of the bill already in it. Shown as a
+    // button rather than opened on its own: tapping a method is how the cashier picks it, and a
+    // dialog appearing over that would be in the way as often as not.
+    function renderUpiButtons() {
+      if (!upiWrap) return;
+      const canUpi = window.rgUpiPay
+        ? selectedIdxs.filter((i) => window.rgUpiPay.cleanId(methods[i] && methods[i].upi_id))
+        : [];
+      if (!canUpi.length) { upiWrap.style.display = 'none'; upiWrap.innerHTML = ''; return; }
+      upiWrap.style.display = 'flex';
+      upiWrap.innerHTML = canUpi.map((i) => {
+        const m = methods[i];
+        const amt = Math.max(amountsByIdx[i] || 0, 0);
+        return '<button type="button" class="splitPayUpiBtn" data-upi-idx="' + i + '"'
+          + ' style="flex:1 1 160px;padding:12px;border:0;border-radius:10px;background:#0f4c5c;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;">'
+          + escapeHtml('Show ' + m.method_name + ' QR') + (amt > 0 ? ' · ' + currency + amt.toFixed(2) : '')
+          + '</button>';
+      }).join('');
+      Array.from(upiWrap.querySelectorAll('.splitPayUpiBtn')).forEach((b) => {
+        b.addEventListener('click', () => {
+          const i = parseInt(b.getAttribute('data-upi-idx'), 10);
+          const m = methods[i];
+          window.rgUpiPay.show({
+            upi: m.upi_id,
+            name: m.payee_name || '',
+            amount: Math.max(amountsByIdx[i] || 0, 0),
+            note: (opts && opts.note) ? String(opts.note).slice(0, 50) : '',
+            currency: 'INR',
+          });
+        });
+      });
+    }
+
     function recalc() {
+      renderUpiButtons();
       const { entered } = getAmounts();
       const returnAmt = Math.max(entered - grandTotal, 0);
       const dueAmt = Math.max(grandTotal - entered, 0);
@@ -9399,7 +9440,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const toCollect = Math.round((total - walletPart) * 100) / 100;
     const payResult = toCollect <= 0.004
       ? { paymentMethod: 'Wallet', paymentStatus: 'Paid', amounts: {}, dueAmount: 0, cash: 0, upi: 0, card: 0, returnAmount: 0 }
-      : await showSplitPaymentModal(toCollect);
+      : await showSplitPaymentModal(toCollect, { note: isTakeaway ? 'Takeaway' : tableLabel });
     if (!payResult) {
       return; // User cancelled - cart untouched
     }
@@ -12206,6 +12247,7 @@ function openPaymentMethodModal(data) {
   const nameInput = document.getElementById('paymentMethodName');
   const emojiInput = document.getElementById('paymentMethodEmoji');
   const activeInput = document.getElementById('paymentMethodActive');
+  const upiInput = document.getElementById('paymentMethodUpiId');
   if (!modal) return;
 
   if (data && data.id) {
@@ -12214,6 +12256,7 @@ function openPaymentMethodModal(data) {
     nameInput.value = data.method_name || '';
     emojiInput.value = data.emoji || PAYMENT_METHOD_EMOJI_DEFAULT;
     activeInput.checked = (data.is_active == 1 || data.is_active === true);
+    if (upiInput) upiInput.value = data.upi_id || '';
     // Built-in methods (Cash/Card/UPI) keep their name locked — renaming
     // them would desync every place that already matches on that exact
     // string (KOT notes, order filters, PhonePe routing checks upstream).
@@ -12225,6 +12268,7 @@ function openPaymentMethodModal(data) {
     nameInput.disabled = false;
     emojiInput.value = '';
     activeInput.checked = true;
+    if (upiInput) upiInput.value = '';
   }
 
   modal.style.display = 'block';
@@ -12247,9 +12291,17 @@ async function savePaymentMethod(event) {
   const name = document.getElementById('paymentMethodName').value.trim();
   const emoji = document.getElementById('paymentMethodEmoji').value.trim();
   const isActive = document.getElementById('paymentMethodActive').checked ? 1 : 0;
+  const upiEl = document.getElementById('paymentMethodUpiId');
+  const upiId = upiEl ? upiEl.value.trim() : '';
   const saveBtn = event.target.querySelector('button[type=submit]');
 
   if (!name) { (window.showNotification || alert)('Please enter a method name.', 'error'); return false; }
+  // caught here as well as on the server, so the answer is immediate and nothing is lost on a typo
+  if (upiId && window.rgUpiPay && !window.rgUpiPay.cleanId(upiId)) {
+    (window.showNotification || alert)('That does not look like a UPI ID. It should look like yourname@okhdfcbank.', 'error');
+    if (upiEl) upiEl.focus();
+    return false;
+  }
 
   const formData = new FormData();
   formData.append('action', id ? 'update' : 'create');
@@ -12257,6 +12309,7 @@ async function savePaymentMethod(event) {
   formData.append('method_name', name);
   formData.append('emoji', emoji);
   formData.append('is_active', isActive);
+  if (upiEl) formData.append('upi_id', upiId);
 
   const origText = saveBtn ? saveBtn.textContent : '';
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }

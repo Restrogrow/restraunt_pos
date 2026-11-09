@@ -22,10 +22,38 @@ if (!function_exists('ensurePaymentMethodsTable')) {
                 qr_image_mime VARCHAR(50) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                upi_id VARCHAR(100) DEFAULT NULL,
                 INDEX idx_paymethod_restaurant (restaurant_id),
                 INDEX idx_paymethod_active (restaurant_id, is_active)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         }
+        ensurePaymentMethodColumns($conn);
+    }
+}
+
+if (!function_exists('ensurePaymentMethodColumns')) {
+    /**
+     * Columns added after the table was first created. The CREATE above only runs when the table is
+     * missing entirely, so anything listed inside it never reaches a database that already had one —
+     * which is exactly how website_banners went without its `placement` column.
+     *
+     * Returns false if a column is still missing afterwards, so rgEnsureOnce tries again rather than
+     * recording a failed ALTER as done (config/schema_cache.php).
+     */
+    function ensurePaymentMethodColumns(PDO $conn) {
+        require_once __DIR__ . '/schema_cache.php';
+        $cols = ['upi_id' => 'VARCHAR(100) DEFAULT NULL'];   // the UPI ID behind this method, for pay links
+        $ok = true;
+        foreach ($cols as $col => $def) {
+            if (rgHasColumn($conn, 'payment_methods', $col)) continue;
+            try {
+                $conn->exec("ALTER TABLE payment_methods ADD COLUMN `$col` $def");
+            } catch (PDOException $e) {
+                error_log('ensurePaymentMethodColumns (' . $col . '): ' . $e->getMessage());
+                $ok = false;
+            }
+        }
+        return $ok;
     }
 }
 

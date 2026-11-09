@@ -313,7 +313,11 @@ function saInvRender(array $inv, array $set, array $opt = []): string
             . '</div></div>';
     } elseif ($status === 'due') {
         $upi = $seller['upi'];
-        $upiLink = $upi ? 'upi://pay?pa=' . rawurlencode($upi) . '&pn=' . rawurlencode($seller['name']) . '&am=' . number_format((float)$inv['total'], 2, '.', '') . '&cu=INR&tn=' . rawurlencode('Invoice ' . $inv['invoice_no']) : '';
+        // one builder for every UPI link in the app (config/upi_link.php); the invoice number also
+        // goes in as the reference, so it reaches the bank statement and the two sides can be matched
+        require_once __DIR__ . '/upi_link.php';
+        $upiLink = rgUpiLink(['upi' => $upi, 'name' => $seller['name'], 'amount' => $inv['total'],
+                              'note' => 'Invoice ' . $inv['invoice_no'], 'ref' => $inv['invoice_no']]);
         $pay = '<div class="pay due"><div class="pay-h">How to pay' . ($inv['due_date'] ? ' · by ' . $h($d($inv['due_date'])) : '') . '</div><div class="pay-row">'
             . ($upi ? '<div class="qr" id="upiQr" data-upi="' . $h($upiLink) . '"></div>' : '')
             . '<div class="pay-g">'
@@ -466,11 +470,26 @@ function saInvRender(array $inv, array $set, array $opt = []): string
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<?php if ($status === 'due' && $seller['upi']): ?><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><?php endif; ?>
+<?php if ($status === 'due' && $seller['upi']): ?><script src="../assets/libs/qrcode/qrcode.min.js"></script><?php endif; ?>
 <script>
 (function () {
+  // Our own copy of the QR library rather than cdnjs. This page is an unpaid invoice, so the one
+  // thing on it that has to work is the way to pay; it also used a different QR library from every
+  // other QR in the app, purely because of how it was loaded.
+  //
+  // An <img>, not an inline SVG: this page is turned into a PDF with html2canvas, which rasterises
+  // an image reliably where SVG is hit and miss.
   var q = document.getElementById('upiQr');
-  if (q && window.QRCode) new QRCode(q, { text: q.getAttribute('data-upi'), width: 168, height: 168, correctLevel: QRCode.CorrectLevel.M });
+  if (q && typeof window.qrcode === 'function') {
+    try {
+      var g = window.qrcode(0, 'M');
+      g.addData(q.getAttribute('data-upi'));
+      g.make();
+      q.innerHTML = g.createImgTag(4, 8);
+      var img = q.querySelector('img');
+      if (img) { img.style.width = '168px'; img.style.height = '168px'; img.alt = 'UPI QR code'; }
+    } catch (e) { /* the UPI ID is printed beside it, so there is still a way to pay */ }
+  }
   // on a phone the A4 page is scaled down to fit
   var page = document.getElementById('inv');
   function fit() { var w = window.innerWidth; page.style.transform = w < 820 ? 'scale(' + (w / 810) + ')' : ''; page.style.marginBottom = w < 820 ? (-(1 - w / 810) * page.offsetHeight) + 'px' : ''; }
