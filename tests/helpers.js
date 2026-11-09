@@ -89,18 +89,27 @@ async function dismissTour(page) {
 }
 
 /**
- * The dashboard polls for new orders and shows a blocking #newOrderOverlay
- * card the moment one arrives (main/assets/js/script.js "[Notif] Polling for
- * new orders"). place-order.spec.js creates a real TEST01 order, so later
- * tests that log in as the owner can otherwise get their clicks intercepted
- * by this overlay. Safe no-op if it isn't showing.
+ * The dashboard polls for new orders and shows a blocking #newOrderOverlay card the moment one
+ * arrives (main/assets/js/script.js "[Notif] Polling for new orders"). place-order.spec.js creates
+ * a real TEST01 order, so later tests that log in as the owner can otherwise get their clicks
+ * intercepted by this overlay. Safe no-op if it isn't showing.
+ *
+ * Every wait here is bounded, and if the card will not close on its own it is taken off the page.
+ * The close button used to be clicked with no timeout at all, which was invisible for as long as
+ * website orders were failing and no card ever appeared - and became a test that hung for its whole
+ * 90s the moment orders started being created again.
  */
 async function dismissNewOrderOverlay(page) {
   const overlay = page.locator('#newOrderOverlay.show');
-  if (await overlay.isVisible().catch(() => false)) {
-    await page.click('#newOrderOverlay .close-overlay');
-    await overlay.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  for (let i = 0; i < 3; i++) {
+    if (!(await overlay.isVisible().catch(() => false))) return;
+    await page.click('#newOrderOverlay .close-overlay', { timeout: 3000 }).catch(() => {});
+    await overlay.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
   }
+  // still there: it is only in the way, so stop asking politely
+  await page.evaluate(() => {
+    document.querySelectorAll('#newOrderOverlay').forEach((e) => e.classList.remove('show'));
+  }).catch(() => {});
 }
 
 /** Generates a unique-enough 10-digit test phone number for customer signup. */

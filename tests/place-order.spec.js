@@ -46,11 +46,18 @@ test.describe('Guest checkout - place an order end-to-end', () => {
     // "Continue as Guest" sets sessionStorage.guestSessionActive and redirects
     // back to cart.php; the cart (stored in localStorage) survives the round trip.
     await page.waitForURL(/cart\.php/, { timeout: 10000 });
-    await expect(cartCheckoutBtn).toBeEnabled({ timeout: 10000 });
-    await cartCheckoutBtn.click(); // proceedCheckout() - now opens the checkout form modal
 
+    // Coming back from the gate, cart.php opens checkout itself rather than making the customer tap
+    // Checkout a second time (cart.php: "resume && cameAs" -> proceedCheckout after 150ms). So only
+    // click if it has not already done so: this test used to always click, and only passed because
+    // it usually got there before that 150ms was up. Once the modal is open the click lands on its
+    // backdrop, which takes the pointer and never passes it on, so the click waits for ever.
     const form = page.locator('#checkoutForm');
-    await expect(form).toBeVisible();
+    if (!(await form.isVisible().catch(() => false))) {
+      await expect(cartCheckoutBtn).toBeEnabled({ timeout: 10000 });
+      await cartCheckoutBtn.click();   // proceedCheckout()
+    }
+    await expect(form).toBeVisible({ timeout: 10000 });
 
     // Takeaway avoids the delivery-address/geolocation flow and the dine-in
     // table picker, keeping this test focused on the order-creation path itself.
