@@ -67,9 +67,26 @@ body {
   flex-direction: column;
   height: 100%;
 }
-/* Scrolling down the dishes slides the top bar (veg toggle, filter...) up out of view
-   (scrolling up brings them back); see initMenuChromeAutoHide() */
-.pr-share-header { transition: margin-top 0.28s ease; }
+/* Scrolling down the dishes folds the top bar (veg toggle, filter...) away
+   (scrolling up brings it back); see initMenuChromeAutoHide().
+
+   It collapses rather than being pulled up by a negative margin, which is what it used to do. A
+   negative margin moves the box but still paints it: with a table QR open there is the "Table G1"
+   banner directly above, and the back button, logo and toggles ended up drawn across it, half cut
+   off, and stayed there. Nothing clipped them - the banner is transparent and comes earlier in the
+   document, so the header painted over it. Collapsing the height leaves the box where it is and
+   clips its own content, so it is simply not there. */
+.pr-share-header {
+  overflow: hidden;
+  transition: height 0.28s ease, padding 0.28s ease, opacity 0.2s ease, border-width 0.28s ease;
+}
+.pr-share-header.mc-folded {
+  height: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  border-bottom-width: 0;   /* or the box keeps the 1.5px rule's worth of height */
+}
 /* no automatic scroll-position nudging when the bar resizes the scroll area */
 .main-content { overflow-anchor: none; }
 /* searching: only the title and the results, no banners or combos above them */
@@ -2883,17 +2900,34 @@ function initMenuChromeAutoHide() {
   // when there's enough list to keep scrolling, and force it back only at the
   // very top.
   var THRESHOLD = 30, SLIDE_MS = 350;
-  var last = scroller.scrollTop, travel = 0, hidden = false, lockedUntil = 0;
-  // Only the top bar (back, logo, Veg Only, filter, share) hides; search stays
-  function barHeight() { return header.offsetHeight; }
+  var last = scroller.scrollTop, travel = 0, hidden = false, lockedUntil = 0, openHeight = 0, restoreId = 0;
+  // Only the top bar (back, logo, Veg Only, filter, share) folds away; search stays.
+  // Measured while it is open and remembered, because once folded it measures zero and the
+  // "is there enough list left to scroll" check below would then always say yes.
+  function barHeight() {
+    if (!hidden) openHeight = header.offsetHeight || openHeight;
+    return openHeight;
+  }
   function setHidden(h) {
     if (h === hidden) return;
     var searchInput = search && search.querySelector('input');
     if (h && searchInput && document.activeElement === searchInput) return; // keep it while typing
+    var from = barHeight();
     hidden = h;
     var menu = document.getElementById('filterMenu');
     if (h && menu) menu.classList.remove('show');
-    header.style.marginTop = h ? -barHeight() + 'px' : '';
+    // An explicit height both ways: a transition cannot run from or to `auto`.
+    clearTimeout(restoreId);
+    if (h) {
+      header.style.height = from + 'px';
+      void header.offsetHeight;                 // let that height apply before the class changes it
+      header.classList.add('mc-folded');
+    } else {
+      header.classList.remove('mc-folded');
+      header.style.height = from + 'px';
+      // back to auto once it has finished, so it can resize with its contents again
+      restoreId = setTimeout(function () { if (!hidden) header.style.height = ''; }, SLIDE_MS);
+    }
     lockedUntil = Date.now() + SLIDE_MS;
     travel = 0;
   }
